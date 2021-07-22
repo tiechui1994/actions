@@ -3,7 +3,7 @@
 TOKEN=$1
 VERSION=$2
 
-declare -r version=${VERSION:=5.7.31}
+declare -r version=${VERSION:=5.7.34}
 declare -r workdir=$(pwd)
 declare -r installdir=/opt/local/mysql
 
