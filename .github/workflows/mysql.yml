@@ -1,0 +1,33 @@
+name: mysql
+on:
+  push:
+    branches: master
+
+jobs:
+  setup:
+    runs-on: ubuntu-16.04
+
+    steps:
+      - name: checkout
+        timeout-minutes: 1
+        uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+
+      - id: build
+        timeout-minutes: 40
+        run: |
+          bash script/mysql.sh ${{ secrets.GIT_TOKEN }}
+        shell: bash
+
+      - name: release
+        timeout-minutes: 1
+        if: ${{env.DEB}}
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GIT_TOKEN }}
+          file: ${{github.workspace}}/${{env.DEB}}
+          asset_name: ${{env.DEB}}
+          tag: ${{env.TAG}}
+          overwrite: true
+          body: "release ${{env.TAG}}"

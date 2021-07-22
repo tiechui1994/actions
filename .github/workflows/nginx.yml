@@ -1,0 +1,34 @@
+name: nginx
+on:
+  push:
+    branches: master
+
+jobs:
+  setup:
+    runs-on: ubuntu-16.04
+
+    steps:
+    - name: checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
+
+    - id: build
+      timeout-minutes: 10
+      run: |
+        bash script/nginx.sh ${{ secrets.GIT_TOKEN }}
+      shell: bash
+
+    - name: release
+      timeout-minutes: 1
+      if: ${{ success() && env.DEB }}
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GIT_TOKEN }}
+        file: ${{github.workspace}}/nginx_*
+        asset_name: ${{env.DEB}}
+        tag: ${{env.TAG}}
+        overwrite: true
+        body: "release ${{env.TAG}}"
+        file_glob: true
