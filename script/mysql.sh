@@ -103,6 +103,7 @@ check() {
 download_mysql() {
     url="https://mirrors.cloud.tencent.com/mysql/downloads/MySQL-5.7/mysql-$version.tar.gz"
     url="https://www.mirrorservice.org/sites/ftp.mysql.com/Downloads/MySQL-5.7/mysql-$version.tar.gz"
+    url="https://mirrors.yangxingzhen.com/mysql/mysql-$version.tar.gz"
     common_download "mysql" ${url} axel
 
     return $?
@@ -345,8 +346,10 @@ EOF
     # deb
     sudo dpkg-deb --build debian
     sudo mv debian.deb ${GITHUB_WORKSPACE}/mysql_${version}_amd64.deb
+    sudo mv mysql.tar.gz ${GITHUB_WORKSPACE}/mysql_${version}_amd64.tgz
     echo "TAG=mysql_${version}" >> ${GITHUB_ENV}
     echo "DEB=mysql_${version}_amd64.deb" >> ${GITHUB_ENV}
+    echo "TAR=mysql_${version}_amd64.tgz" >> ${GITHUB_ENV}
 }
 
 clean_file(){

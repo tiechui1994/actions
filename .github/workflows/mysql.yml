@@ -15,7 +15,7 @@ jobs:
           persist-credentials: false
 
       - id: build
-        timeout-minutes: 40
+        timeout-minutes: 60
         run: |
           bash script/mysql.sh ${{ secrets.GIT_TOKEN }}
         shell: bash
@@ -26,8 +26,9 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GIT_TOKEN }}
-          file: ${{github.workspace}}/${{env.DEB}}
+          file: ${{github.workspace}}/mysql_*
           asset_name: ${{env.DEB}}
           tag: ${{env.TAG}}
           overwrite: true
           body: "release ${{env.TAG}}"
+          file_glob: true
