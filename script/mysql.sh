@@ -3,7 +3,7 @@
 TOKEN=$1
 VERSION=$2
 
-declare -r version=${VERSION:=5.7.32}
+declare -r version=${VERSION:=5.7.33}
 declare -r workdir=$(pwd)
 declare -r installdir=/opt/local/mysql
 
@@ -101,9 +101,10 @@ check() {
 }
 
 download_mysql() {
+    # tencent, mirrorservice, mysql(https://downloads.mysql.com/archives/community)
     url="https://mirrors.cloud.tencent.com/mysql/downloads/MySQL-5.7/mysql-$version.tar.gz"
     url="https://www.mirrorservice.org/sites/ftp.mysql.com/Downloads/MySQL-5.7/mysql-$version.tar.gz"
-    url="https://mirrors.yangxingzhen.com/mysql/mysql-$version.tar.gz"
+    url="https://cdn.mysql.com/archives/mysql-5.7/mysql-$version.tar.gz"
     common_download "mysql" ${url} axel
 
     return $?
