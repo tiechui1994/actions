@@ -17,7 +17,7 @@ jobs:
       - id: build
         timeout-minutes: 60
         run: |
-          bash script/mysql.sh ${{ secrets.GIT_TOKEN }}
+          bash script/mysql.sh ${{ secrets.GIT_TOKEN }} 5.7.24
         shell: bash
 
       - name: release
