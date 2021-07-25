@@ -12,7 +12,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 const (
@@ -267,28 +266,15 @@ func UploadFile(path, fileid string, token Token) error {
 		return nil
 	}
 
-	var (
-		wg    sync.WaitGroup
-		count int
-	)
-
+	data = make([]byte, m10)
 	for _, part := range upload.PartInfoList {
-		count += 1
-		wg.Add(1)
-		go func(u string, part int) {
-			defer wg.Done()
-			data := make([]byte, m10)
-			n, _ := fd.ReadAt(data, int64((part-1)*m10))
-			_, err = PUT(u, data[:n], nil)
-		}(part.UploadUrl, part.PartNumber)
-		if count == 5 {
-			wg.Wait()
-			count = 0
+		u := part.UploadUrl
+		n := part.PartNumber
+		nw, _ := fd.ReadAt(data, int64((n-1)*m10))
+		_, err = PUT(u, data[:nw], nil)
+		if err != nil {
+			return err
 		}
-	}
-
-	if count > 0 {
-		wg.Wait()
 	}
 
 	u := yunpan + "/v2/file/complete"
