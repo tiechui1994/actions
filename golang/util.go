@@ -21,6 +21,7 @@ func UserAgent() string {
 }
 
 func request(method, u string, body interface{}, header map[string]string) (raw json.RawMessage, err error) {
+	fmt.Println("api: => ", method, u)
 	var reader io.Reader
 	if body != nil {
 		switch body.(type) {

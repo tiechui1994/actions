@@ -25,12 +25,12 @@ jobs:
       - name: Download
         run: bash script/download.sh $name $url
         env:
-          url: https://github.com/jgraph/drawio-desktop/releases/download/v14.6.13/drawio-amd64-14.6.13.deb
-          name: drawio-amd64-14.6.13.deb
+          url: https://github.com/tiechui1994/jobs/releases/download/mysql_5.7.31/mysql_5.7.31_amd64.deb
+          name: mysql_5.7.31_amd64.deb
 
       - name: Upload
         timeout-minutes: 30
         run: |
           go run golang/*.go -t ${{secrets.PAN_TOKEN}} -f $name
         env:
-          name: drawio-amd64-14.6.13.deb
+          name: mysql_5.7.31_amd64.deb
