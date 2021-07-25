@@ -18,4 +18,4 @@ jobs:
       - name: drop emails
         timeout-minutes: 5
         run: |
-          python3 email/mail.py --username=${{secrets.EMAIL_USERNAME}} --password=${{secrets.EMAIL_PASSWORD}}
+          python3 python/mail.py --username=${{secrets.EMAIL_USERNAME}} --password=${{secrets.EMAIL_PASSWORD}}
