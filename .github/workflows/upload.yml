@@ -1,7 +1,17 @@
 name: upload
 on:
-  push:
-    branches: master
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'download url'
+        required: true
+        default: ''
+      name:
+        description: 'file name'
+        required: true
+        default: ''
+#  push:
+#    branches: master
 
 jobs:
   upload:
@@ -22,15 +32,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Download
-        run: bash script/download.sh $name $url
-        env:
-          url: https://github.com/tiechui1994/jobs/releases/download/mysql_5.7.31/mysql_5.7.31_amd64.deb
-          name: mysql_5.7.31_amd64.deb
+      - name: Download ${{github.event.inputs.name}}
+        if: ${{ github.event.inputs.url && github.event.inputs.name }}
+        run: bash script/download.sh ${{github.event.inputs.name}} ${{github.event.inputs.url}}
 
       - name: Upload
-        timeout-minutes: 30
+        if: ${{ success() }}
         run: |
-          go run golang/*.go -t ${{secrets.PAN_TOKEN}} -f $name
-        env:
-          name: mysql_5.7.31_amd64.deb
+          go run golang/*.go -t ${{secrets.PAN_TOKEN}} -f ${{github.event.inputs.url}}

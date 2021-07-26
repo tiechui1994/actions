@@ -12,19 +12,19 @@ declare -r FAILURE=1
 
 # log
 log_error(){
-    red="\033[97;41m"
+    red="\033[31;1m"
     reset="\033[0m"
     msg="[E] $@"
     echo -e "$red$msg$reset"
 }
 log_warn(){
-    yellow="\033[90;43m"
+    yellow="\033[33;1m"
     reset="\033[0m"
     msg="[W] $@"
     echo -e "$yellow$msg$reset"
 }
 log_info() {
-    green="\033[97;42m"
+    green="\033[32;1m"
     reset="\033[0m"
     msg="[I] $@"
     echo -e "$green$msg$reset"
@@ -88,9 +88,9 @@ check() {
     url=https://api.github.com/repos/tiechui1994/jobs/releases/tags/redis_${version}
     result=$(curl -H "Accept: application/vnd.github.v3+json" \
                   -H "Authorization: token ${TOKEN}" ${url})
-    echo "result: ${result}"
+    log_info "result: $(echo ${result} | jq .)"
     message=$(echo ${result} | jq .message)
-    echo "message: ${message}"
+    log_info "message: ${message}"
     if [[ ${message} = '"Not Found"' ]]; then
         return ${SUCCESS}
     fi

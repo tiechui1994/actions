@@ -85,9 +85,9 @@ check() {
     url=https://api.github.com/repos/tiechui1994/jobs/releases/tags/nginx_${version}
     result=$(curl -H "Accept: application/vnd.github.v3+json" \
                   -H "Authorization: token ${TOKEN}" ${url})
-    echo "result: ${result}"
-    message=$(echo ${result}| jq .message)
-    echo "message: ${message}"
+    log_info "result: $(echo ${result} | jq .)"
+    message=$(echo ${result} | jq .message)
+    log_info "message: ${message}"
     if [[ ${message} = '"Not Found"' ]]; then
         return ${success}
     fi

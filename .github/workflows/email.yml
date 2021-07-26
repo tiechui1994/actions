@@ -6,7 +6,7 @@ on:
     - cron: '*/10 * * * *'
 
 jobs:
-  setup:
+  email:
     runs-on: ubuntu-18.04
     steps:
       - name: checkout code

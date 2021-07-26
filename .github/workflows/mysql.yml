@@ -4,9 +4,8 @@ on:
     branches: master
 
 jobs:
-  setup:
+  mysql:
     runs-on: ubuntu-16.04
-
     steps:
       - name: checkout
         timeout-minutes: 1

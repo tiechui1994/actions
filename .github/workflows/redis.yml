@@ -5,9 +5,8 @@ on:
 
 
 jobs:
-  setup:
+  redis:
     runs-on: ubuntu-18.04
-
     steps:
       - name: checkout
         timeout-minutes: 1
