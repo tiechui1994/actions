@@ -55,7 +55,11 @@ common_download() {
     log_info "success to download $name"
     log_info "$(file ${name})"
     log_info "sha1: $(cat ${name}|sha1sum)"
-    log_info "size: $(ls -lh|grep ${name}|cut -d ' ' -f5), $(ls -l|grep ${name}|cut -d ' ' -f5)"
+    log_info "size: $(ls -lh ${name}|cut -d ' ' -f5), $(ls -l ${name}|cut -d ' ' -f5)"
+
+    echo "name: $name" >> "$name.SHA1"
+    echo "size: $(ls -l ${name}|cut -d ' ' -f5)" >> "$name.SHA1"
+    echo "sha1: $(cat ${name}|sha1sum)" >> "$name.SHA1"
 
     return ${SUCCESS} #3
 }

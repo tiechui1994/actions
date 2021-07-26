@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 )
 
@@ -34,17 +35,17 @@ func main() {
 
 	if *refresh == "" {
 		fmt.Println("invalid token")
-		return
+		os.Exit(1)
 	}
 	if *file == "" {
 		fmt.Println("invalid file")
-		return
+		os.Exit(1)
 	}
 
 	filename, err := filepath.Abs(*file)
 	if err != nil {
 		fmt.Println("invalid file error", err)
-		return
+		os.Exit(1)
 	}
 
 	fmt.Println("filename:", filename)
@@ -52,13 +53,13 @@ func main() {
 	token, err := Refresh(*refresh)
 	if err != nil {
 		fmt.Println("refresh error", err)
-		return
+		os.Exit(1)
 	}
 
 	files, err := Files("root", token)
 	if err != nil {
 		fmt.Println("files error", err)
-		return
+		os.Exit(1)
 	}
 
 	var dirinfo File
@@ -92,7 +93,12 @@ func main() {
 	err = UploadFile(filename, dirinfo.FileID, token)
 	if err != nil {
 		fmt.Println("upload file error", err)
-		return
+		os.Exit(1)
+	}
+
+	err = UploadFile(filename+".SHA1", dirinfo.FileID, token)
+	if err != nil {
+		fmt.Println("upload sha1 file error", err)
 	}
 
 	fmt.Println("upload file sucess")
