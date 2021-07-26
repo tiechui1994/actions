@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Use Go ${{ matrix.go }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
           go: ${{ matrix.go }}
 
@@ -39,4 +39,4 @@ jobs:
       - name: Upload
         if: ${{ success() }}
         run: |
-          go run golang/*.go -t ${{secrets.PAN_TOKEN}} -f ${{github.event.inputs.url}}
+          make -C golang upload && ./golang/upload -t ${{secrets.PAN_TOKEN}} -f ${{github.event.inputs.url}}

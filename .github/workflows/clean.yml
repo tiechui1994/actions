@@ -1,0 +1,27 @@
+name: clean
+on:
+  push:
+    branches: master
+
+jobs:
+  clean:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        go: [ '1.14' ]
+
+    steps:
+    - name: Use Go ${{ matrix.go }}
+      uses: actions/setup-node@v2
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
+
+    - name: Job Clean
+      run: |
+        make -C golang clean && ./golang/clean
