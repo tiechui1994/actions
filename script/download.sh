@@ -54,6 +54,8 @@ common_download() {
 
     log_info "success to download $name"
     log_info "$(file ${name})"
+    log_info "sha1: $(cat ${name}|sha1sum)"
+    log_info "size: $(ls -lh|grep ${name}|cut -d ' ' -f5), $(ls -l|grep ${name}|cut -d ' ' -f5)"
 
     return ${SUCCESS} #3
 }
@@ -63,3 +65,6 @@ command_exists() {
 }
 
 common_download ${name} ${url} axel
+if [[ $? -ne ${SUCCESS} ]]; then
+   exit $?
+fi

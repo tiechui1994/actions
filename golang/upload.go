@@ -6,6 +6,19 @@ import (
 	"path/filepath"
 )
 
+
+/*
+curl \
+  -H "Accept: application/vnd.github.v3+json" \
+  https://api.github.com/repos/tiechui1994/jobs/actions/workflows
+
+curl \
+  -X POST \
+  -H "Accept: application/vnd.github.v3+json" \
+  https://api.github.com/repos/tiechui1994/jobs/actions/workflows/11604575/dispatches \
+  -d '{"name":"xx", "url":"xx"}'
+*/
+
 func main() {
 	refresh := flag.String("t", "", "refresh token")
 	dir := flag.String("d", "github", "save dir")

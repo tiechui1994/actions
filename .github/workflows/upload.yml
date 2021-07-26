@@ -10,8 +10,6 @@ on:
         description: 'file name'
         required: true
         default: ''
-#  push:
-#    branches: master
 
 jobs:
   upload:
