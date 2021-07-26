@@ -37,4 +37,4 @@ jobs:
       - name: Upload
         if: ${{ success() }}
         run: |
-          make -C golang upload && ./golang/upload -t ${{secrets.PAN_TOKEN}} -f ${{github.event.inputs.url}}
+          make -C golang upload && ./golang/upload -t ${{secrets.PAN_TOKEN}} -f ${{github.event.inputs.name}}

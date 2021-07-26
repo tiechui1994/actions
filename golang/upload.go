@@ -12,11 +12,18 @@ curl \
   -H "Accept: application/vnd.github.v3+json" \
   https://api.github.com/repos/tiechui1994/jobs/actions/workflows
 
-curl \
-  -X POST \
-  -H "Accept: application/vnd.github.v3+json" \
-  https://api.github.com/repos/tiechui1994/jobs/actions/workflows/11604575/dispatches \
-  -d '{"name":"xx", "url":"xx"}'
+curl -X POST \
+  https://api.github.com/repos/tiechui1994/jobs/actions/workflows/ID/dispatches \
+  -H 'Accept: application/vnd.github.v3+json' \
+  -H 'Authorization: token TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+	"ref":"TAG|BRANCH",
+    "inputs": {
+        "name": "NAME",
+        "url": "URL"
+    }
+  }'
 */
 
 func main() {

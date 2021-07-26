@@ -5,3 +5,6 @@ upload:
 
 clean:
 	go build -o clean clean.go github.go $(UTIL)
+
+sign:
+	go build -o clean sign.go $(UTIL)
