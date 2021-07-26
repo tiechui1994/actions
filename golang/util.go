@@ -2,13 +2,33 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strings"
+	"time"
 )
+
+func init() {
+	http.DefaultClient = &http.Client{
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   10 * time.Second, //设置建立连接超时
+				KeepAlive: 0,
+			}).DialContext,
+			DisableKeepAlives: true,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			WriteBufferSize: 16 * 1024,
+		},
+		Timeout: 10 * time.Second,
+	}
+}
 
 type CodeError int
 
@@ -57,7 +77,7 @@ func request(method, u string, body interface{}, header map[string]string) (raw 
 		return raw, err
 	}
 
-	fmt.Println("response: => ", response.StatusCode, string(raw))
+	fmt.Println("response: => ", response.StatusCode)
 
 	if response.StatusCode >= 400 {
 		return raw, CodeError(response.StatusCode)
@@ -76,4 +96,8 @@ func PUT(u string, body interface{}, header map[string]string) (raw json.RawMess
 
 func GET(u string, header map[string]string) (raw json.RawMessage, err error) {
 	return request("GET", u, nil, header)
+}
+
+func DELETE(u string, header map[string]string) (raw json.RawMessage, err error) {
+	return request("DELETE", u, nil, header)
 }

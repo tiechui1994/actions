@@ -2,6 +2,8 @@ name: clean
 on:
   push:
     branches: master
+  schedule:
+    - cron: '* */24 * * *'
 
 jobs:
   clean:
@@ -12,7 +14,7 @@ jobs:
 
     steps:
     - name: Use Go ${{ matrix.go }}
-      uses: actions/setup-node@v2
+      uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go }}
 
@@ -24,4 +26,4 @@ jobs:
 
     - name: Job Clean
       run: |
-        make -C golang clean && ./golang/clean
+        make -C golang clean && ./golang/clean -r tiechui1994/jobs -t ${{secrets.GIT_TOKEN}}

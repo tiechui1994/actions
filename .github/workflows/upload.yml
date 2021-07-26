@@ -22,9 +22,9 @@ jobs:
 
     steps:
       - name: Use Go ${{ matrix.go }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-go@v2
         with:
-          go: ${{ matrix.go }}
+          go-version: ${{ matrix.go }}
 
       - name: Checkout
         timeout-minutes: 1
