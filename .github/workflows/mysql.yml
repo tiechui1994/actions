@@ -7,27 +7,27 @@ jobs:
   mysql:
     runs-on: ubuntu-16.04
     steps:
-      - name: checkout
-        timeout-minutes: 1
-        uses: actions/checkout@v2
-        with:
-          persist-credentials: false
+    - name: checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
 
-      - id: build
-        timeout-minutes: 60
-        run: |
-          bash script/mysql.sh ${{ secrets.GIT_TOKEN }} 5.7.24
-        shell: bash
+    - id: build
+      timeout-minutes: 60
+      run: |
+        bash script/mysql.sh ${{ secrets.GIT_TOKEN }} 5.7.24
+      shell: bash
 
-      - name: release
-        timeout-minutes: 1
-        if: ${{env.DEB}}
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GIT_TOKEN }}
-          file: ${{github.workspace}}/mysql_*
-          asset_name: ${{env.DEB}}
-          tag: ${{env.TAG}}
-          overwrite: true
-          body: "release ${{env.TAG}}"
-          file_glob: true
+    - name: release
+      timeout-minutes: 1
+      if: ${{env.DEB}}
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GIT_TOKEN }}
+        file: ${{github.workspace}}/mysql_*
+        asset_name: ${{env.DEB}}
+        tag: ${{env.TAG}}
+        overwrite: true
+        body: "release ${{env.TAG}}"
+        file_glob: true

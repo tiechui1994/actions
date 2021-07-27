@@ -19,22 +19,22 @@ jobs:
         go: [ '1.14' ]
 
     steps:
-      - name: Use Go ${{ matrix.go }}
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ matrix.go }}
+    - name: Use Go ${{ matrix.go }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
 
-      - name: Checkout
-        timeout-minutes: 1
-        uses: actions/checkout@v2
-        with:
-          persist-credentials: false
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
 
-      - name: Download ${{github.event.inputs.name}}
-        if: ${{ github.event.inputs.url && github.event.inputs.name }}
-        run: bash script/download.sh ${{github.event.inputs.name}} ${{github.event.inputs.url}}
+    - name: Download ${{github.event.inputs.name}}
+      if: ${{ github.event.inputs.url && github.event.inputs.name }}
+      run: bash script/download.sh ${{github.event.inputs.name}} ${{github.event.inputs.url}}
 
-      - name: Upload
-        if: ${{ success() }}
-        run: |
-          make -C golang upload && ./golang/upload -t ${{secrets.PAN_TOKEN}} -f ${{github.event.inputs.name}}
+    - name: Upload
+      if: ${{ success() }}
+      run: |
+        make -C golang upload && ./golang/upload -t ${{secrets.PAN_TOKEN}} -f ${{github.event.inputs.name}}
