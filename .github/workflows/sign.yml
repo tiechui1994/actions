@@ -1,0 +1,27 @@
+name: sign
+on:
+  schedule:
+  - cron: '0 22 * * *'
+
+jobs:
+  sign:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        go: [ '1.14' ]
+
+    steps:
+    - name: Use Go ${{ matrix.go }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
+
+    - name: Job Sign
+      run: |
+        make -C golang sign && ./golang/sign -u ${{secrets.IKUUU_EMAIL}} -p ${{secrets.IKUUU_PASSWD}}

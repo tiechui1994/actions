@@ -9,15 +9,37 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"strings"
 	"time"
 )
 
+type entry struct {
+	Name       string    `json:"name"`
+	Value      string    `json:"value"`
+	Domain     string    `json:"domain"`
+	Path       string    `json:"path"`
+	SameSite   string    `json:"samesite"`
+	Secure     bool      `json:"secure"`
+	HttpOnly   bool      `json:"httponly"`
+	Persistent bool      `json:"persistent"`
+	HostOnly   bool      `json:"host_only"`
+	Expires    time.Time `json:"expires"`
+	Creation   time.Time `json:"creation"`
+	LastAccess time.Time `json:"lastaccess"`
+	SeqNum     uint64    `json:"seqnum"`
+}
+
+var (
+	jar http.CookieJar
+)
+
 func init() {
+	jar, _ = cookiejar.New(nil)
 	http.DefaultClient = &http.Client{
 		Transport: &http.Transport{
 			DialContext: (&net.Dialer{
-				Timeout:   10 * time.Second, //设置建立连接超时
+				Timeout:   30 * time.Second, //设置建立连接超时
 				KeepAlive: 0,
 			}).DialContext,
 			DisableKeepAlives: true,
@@ -26,7 +48,8 @@ func init() {
 			},
 			WriteBufferSize: 16 * 1024,
 		},
-		Timeout: 10 * time.Second,
+		Jar:     jar,
+		Timeout: 60 * time.Second,
 	}
 }
 
@@ -64,7 +87,6 @@ func request(method, u string, body interface{}, header map[string]string) (raw 
 			request.Header.Set(k, v)
 		}
 	}
-
 	request.Header.Set("user-agent", UserAgent())
 
 	response, err := http.DefaultClient.Do(request)
