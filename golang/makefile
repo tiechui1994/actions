@@ -1,10 +1,10 @@
 UTIL=util.go
 
 upload:clear
-	go build -o upload upload.go yunpan.go $(UTIL)
+	go build -o upload upload.go $(UTIL)
 
 clean:clear
-	go build -o clean clean.go github.go $(UTIL)
+	go build -o clean clean.go $(UTIL)
 
 sign:clear
 	go build -o sign sign.go $(UTIL)

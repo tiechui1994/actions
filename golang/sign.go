@@ -14,6 +14,31 @@ import (
 https://ikuuu.co 签到
 */
 
+func main() {
+	email := flag.String("u", "", "ikuuu email")
+	passwd := flag.String("p", "", "ikuuu passwrd")
+	flag.Parse()
+	if *email == "" || *passwd == "" {
+		fmt.Println("invalid email or passwd")
+		os.Exit(1)
+	}
+	err := login(*email, *passwd)
+	if err != nil {
+		fmt.Println("login err:", err)
+		os.Exit(1)
+	}
+
+	err = sign()
+	if err != nil {
+		fmt.Println("sign err:", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("[%v] signn success!\n", time.Now().Format("2006-01-02T15:04:05Z"))
+}
+
+// ============================================ API ============================================
+
 const (
 	ikuuu = "https://ikuuu.co"
 )
@@ -66,27 +91,4 @@ func sign() error {
 	}
 
 	return nil
-}
-
-func main() {
-	email := flag.String("u", "", "ikuuu email")
-	passwd := flag.String("p", "", "ikuuu passwrd")
-	flag.Parse()
-	if *email == "" || *passwd == "" {
-		fmt.Println("invalid email or passwd")
-		os.Exit(1)
-	}
-	err := login(*email, *passwd)
-	if err != nil {
-		fmt.Println("login err:", err)
-		os.Exit(1)
-	}
-
-	err = sign()
-	if err != nil {
-		fmt.Println("sign err:", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("[%v] signn success!\n", time.Now().Format("2006-01-02T15:04:05Z"))
 }
