@@ -9,13 +9,13 @@ jobs:
   email:
     runs-on: ubuntu-18.04
     steps:
-      - name: checkout code
-        timeout-minutes: 1
-        uses: actions/checkout@v2
-        with:
-          persist-credentials: false
+    - name: checkout code
+      timeout-minutes: 1
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
 
-      - name: drop emails
-        timeout-minutes: 5
-        run: |
-          python3 python/mail.py --username=${{secrets.EMAIL_USERNAME}} --password=${{secrets.EMAIL_PASSWORD}}
+    - name: drop emails
+      timeout-minutes: 5
+      run: |
+        python3 python/mail.py --username=${{secrets.EMAIL_USERNAME}} --password=${{secrets.EMAIL_PASSWORD}}

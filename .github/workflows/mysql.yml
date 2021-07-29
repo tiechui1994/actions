@@ -7,19 +7,20 @@ jobs:
   mysql:
     runs-on: ubuntu-16.04
     steps:
-    - name: checkout
+    - name: Checkout
       timeout-minutes: 1
       uses: actions/checkout@v2
       with:
         persist-credentials: false
 
-    - id: build
+    - name: Build
+      id: build
       timeout-minutes: 60
       run: |
         bash script/mysql.sh ${{ secrets.GIT_TOKEN }} 5.7.24
       shell: bash
 
-    - name: release
+    - name: Release
       timeout-minutes: 1
       if: ${{env.DEB}}
       uses: svenstaro/upload-release-action@v2

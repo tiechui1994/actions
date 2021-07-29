@@ -7,19 +7,20 @@ jobs:
   nginx:
     runs-on: ubuntu-16.04
     steps:
-    - name: checkout
+    - name: Checkout
       timeout-minutes: 1
       uses: actions/checkout@v2
       with:
         persist-credentials: false
 
-    - id: build
+    - name: Build
+      id: build
       timeout-minutes: 10
       run: |
         bash script/nginx.sh ${{ secrets.GIT_TOKEN }}
       shell: bash
 
-    - name: release
+    - name: Release
       timeout-minutes: 1
       if: ${{ success() && env.DEB }}
       uses: svenstaro/upload-release-action@v2
