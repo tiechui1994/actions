@@ -1,0 +1,33 @@
+name: cctv2
+on:
+  push:
+    branches: master
+  schedule:
+  - cron: '30 2 * * *'
+
+jobs:
+  clean:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        go: [ '1.14' ]
+
+    steps:
+    - name: Use Go ${{ matrix.go }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
+
+    - name: Download
+      run: bash script/cctv.sh "2021-08-13"
+
+    - name: Upload
+      if: ${{ success() && env.VEDIO}}
+      run: |
+        make -C golang upload && ./golang/upload -d cctv2 -t ${{secrets.PAN_TOKEN}} -f ${{env.VEDIO}}
