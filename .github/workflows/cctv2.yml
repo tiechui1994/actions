@@ -6,7 +6,7 @@ on:
   - cron: '30 2 * * *'
 
 jobs:
-  clean:
+  cctv2:
     runs-on: ubuntu-18.04
     strategy:
       matrix:

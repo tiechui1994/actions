@@ -41,7 +41,7 @@ common_download() {
 
     if [[ -f "$name" && -n $(file "$name" | grep -o 'compressed data') ]]; then
         rm -rf ${filename} && mkdir ${filename}
-        tar -xvf ${name} -C ${filename} --strip-components 1
+        tar -xf ${name} -C ${filename} --strip-components 1
         if [[ $? -ne 0 ]]; then
             log_error "$name decopress failed"
             rm -rf ${filename} && rm -rf ${name}
@@ -59,7 +59,7 @@ common_download() {
     if [[ $? -eq 0 && "$cmd" == "axel" ]]; then
         axel -n 10 --insecure --quite -o ${name} ${url}
     else
-        curl -C - --insecure --silent -o ${name} ${url}
+        curl -C - --insecure --silent --location -o ${name} ${url}
     fi
 
     if [[ $? -ne 0 ]]; then
@@ -70,7 +70,7 @@ common_download() {
 
     log_info "success to download $name"
     rm -rf ${filename} && mkdir ${filename}
-    tar -xvf ${name} -C ${filename} --strip-components 1
+    tar -xf ${name} -C ${filename} --strip-components 1
     if [[ $? -ne 0 ]]; then
         log_error "$name decopress failed"
         rm -rf ${filename} && rm -rf ${name}
@@ -81,6 +81,7 @@ common_download() {
 download_ffmpeg() {
     # ffmpge 4.4
     url="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+    url="https://github.com/tiechui1994/jobs/releases/download/ffmpeg_4.4/ffmpeg-release-amd64-static.tar.xz"
     common_download "ffmpeg.tar.xz" ${url} curl
 
     return $?
@@ -91,7 +92,11 @@ download_vedio() {
     end="$(date +%s --date="$datetime 09:40:00+08:00")000"
     url="https://cctvalih5ca.v.myalicdn.com/live/cctv2_2/index.m3u8?begintimeabs=$start&endtimeabs=$end"
     filename="$(date +"%Y-%m-%d-09").mp4"
-    ffmpeg/ffmpeg -i ${url} -c:v libx264 \
+    log_info "url: $url"
+    export http_proxy="sock4://123.203.54.157:5678,sock4://112.120.8.106:5678"
+    export https_proxy="https://103.68.60.115:80"
+    ffmpeg/ffmpeg -i ${url} \
+         -c:v libx264 \
          -vcodec libx264 \
          -profile:v high \
          -pre slow \
@@ -101,9 +106,13 @@ download_vedio() {
          -threads 0 ${filename}
 
     if [[ $? -ne ${success} ]]; then
+        export -n http_proxy
+        export -n https_proxy
         return $?
     fi
 
+    export -n http_proxy
+    export -n https_proxy
     sudo mv ${filename} ${GITHUB_WORKSPACE}/${filename}
     echo "VEDIO=$filename" >> ${GITHUB_ENV}
 }
