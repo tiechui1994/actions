@@ -37,34 +37,58 @@ curl -X POST \
 */
 
 func main() {
-	refresh := flag.String("t", "", "refresh token")
-	dir := flag.String("d", "github", "save dir")
-	file := flag.String("f", "", "file")
+	upload := flag.Bool("upload", false, "upload file")
+	delete := flag.Bool("delete", false, "delete file")
+	dir := flag.String("dir", "github", "want to save dir")
+	file := flag.String("file", "", "file name")
+	fileid := flag.String("fileid", "", "yunpan fileid")
 	flag.Parse()
 
-	if *refresh == "" {
-		fmt.Println("invalid token")
-		os.Exit(1)
-	}
-	if *file == "" {
-		fmt.Println("invalid file")
-		os.Exit(1)
-	}
-
-	filename, err := filepath.Abs(*file)
-	if err != nil {
-		fmt.Println("invalid file error", err)
-		os.Exit(1)
-	}
-
-	fmt.Println("filename:", filename)
-
-	token, err := Refresh(*refresh)
+	token, err := Refresh()
 	if err != nil {
 		fmt.Println("refresh error", err)
 		os.Exit(1)
 	}
 
+	if *upload {
+		if *file == "" {
+			fmt.Println("invalid file")
+			os.Exit(1)
+		}
+		filename, err := filepath.Abs(*file)
+		if err != nil {
+			fmt.Println("invalid file error", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("filename:", filename)
+		handleUpload(token, *dir, filename)
+	} else if *delete {
+		if *fileid == "" || len(*fileid) != 40 {
+			fmt.Println("invalid fileid")
+			os.Exit(1)
+		}
+
+		handleDelete(token, *fileid)
+	}
+}
+
+func handleDelete(token Token, fileid string) {
+	err := Delete([]File{
+		{
+			DriveID: token.DriveID,
+			FileID:  fileid,
+		},
+	}, token)
+	if err != nil {
+		fmt.Println("Delete error", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("delete file success")
+}
+
+func handleUpload(token Token, dir, filename string) {
 	files, err := Files("root", token)
 	if err != nil {
 		fmt.Println("files error", err)
@@ -74,14 +98,14 @@ func main() {
 	var dirinfo File
 	var exist bool
 	for _, v := range files {
-		if v.Name == *dir {
+		if v.Name == dir {
 			exist = true
 			dirinfo = v
 			break
 		}
 	}
 	if !exist {
-		err = CreateDirectory(*dir, "root", token)
+		err = CreateDirectory(dir, "root", token)
 		if err != nil {
 			fmt.Println("refresh error", err)
 			return
@@ -92,7 +116,7 @@ func main() {
 			return
 		}
 		for _, v := range files {
-			if v.Name == *dir {
+			if v.Name == dir {
 				dirinfo = v
 				break
 			}
@@ -118,11 +142,6 @@ func main() {
 const (
 	yunpan = "https://api.aliyundrive.com"
 )
-
-var header = map[string]string{
-	"accept":       "application/json",
-	"content-type": "application/json",
-}
 
 func CalProof(accesstoken string, path string) string {
 	// r := md5(accesstoken)[0:16]
@@ -158,13 +177,9 @@ type Token struct {
 	ExpiresIn    int    `json:"expires_in"`
 }
 
-func Refresh(refresh string) (token Token, err error) {
-	u := yunpan + "/token/refresh"
-	body := map[string]string{
-		"refresh_token": refresh,
-	}
-
-	raw, err := POST(u, body, header)
+func Refresh() (token Token, err error) {
+	u := "https://fass-gray.vercel.app/api/aliyun?response_type=refresh_token&key=yunpan"
+	raw, err := GET(u, nil)
 	if err != nil {
 		return token, err
 	}
@@ -395,5 +410,48 @@ func UploadFile(path, fileid string, token Token) error {
 
 func CreateDirectory(name, fileid string, token Token) (err error) {
 	_, err = CreateWithFolder(refuse_mode, name, TYPE_FOLDER, fileid, token, nil)
+	return err
+}
+
+func Delete(files []File, token Token) error {
+	var requests []batchRequest
+	for _, file := range files {
+		requests = append(requests, batchRequest{
+			Url:    "/file/delete",
+			Method: "POST",
+			ID:     file.FileID,
+			Headers: map[string]string{
+				"Content-Type": "application/json",
+			},
+			Body: map[string]interface{}{
+				"drive_id": file.DriveID,
+				"file_id":  file.FileID,
+			},
+		})
+	}
+	return Batch(requests, token)
+}
+
+type batchRequest struct {
+	Body    interface{}       `json:"body"`
+	Headers map[string]string `json:"headers"`
+	ID      string            `json:"id"`
+	Method  string            `json:"method"`
+	Url     string            `json:"url"`
+}
+
+func Batch(requests []batchRequest, token Token) error {
+	u := yunpan + "/v3/batch"
+	header := map[string]string{
+		"accept":        "application/json",
+		"authorization": "Bearer " + token.AccessToken,
+		"content-type":  "application/json",
+	}
+
+	body := map[string]interface{}{
+		"requests": requests,
+		"resource": "file",
+	}
+	_, err := POST(u, body, header)
 	return err
 }

@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-DATE=$1
+URL=$1
 
-declare -r datetime=${DATE:="$(date +'%Y-%m-%d')"}
 declare -r success=0
 declare -r failure=1
 
@@ -26,8 +25,45 @@ log_info() {
     echo -e "$green$msg$reset"
 }
 
+file_download() {
+    name=$1
+    url=$2
+    cmd=$3
 
-common_download() {
+    if [[ -d "$name" ]]; then
+        log_info "$name has exist !!"
+        return ${success} #1
+    fi
+
+
+    log_info "$name url: $url"
+    log_info "begin to donwload $name ...."
+    command -v "$cmd" > /dev/null 2>&1
+    if [[ $? -eq 0 && "$cmd" == "axel" ]]; then
+        axel -n 10 --insecure --quite -o "$name" ${url}
+    else
+        curl -C - --insecure --silent -L ${url} -o "$name"
+    fi
+
+    if [[ $? -ne 0 ]]; then
+        log_error "download file $name failed !!"
+        rm -rf ${name}.tar.gz
+        return ${failure}
+    fi
+
+    log_info "success to download $name"
+    log_info "$(file ${name})"
+    log_info "sha1: $(cat ${name}|sha1sum)"
+    log_info "size: $(ls -lh ${name}|cut -d ' ' -f5), $(ls -l ${name}|cut -d ' ' -f5)"
+
+    echo "name: $name" >> "$name.SHA1"
+    echo "size: $(ls -l ${name}|cut -d ' ' -f5)" >> "$name.SHA1"
+    echo "sha1: $(cat ${name}|sha1sum)" >> "$name.SHA1"
+
+    return ${success} #3
+}
+
+tar_download() {
     name=$1
     url=$2
     cmd=$3
@@ -82,19 +118,14 @@ download_ffmpeg() {
     # ffmpge 4.4
     url="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
     url="https://github.com/tiechui1994/jobs/releases/download/ffmpeg_4.4/ffmpeg-release-amd64-static.tar.xz"
-    common_download "ffmpeg.tar.xz" ${url} curl
+    tar_download "ffmpeg.tar.xz" ${url} curl
 
     return $?
 }
 
 download_vedio() {
-    start="$(date +%s --date="$datetime 09:22:00+08:00")000"
-    end="$(date +%s --date="$datetime 09:40:00+08:00")000"
-    url="https://cctvalih5ca.v.myalicdn.com/live/cctv2_2/index.m3u8?begintimeabs=$start&endtimeabs=$end"
-    filename="$(date +"%Y-%m-%d-09").mp4"
+    # do not
     log_info "url: $url"
-    export http_proxy="sock4://123.203.54.157:5678,sock4://112.120.8.106:5678"
-    export https_proxy="https://103.68.60.115:80"
     ffmpeg/ffmpeg -i ${url} \
          -c:v libx264 \
          -vcodec libx264 \
@@ -106,13 +137,9 @@ download_vedio() {
          -threads 0 ${filename}
 
     if [[ $? -ne ${success} ]]; then
-        export -n http_proxy
-        export -n https_proxy
         return $?
     fi
 
-    export -n http_proxy
-    export -n https_proxy
     sudo mv ${filename} ${GITHUB_WORKSPACE}/${filename}
     echo "VEDIO=$filename" >> ${GITHUB_ENV}
 }

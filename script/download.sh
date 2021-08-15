@@ -39,7 +39,7 @@ common_download() {
 
     log_info "$name url: $url"
     log_info "begin to donwload $name ...."
-    command_exists "$cmd"
+    command -v "$cmd" > /dev/null 2>&1
     if [[ $? -eq 0 && "$cmd" == "axel" ]]; then
         axel -n 10 --insecure --quite -o "$name" ${url}
     else
@@ -64,9 +64,6 @@ common_download() {
     return ${SUCCESS} #3
 }
 
-command_exists() {
-	command -v "$@" > /dev/null 2>&1
-}
 
 common_download ${name} ${url} axel
 if [[ $? -ne ${SUCCESS} ]]; then

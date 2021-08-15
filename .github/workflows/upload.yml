@@ -13,7 +13,7 @@ on:
 
 jobs:
   upload:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         go: [ '1.14' ]
@@ -37,4 +37,4 @@ jobs:
     - name: Upload
       if: ${{ success() }}
       run: |
-        make -C golang upload && ./golang/upload -t ${{secrets.PAN_TOKEN}} -f ${{github.event.inputs.name}}
+        make -C golang upload && ./golang/upload -upload -file ${{github.event.inputs.name}}

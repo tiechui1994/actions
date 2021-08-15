@@ -1,9 +1,16 @@
 name: cctv2
 on:
-  push:
-    branches: master
-  schedule:
-  - cron: '30 2 * * *'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'download url'
+        required: true
+        default: ''
+      fileid:
+        description: 'fileid name'
+        required: true
+        default: ''
+
 
 jobs:
   cctv2:
@@ -25,9 +32,11 @@ jobs:
         persist-credentials: false
 
     - name: Download
-      run: bash script/cctv.sh "2021-08-13"
+      run: bash script/cctv2.sh ${{github.event.inputs.url}}
 
     - name: Upload
       if: ${{ success() && env.VEDIO}}
       run: |
-        make -C golang upload && ./golang/upload -d cctv2 -t ${{secrets.PAN_TOKEN}} -f ${{env.VEDIO}}
+        make -C golang upload && \
+        ./golang/upload -upload -dir vedio -file ${{env.VEDIO}} &&\
+        ./golang/upload -delete -fileid  ${{github.event.inputs.fileid}}
