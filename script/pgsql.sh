@@ -159,8 +159,7 @@ build() {
     --with-pam \
     --with-openssl \
     --with-systemd \
-    --with-bonjour \
-    LDFLAGS='-static -fPIE'
+    LDFLAGS='-Bstatic -lssl -lpam -lcrypto'
     if [[ $? -ne 0 ]]; then
         log_error "configure fail, plaease check and try again.."
         return ${failure}
@@ -181,6 +180,10 @@ build() {
     fi
 
     # service script
+    for x in $(ls /opt/local/pgsql/bin);
+    do
+        ldd "/opt/local/pgsql/bin/$x"
+    done
 }
 
 service() {
