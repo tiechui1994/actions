@@ -135,6 +135,11 @@ download_openssl() {
     return $?
 }
 
+build_denpend() {
+     cd "$workdir/openssl"
+     ./config && make && make install 
+}
+
 build() {
     # depend
     sudo apt-get update && \
@@ -159,7 +164,7 @@ build() {
     --with-pam \
     --with-openssl \
     --with-systemd \
-    LDFLAGS='-Bstatic -lssl -lpam -lcrypto'
+    LDFLAGS="-Bstatic -lssl -lpam -lcrypto -L $workdir/openssl"
     if [[ $? -ne 0 ]]; then
         log_error "configure fail, plaease check and try again.."
         return ${failure}
@@ -182,7 +187,9 @@ build() {
     # service script
     for x in $(ls /opt/local/pgsql/bin);
     do
+        log_info "/opt/local/pgsql/bin/$x"
         ldd "/opt/local/pgsql/bin/$x"
+        log_info
     done
 }
 
@@ -322,6 +329,11 @@ do_install() {
         exit $?
     fi
 
+    build_denpend
+    if [[ $? -ne ${success} ]]; then
+    	exit $?
+    fi
+    
     build
     if [[ $? -ne ${success} ]]; then
         exit $?
