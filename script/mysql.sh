@@ -7,8 +7,8 @@ declare -r version=${VERSION:=5.7.34}
 declare -r workdir=$(pwd)
 declare -r installdir=/opt/local/mysql
 
-declare -r  SUCCESS=0
-declare -r  FAILURE=1
+declare -r  success=0
+declare -r  failure=1
 
 # log
 log_error(){
@@ -30,58 +30,74 @@ log_info() {
     echo -e "$green$msg$reset"
 }
 
-common_download() {
+download() {
     name=$1
     url=$2
     cmd=$3
+    decompress=$4
 
-    if [[ -d "$name" ]]; then
-        log_info "$name has exist !!"
-        return ${SUCCESS} #1
+    declare -A extends=(
+        ["tar"]="application/x-tar"
+        ["tgz"]="application/gzip"
+        ["tar.gz"]="application/gzip"
+        ["tar.bz2"]="application/x-bzip2"
+        ["tar.xz"]="application/x-xz"
+    )
+
+    extend="${name##*.}"
+    filename="${name%%.*}"
+    temp=${name%.*}
+    if [[ ${temp##*.} = "tar" ]]; then
+         extend="${temp##*.}.${extend}"
+         filename="${temp%%.*}"
     fi
 
-    if [[ -f "$name.tar.gz" && -n $(file "$name.tar.gz" | grep -o 'POSIX tar archive') ]]; then
-        rm -rf ${name} && mkdir ${name}
-        tar -zvxf ${name}.tar.gz -C ${name} --strip-components 1
-        if [[ $? -ne 0 ]]; then
-            log_error "$name decopress failed"
-            rm -rf ${name} && rm -rf ${name}.tar.gz
-            return ${FAILURE}
+    # uncompress file
+    if [[ -f "$name" ]]; then
+        if [[ ${decompress} && ${extends[$extend]} && $(file -i "$name") =~ ${extends[$extend]} ]]; then
+            rm -rf ${filename} && mkdir ${filename}
+            tar -xf ${name} -C ${filename} --strip-components 1
+            if [[ $? -ne 0 ]]; then
+                log_error "$name decopress failed"
+                rm -rf ${filename} && rm -rf ${name}
+                return ${failure}
+            fi
         fi
 
-        return ${SUCCESS} #2
+        return ${success} #2
     fi
 
+    # download
     log_info "$name url: $url"
     log_info "begin to donwload $name ...."
-    rm -rf ${name}.tar.gz
-    command_exists "$cmd"
-    if [[ $? -eq 0 && "$cmd" == "axel" ]]; then
-        axel -n 10 --insecure --quite -o "$name.tar.gz" ${url}
-    else
-        curl -C - --insecure --silent ${url} -o "$name.tar.gz"
-    fi
+    rm -rf ${name}
 
+    command -v "$cmd" > /dev/null 2>&1
+    if [[ $? -eq 0 && "$cmd" == "axel" ]]; then
+        axel -n 10 --insecure --quite -o ${name} ${url}
+    else
+        curl -C - --insecure  --silent --location -o ${name} ${url}
+    fi
     if [[ $? -ne 0 ]]; then
         log_error "download file $name failed !!"
-        rm -rf ${name}.tar.gz
-        return ${FAILURE}
+        rm -rf ${name}
+        return ${failure}
     fi
 
     log_info "success to download $name"
-    rm -rf ${name} && mkdir ${name}
-    tar -zxf ${name}.tar.gz -C ${name} --strip-components 1
-    if [[ $? -ne 0 ]]; then
-        log_error "$name decopress failed"
-        rm -rf ${name} && rm -rf ${name}.tar.gz
-        return ${FAILURE}
+
+    # uncompress file
+    if [[ ${decompress} && ${extends[$extend]} && $(file -i "$name") =~ ${extends[$extend]} ]]; then
+        rm -rf ${filename} && mkdir ${filename}
+        tar -xf ${name} -C ${filename} --strip-components 1
+        if [[ $? -ne 0 ]]; then
+            log_error "$name decopress failed"
+            rm -rf ${filename} && rm -rf ${name}
+            return ${failure}
+        fi
+
+        return ${success} #2
     fi
-
-    return ${SUCCESS} #3
-}
-
-command_exists() {
-	command -v "$@" > /dev/null 2>&1
 }
 
 check() {
@@ -94,10 +110,10 @@ check() {
     message=$(echo ${result} | jq .message)
     log_info "message: ${message}"
     if [[ ${message} = '"Not Found"' ]]; then
-        return ${SUCCESS}
+        return ${success}
     fi
 
-    return ${FAILURE}
+    return ${failure}
 }
 
 download_mysql() {
@@ -105,7 +121,7 @@ download_mysql() {
     url="https://mirrors.cloud.tencent.com/mysql/downloads/MySQL-5.7/mysql-$version.tar.gz"
     url="https://www.mirrorservice.org/sites/ftp.mysql.com/Downloads/MySQL-5.7/mysql-$version.tar.gz"
     url="https://cdn.mysql.com/archives/mysql-5.7/mysql-$version.tar.gz"
-    common_download "mysql" ${url} axel
+    download "mysql.tar.gz" ${url} axel 1
 
     return $?
 }
@@ -113,8 +129,8 @@ download_mysql() {
 download_boost(){
     url="https://codeload.github.com/boostorg/boost/tar.gz/boost-1.59.0"
     #url="https://codeload.github.com/boostorg/boost/tar.gz/boost-1.61.0"
-    common_download "boost" ${url} axel
-    if [[ $? -eq ${SUCCESS} ]]; then
+    download "boost.tar.gz" ${url} axel 1
+    if [[ $? -eq ${success} ]]; then
         mv "$workdir/boost" "$workdir/mysql/boost"
         return $?
     fi
@@ -128,7 +144,7 @@ build() {
     sudo apt-get install cmake build-essential libncurses5-dev bison libssl-dev -y
     if [[ $? -ne 0 ]]; then
         log_error "install depency fail"
-        return ${FAILURE}
+        return ${failure}
     fi
 
     # remove old directory
@@ -160,7 +176,7 @@ build() {
     -DDEFAULT_COLLATION=utf8_general_ci
     if [[ $? -ne 0 ]]; then
         log_error "cmake fail, plaease check and try again.."
-        return ${FAILURE}
+        return ${failure}
     fi
 
     # make
@@ -168,13 +184,13 @@ build() {
     make -j ${cpu}
     if [[ $? -ne 0 ]]; then
         log_error "make fail, plaease check and try again..."
-        return ${FAILURE}
+        return ${failure}
     fi
 
     sudo make install
     if [[ $? -ne 0 ]]; then
         log_error "make install fail, plaease check and try again..."
-        return ${FAILURE}
+        return ${failure}
     fi
 
     # service script
@@ -362,32 +378,32 @@ clean_file(){
 
 do_install() {
     check
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         return
     fi
 
     download_mysql
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         exit $?
     fi
 
     download_boost
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         exit $?
     fi
 
     build
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         exit $?
     fi
 
     service
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         exit $?
     fi
 
     package
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         exit $?
     fi
 

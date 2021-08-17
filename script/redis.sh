@@ -7,8 +7,8 @@ declare -r version=${VERSION:=5.0.0}
 declare -r workdir=$(pwd)
 declare -r installdir=/opt/local/redis
 
-declare -r SUCCESS=0
-declare -r FAILURE=1
+declare -r success=0
+declare -r failure=1
 
 # log
 log_error(){
@@ -30,56 +30,74 @@ log_info() {
     echo -e "$green$msg$reset"
 }
 
-common_download() {
+download() {
     name=$1
     url=$2
     cmd=$3
+    decompress=$4
 
-    if [[ -d "$name" ]]; then
-        log_info "$name has exist !!"
-        return ${SUCCESS} #1
+    declare -A extends=(
+        ["tar"]="application/x-tar"
+        ["tgz"]="application/gzip"
+        ["tar.gz"]="application/gzip"
+        ["tar.bz2"]="application/x-bzip2"
+        ["tar.xz"]="application/x-xz"
+    )
+
+    extend="${name##*.}"
+    filename="${name%%.*}"
+    temp=${name%.*}
+    if [[ ${temp##*.} = "tar" ]]; then
+         extend="${temp##*.}.${extend}"
+         filename="${temp%%.*}"
     fi
 
-    if [[ -f "$name.tar.gz" && -n $(file "$name.tar.gz" | grep -o 'POSIX tar archive') ]]; then
-        rm -rf ${name} && mkdir ${name}
-        tar -zvxf ${name}.tar.gz -C ${name} --strip-components 1
-        if [[ $? -ne 0 ]]; then
-            log_error "$name decopress failed"
-            rm -rf ${name} && rm -rf ${name}.tar.gz
-            return ${FAILURE}
+    # uncompress file
+    if [[ -f "$name" ]]; then
+        if [[ ${decompress} && ${extends[$extend]} && $(file -i "$name") =~ ${extends[$extend]} ]]; then
+            rm -rf ${filename} && mkdir ${filename}
+            tar -xf ${name} -C ${filename} --strip-components 1
+            if [[ $? -ne 0 ]]; then
+                log_error "$name decopress failed"
+                rm -rf ${filename} && rm -rf ${name}
+                return ${failure}
+            fi
         fi
 
-        return ${SUCCESS} #2
+        return ${success} #2
     fi
 
+    # download
     log_info "$name url: $url"
     log_info "begin to donwload $name ...."
-    rm -rf ${name}.tar.gz
-    command_exists "$cmd"
-    if [[ $? -eq 0 && "$cmd" == "axel" ]]; then
-        axel -n 10 --insecure --quite -o "$name.tar.gz" ${url}
-    else
-        curl -C - --insecure --silent ${url} -o "$name.tar.gz"
-    fi
+    rm -rf ${name}
 
+    command -v "$cmd" > /dev/null 2>&1
+    if [[ $? -eq 0 && "$cmd" == "axel" ]]; then
+        axel -n 10 --insecure --quite -o ${name} ${url}
+    else
+        curl -C - --insecure  --silent --location -o ${name} ${url}
+    fi
     if [[ $? -ne 0 ]]; then
         log_error "download file $name failed !!"
-        rm -rf ${name}.tar.gz
-        return ${FAILURE}
+        rm -rf ${name}
+        return ${failure}
     fi
 
     log_info "success to download $name"
-    rm -rf ${name} && mkdir ${name}
-    tar -zxf ${name}.tar.gz -C ${name} --strip-components 1
-    if [[ $? -ne 0 ]]; then
-        log_error "$name decopress failed"
-        rm -rf ${name} && rm -rf ${name}.tar.gz
-        return ${FAILURE}
-    fi
-}
 
-command_exists() {
-	command -v "$@" > /dev/null 2>&1
+    # uncompress file
+    if [[ ${decompress} && ${extends[$extend]} && $(file -i "$name") =~ ${extends[$extend]} ]]; then
+        rm -rf ${filename} && mkdir ${filename}
+        tar -xf ${name} -C ${filename} --strip-components 1
+        if [[ $? -ne 0 ]]; then
+            log_error "$name decopress failed"
+            rm -rf ${filename} && rm -rf ${name}
+            return ${failure}
+        fi
+
+        return ${success} #2
+    fi
 }
 
 check() {
@@ -92,15 +110,15 @@ check() {
     message=$(echo ${result} | jq .message)
     log_info "message: ${message}"
     if [[ ${message} = '"Not Found"' ]]; then
-        return ${SUCCESS}
+        return ${success}
     fi
 
-    return ${FAILURE}
+    return ${failure}
 }
 
 download_redis() {
     url="https://codeload.github.com/redis/redis/tar.gz/$version"
-    common_download "redis" ${url}
+    download "redis.tar.gz" ${url} curl 1
     return $?
 }
 
@@ -111,13 +129,13 @@ build() {
     cd ${workdir}/redis && make -j ${cpu}
     if [[ $? -ne 0 ]]; then
         log_error "build fail"
-        return ${FAILURE}
+        return ${failure}
     fi
 
     make PREFIX=${installdir} install
     if [[ $? -ne 0 ]]; then
         log_error "install failed"
-        return ${FAILURE}
+        return ${failure}
     fi
 }
 
@@ -141,7 +159,7 @@ service() {
     ${installdir}/conf/redis.conf
     if [[ $? -ne 0 ]]; then
         log_error "update redis.conf failed"
-        return ${FAILURE}
+        return ${failure}
     fi
 
     # service
@@ -300,27 +318,27 @@ clean_file(){
 
 do_install() {
     check
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         return
     fi
 
     download_redis
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         return
     fi
 
     build
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         return
     fi
 
     service
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         return
     fi
 
     package
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         return
     fi
 

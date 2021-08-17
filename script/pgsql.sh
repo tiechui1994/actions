@@ -7,8 +7,8 @@ declare -r version=${VERSION:=12.0}
 declare -r workdir=$(pwd)
 declare -r installdir=/opt/local/pgsql
 
-declare -r  SUCCESS=0
-declare -r  FAILURE=1
+declare -r  success=0
+declare -r  failure=1
 
 # log
 log_error(){
@@ -30,58 +30,74 @@ log_info() {
     echo -e "$green$msg$reset"
 }
 
-common_download() {
+download() {
     name=$1
     url=$2
     cmd=$3
+    decompress=$4
 
-    if [[ -d "$name" ]]; then
-        log_info "$name has exist !!"
-        return ${SUCCESS} #1
+    declare -A extends=(
+        ["tar"]="application/x-tar"
+        ["tgz"]="application/gzip"
+        ["tar.gz"]="application/gzip"
+        ["tar.bz2"]="application/x-bzip2"
+        ["tar.xz"]="application/x-xz"
+    )
+
+    extend="${name##*.}"
+    filename="${name%%.*}"
+    temp=${name%.*}
+    if [[ ${temp##*.} = "tar" ]]; then
+         extend="${temp##*.}.${extend}"
+         filename="${temp%%.*}"
     fi
 
-    if [[ -f "$name.tar.gz" && -n $(file "$name.tar.gz" | grep -o 'POSIX tar archive') ]]; then
-        rm -rf ${name} && mkdir ${name}
-        tar -zvxf ${name}.tar.gz -C ${name} --strip-components 1
-        if [[ $? -ne 0 ]]; then
-            log_error "$name decopress failed"
-            rm -rf ${name} && rm -rf ${name}.tar.gz
-            return ${FAILURE}
+    # uncompress file
+    if [[ -f "$name" ]]; then
+        if [[ ${decompress} && ${extends[$extend]} && $(file -i "$name") =~ ${extends[$extend]} ]]; then
+            rm -rf ${filename} && mkdir ${filename}
+            tar -xf ${name} -C ${filename} --strip-components 1
+            if [[ $? -ne 0 ]]; then
+                log_error "$name decopress failed"
+                rm -rf ${filename} && rm -rf ${name}
+                return ${failure}
+            fi
         fi
 
-        return ${SUCCESS} #2
+        return ${success} #2
     fi
 
+    # download
     log_info "$name url: $url"
     log_info "begin to donwload $name ...."
-    rm -rf ${name}.tar.gz
-    command_exists "$cmd"
-    if [[ $? -eq 0 && "$cmd" == "axel" ]]; then
-        axel -n 10 --insecure --quite -o "$name.tar.gz" ${url}
-    else
-        curl -C - --insecure --silent ${url} -o "$name.tar.gz"
-    fi
+    rm -rf ${name}
 
+    command -v "$cmd" > /dev/null 2>&1
+    if [[ $? -eq 0 && "$cmd" == "axel" ]]; then
+        axel -n 10 --insecure --quite -o ${name} ${url}
+    else
+        curl -C - --insecure  --silent --location -o ${name} ${url}
+    fi
     if [[ $? -ne 0 ]]; then
         log_error "download file $name failed !!"
-        rm -rf ${name}.tar.gz
-        return ${FAILURE}
+        rm -rf ${name}
+        return ${failure}
     fi
 
     log_info "success to download $name"
-    rm -rf ${name} && mkdir ${name}
-    tar -zxf ${name}.tar.gz -C ${name} --strip-components 1
-    if [[ $? -ne 0 ]]; then
-        log_error "$name decopress failed"
-        rm -rf ${name} && rm -rf ${name}.tar.gz
-        return ${FAILURE}
+
+    # uncompress file
+    if [[ ${decompress} && ${extends[$extend]} && $(file -i "$name") =~ ${extends[$extend]} ]]; then
+        rm -rf ${filename} && mkdir ${filename}
+        tar -xf ${name} -C ${filename} --strip-components 1
+        if [[ $? -ne 0 ]]; then
+            log_error "$name decopress failed"
+            rm -rf ${filename} && rm -rf ${name}
+            return ${failure}
+        fi
+
+        return ${success} #2
     fi
-
-    return ${SUCCESS} #3
-}
-
-command_exists() {
-	command -v "$@" > /dev/null 2>&1
 }
 
 check() {
@@ -94,46 +110,42 @@ check() {
     message=$(echo ${result} | jq .message)
     log_info "message: ${message}"
     if [[ ${message} = '"Not Found"' ]]; then
-        return ${SUCCESS}
+        return ${success}
     fi
 
-    return ${FAILURE}
+    return ${failure}
 }
 
-download_mysql() {
+download_pgsql() {
     url="https://ftp.postgresql.org/pub/source/v$version/postgresql-$version.tar.gz"
-    common_download "pgsql" ${url} axel
+    download "pgsql.tar.gz" ${url} curl 1
 
     return $?
 }
 
-download_boost(){
-    url="https://codeload.github.com/boostorg/boost/tar.gz/boost-1.59.0"
-    #url="https://codeload.github.com/boostorg/boost/tar.gz/boost-1.61.0"
-    common_download "boost" ${url} axel
-    if [[ $? -eq ${SUCCESS} ]]; then
-        mv "$workdir/boost" "$workdir/mysql/boost"
-        return $?
+download_openssl() {
+    prefix="https://ftp.openssl.org/source/old"
+    openssl="$(openssl version |cut -d " " -f2)"
+    if [[ ${openssl} =~ ^1\.[0-1]\.[0-2]$ ]]; then
+        url=$(printf "%s/%s/openssl-%s.tar.gz" ${prefix} ${openssl} ${openssl})
+    else
+        url=$(printf "%s/%s/openssl-%s.tar.gz" ${prefix} ${openssl:0:${#openssl}-1} ${openssl})
     fi
-
+    download "openssl.tar.gz" "$url" curl 1
     return $?
 }
 
 build() {
     # depend
     sudo apt-get update && \
-    sudo apt-get install libpam-dev libsystemd-dev libssl-dev -y
+    sudo apt-get install libreadline-dev libpam-dev libsystemd-dev libssl-dev -y
     if [[ $? -ne 0 ]]; then
         log_error "install depency fail"
-        return ${FAILURE}
+        return ${failure}
     fi
 
     # remove old directory
     rm -rf ${installdir} && \
-    mkdir -p ${installdir}/mysql && \
-    mkdir -p ${installdir}/data && \
-    mkdir -p ${installdir}/logs && \
-    mkdir -p ${installdir}/tmp && \
     mkdir -p ${installdir}/conf
 
     # in workspace
@@ -146,10 +158,12 @@ build() {
     --enable-profiling \
     --with-pam \
     --with-openssl \
-    --with-systemd
+    --with-systemd \
+    --with-bonjour \
+    LDFLAGS='-static -fPIE'
     if [[ $? -ne 0 ]]; then
-        log_error "cmake fail, plaease check and try again.."
-        return ${FAILURE}
+        log_error "configure fail, plaease check and try again.."
+        return ${failure}
     fi
 
     # make
@@ -157,62 +171,38 @@ build() {
     make -j ${cpu}
     if [[ $? -ne 0 ]]; then
         log_error "make fail, plaease check and try again..."
-        return ${FAILURE}
+        return ${failure}
     fi
 
     sudo make install
     if [[ $? -ne 0 ]]; then
         log_error "make install fail, plaease check and try again..."
-        return ${FAILURE}
+        return ${failure}
     fi
 
     # service script
-    cp ${installdir}/mysql/support-files/mysql.server ${installdir}/conf/mysqld
-    chmod a+x ${installdir}/conf/mysqld
 }
 
 service() {
     read -r -d '' conf <<- 'EOF'
-[client]
-    port=3306
-    socket=$dir/data/mysql.sock
-    default-character-set=utf8
+[Unit]
+Description=PostgreSQL database server
 
-[mysqld]
-    port=3306
-    user=mysql
-    socket=$dir/data/mysql.sock
-    pid-file=$dir/data/mysql.pid
-    basedir=$dir/mysql  # 安装目录
-    datadir=$dir/data   # 数据目录
-    tmpdir=$dir/tmp     # 临时目录
-    character-set-server=utf8
-    log_error=$dir/logs/mysql.err
+[Service]
+Type=notify
+User=postgres
+ExecStart=$dir/bin/postgres -D $dir/data
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutSec=0
 
-    server-id=2
-    log_bin=$dir/logs/binlog
-
-    general_log_file=$dir/logs/general_log
-    general_log=1
-
-    slow_query_log=ON
-    long_query_time=2
-    slow_query_log_file=$dir/logs/query_log
-    log_queries_not_using_indexes=ON
-
-    bulk_insert_buffer_size=64M
-    binlog_rows_query_log_events=ON
-
-    sort_buffer_size=64M #默认是128K
-    binlog_format=row #默认是mixed
-    join_buffer_size=128M #默认是256K
-    max_allowed_packet=512M #默认是16M
+[Install]
+WantedBy=multi-user.target
 EOF
-
-    # create config file my.cnf
     regex='$dir'
     repl="$installdir"
-    printf "%s" "${conf//$regex/$repl}" > ${installdir}/conf/my.cnf
+    printf "%s" "${conf//$regex/$repl}" > ${installdir}/conf/pgsql.service
 }
 
 package() {
@@ -221,9 +211,9 @@ package() {
 
     # control
 cat > debian/DEBIAN/control <<- EOF
-Package: MySQL
+Package: PgSQL
 Version: ${version}
-Description: MySQL server deb package
+Description: PgSQL server deb package
 Section: utils
 Priority: standard
 Essential: no
@@ -239,65 +229,33 @@ read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
 # user and group
-if [[ -z "$(cat /etc/group | grep -E '^mysql:')" ]]; then
-    groupadd -r mysql
+if [[ -z "$(cat /etc/group | grep -E '^postgres:')" ]]; then
+    groupadd -r postgres
 fi
-if [[ -z "$(cat /etc/passwd | grep -E '^mysql:')" ]]; then
-    useradd -r mysql -g mysql
+if [[ -z "$(cat /etc/passwd | grep -E '^postgres:')" ]]; then
+    useradd -r postgres -g postgres
 fi
 
-# dir owner and privileges
+# data
+rm -rf $installdir/data && mkdir -p $installdir/data
 chmod -R 755 $installdir
-chown -R mysql:mysql $installdir
+chown -R postgres:postgres $installdir
 
-# link file
-mkdir -p /usr/local/share/man/man1
-mkdir -p /usr/local/share/man/man8
-ln -sf $installdir/mysql/mysql/man/man1/* /usr/local/share/man/man1
-ln -sf $installdir/mysql/mysql/man/man8/* /usr/local/share/man/man8
-ln -sf $installdir/conf/mysqld /etc/init.d/mysqld
+# init db
+$installdir/bin/initdb --pgdata=$installdir/data \
+     --auth-host=127.0.0.1:5432 \
+     --encoding=UTF8 \
+     --locale=Asia/Shanghai \
+     --username=postgres \
+     --pwprompt
 
-# clear logs and data
-rm -rf $installdir/logs/* && rm -rf $installdir/data/*
-
-# init database
-$installdir/mysql/bin/mysqld \
---initialize \
---user=mysql \
---basedir=$installdir/mysql \
---datadir=$installdir/data
+# start pgsql service
+cp $installdir/conf/pgsql.service /etc/systemd/system
+systemctl daemon-reload && systemctl start pgsql.service
 if [[ $? -ne 0 ]]; then
-    echo "mysqld initialize failed"
+    echo "pgsql service start failed, please check and trg again..."
     exit
 fi
-
-# check logs/mysql.err.
-error=$(grep -E -i -o '\[error\].*' "$installdir/logs/mysql.err")
-if [[ -n ${error} ]]; then
-    echo "mysql database init failed"
-    echo "error message:"
-    echo "$error"
-    echo "the detail message in file $installdir/logs/mysql.err"
-    exit
-fi
-
-# start mysqld service
-update-rc.d mysqld defaults && \
-systemctl daemon-reload && service mysqld start
-if [[ $? -ne 0 ]]; then
-    echo "mysqld service start failed, please check and trg again..."
-    exit
-fi
-
-# check password
-password="$(grep 'temporary password' "$installdir/logs/mysql.err"|cut -d ' ' -f11)"
-echo "current password is: $password"
-echo "please use follow command and sql login and update your password:"
-echo "mysql -u root --password='$password'"
-echo "SET PASSWORD = PASSWORD('your new password');"
-echo "ALTER user 'root'@'localhost' PASSWORD EXPIRE NEVER;"
-echo "FLUSH PRIVILEGES;"
-echo "mysql install successfully"
 EOF
 
     regex='$installdir'
@@ -307,7 +265,7 @@ EOF
 cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
 
-service mysqld stop
+systemctl stop pgsql.service
 EOF
 
 
@@ -315,12 +273,10 @@ EOF
 cat > debian/DEBIAN/postrm <<- EOF
 #!/bin/bash
 
-update-rc.d mysqld remove
-rm -rf /etc/init.d/mysqld
 rm -rf ${installdir}
 
-groupdel -f mysql
-userdel -f -r mysql
+groupdel -f postgres
+userdel -f -r postgres
 EOF
 
     # chmod
@@ -335,48 +291,46 @@ EOF
 
     # deb
     sudo dpkg-deb --build debian
-    sudo mv debian.deb ${GITHUB_WORKSPACE}/mysql_${version}_amd64.deb
-    sudo mv mysql.tar.gz ${GITHUB_WORKSPACE}/mysql_${version}_amd64.tgz
-    echo "TAG=mysql_${version}" >> ${GITHUB_ENV}
-    echo "DEB=mysql_${version}_amd64.deb" >> ${GITHUB_ENV}
-    echo "TAR=mysql_${version}_amd64.tgz" >> ${GITHUB_ENV}
+    sudo mv debian.deb ${GITHUB_WORKSPACE}/pgsql_${version}_amd64.deb
+    sudo mv pgsql.tar.gz ${GITHUB_WORKSPACE}/pgsql_${version}_amd64.tgz
+    echo "TAG=pgsql_${version}" >> ${GITHUB_ENV}
+    echo "DEB=pgsql_${version}_amd64.deb" >> ${GITHUB_ENV}
+    echo "TAR=pgsql_${version}_amd64.tgz" >> ${GITHUB_ENV}
 }
 
 clean_file(){
-    sudo rm -rf ${workdir}/mysql
-    sudo rm -rf ${workdir}/mysql.tar.gz
-    sudo rm -rf ${workdir}/boost
-    sudo rm -rf ${workdir}/boost.tar.gz
+    sudo rm -rf ${workdir}/pgsql
+    sudo rm -rf ${workdir}/pgsql.tar.gz
 }
 
 do_install() {
     check
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         return
     fi
 
-    download_mysql
-    if [[ $? -ne ${SUCCESS} ]]; then
+    download_pgsql
+    if [[ $? -ne ${success} ]]; then
         exit $?
     fi
 
-    download_boost
-    if [[ $? -ne ${SUCCESS} ]]; then
+    download_openssl
+    if [[ $? -ne ${success} ]]; then
         exit $?
     fi
 
     build
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         exit $?
     fi
 
     service
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         exit $?
     fi
 
     package
-    if [[ $? -ne ${SUCCESS} ]]; then
+    if [[ $? -ne ${success} ]]; then
         exit $?
     fi
 
