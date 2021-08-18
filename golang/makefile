@@ -10,5 +10,8 @@ clean:clear
 sign:clear
 	go build $(LDFLAGS) -o sign sign.go $(UTIL)
 
+mail:clear
+	go build $(LDFLAGS) -o mail mail.go $(UTIL)
+
 clear:
 	rm -rf upload clean sign mail

@@ -67,7 +67,7 @@ func main() {
 }
 
 func handleDelete(token aliyun.Token, fileid string) {
-	err := aliyun.Delete([] aliyun.File{
+	err := aliyun.Delete([]aliyun.File{
 		{
 			DriveID: token.DriveID,
 			FileID:  fileid,
