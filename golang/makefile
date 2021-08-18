@@ -1,5 +1,5 @@
 UTIL=util.go
-#LDFLAGS=-mod=readonly
+LDFLAGS=-mod=mod
 
 upload:clear
 	go build $(LDFLAGS) -o upload upload.go $(UTIL)
@@ -11,4 +11,4 @@ sign:clear
 	go build $(LDFLAGS) -o sign sign.go $(UTIL)
 
 clear:
-	rm -rf upload clean sign
+	rm -rf upload clean sign mail

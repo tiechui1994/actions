@@ -2,4 +2,7 @@ module golang
 
 go 1.14
 
-require github.com/tiechui1994/tool v1.0.0 // indirect
+require (
+	github.com/emersion/go-imap v1.1.0
+	github.com/tiechui1994/tool v1.0.0
+)

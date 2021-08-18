@@ -384,7 +384,7 @@ if __name__ == "__main__":
         "since": "2021-01-10",
         "before": "2022-04-18",
         "from": ["github.com"],
-        "body": ["jobs have failed", "refs/heads",
+        "body": ["jobs have failed", "refs/heads", "All jobs were cancelled",
                  "No jobs were run", "Successfully deployed",
                  "Deployment failed", "A personal access token"],
         "op": {
