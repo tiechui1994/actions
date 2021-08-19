@@ -84,7 +84,7 @@ func handleDelete(token aliyun.Token, fileid string) {
 func handleUpload(token aliyun.Token, dir, filename string) {
 	files, err := aliyun.Files("root", token)
 	if err != nil {
-		fmt.Println("files error", err)
+		fmt.Println("Files:", err)
 		os.Exit(1)
 	}
 
@@ -100,12 +100,12 @@ func handleUpload(token aliyun.Token, dir, filename string) {
 	if !exist {
 		err = aliyun.CreateDirectory(dir, "root", token)
 		if err != nil {
-			fmt.Println("refresh error", err)
+			fmt.Println("CreateDirectory:", err)
 			return
 		}
 		files, err = aliyun.Files("root", token)
 		if err != nil {
-			fmt.Println("files error", err)
+			fmt.Println("Files:", err)
 			return
 		}
 		for _, v := range files {
@@ -118,13 +118,13 @@ func handleUpload(token aliyun.Token, dir, filename string) {
 
 	_, err = aliyun.UploadFile(filename, dirinfo.FileID, token)
 	if err != nil {
-		fmt.Println("upload file error", err)
+		fmt.Println("UploadFile:", err)
 		os.Exit(1)
 	}
 
 	_, err = aliyun.UploadFile(filename+".SHA1", dirinfo.FileID, token)
 	if err != nil {
-		fmt.Println("upload sha1 file error", err)
+		fmt.Println("UploadFile:", err, filename+".SHA1")
 	}
 
 	fmt.Println("upload file sucess")

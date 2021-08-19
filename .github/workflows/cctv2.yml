@@ -14,7 +14,7 @@ on:
 
 jobs:
   cctv2:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         go: [ '1.14' ]
@@ -38,5 +38,5 @@ jobs:
       if: ${{ success() && env.VEDIO}}
       run: |
         make -C golang upload && \
-        ./golang/upload -upload -dir vedio -file ${{env.VEDIO}} &&\
-        ./golang/upload -delete -fileid  ${{github.event.inputs.fileid}}
+        golang/upload -upload -dir vedio -file ${{env.VEDIO}} && \
+        golang/upload -delete -fileid  ${{github.event.inputs.fileid}}

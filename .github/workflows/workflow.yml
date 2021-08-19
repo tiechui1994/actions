@@ -1,4 +1,4 @@
-name: clean
+name: workflow
 on:
   push:
     branches: master
@@ -6,8 +6,8 @@ on:
   - cron: '0 22 * * *'
 
 jobs:
-  clean:
-    runs-on: ubuntu-18.04
+  workflow:
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         go: [ '1.14' ]
@@ -24,6 +24,7 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Job Clean
+    - name: Workflow Clean
       run: |
-        make -C golang clean && ./golang/clean -r tiechui1994/jobs -t ${{secrets.GIT_TOKEN}}
+        make -C golang workflow && \
+        golang/workflow -r tiechui1994/jobs -t ${{secrets.GIT_TOKEN}}

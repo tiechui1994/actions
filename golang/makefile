@@ -1,17 +1,17 @@
 UTIL=util.go
 LDFLAGS=-mod=readonly
 
-upload:clear
+upload:clean
 	go build $(LDFLAGS) -o upload upload.go $(UTIL)
 
-clean:clear
-	go build $(LDFLAGS) -o clean clean.go $(UTIL)
+workflow:clean
+	go build $(LDFLAGS) -o workflow workflow.go $(UTIL)
 
-sign:clear
+sign:clean
 	go build $(LDFLAGS) -o sign sign.go $(UTIL)
 
-mail:clear
-	go build $(LDFLAGS) -o mail mail.go $(UTIL)
+email:clean
+	go build $(LDFLAGS) -o email email.go $(UTIL)
 
-clear:
-	rm -rf upload clean sign mail
+clean:
+	rm -rf upload workflow sign email

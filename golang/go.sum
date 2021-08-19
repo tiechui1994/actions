@@ -19,6 +19,8 @@ github.com/stretchr/testify v1.2.2 h1:bSDNvY7ZPG5RlJ8otE/7V6gMiyenm9RtJ7IUVIAoJ1
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/tiechui1994/tool v1.0.0 h1:tUSOJkKhrprA9lAHEW5SZkHaj7AQR7nEyWqh55C9o24=
 github.com/tiechui1994/tool v1.0.0/go.mod h1:+U3StRWG15k9zPSfdTMX9/1JvIggnsWX4H1VLm+lVkg=
+github.com/tiechui1994/tool v1.0.1-0.20210819044650-146a31ffcb2e h1:+utgG2BWXGHahD1gKCQzQzqfA/K55lg9BTF6E5/OIrI=
+github.com/tiechui1994/tool v1.0.1-0.20210819044650-146a31ffcb2e/go.mod h1:+U3StRWG15k9zPSfdTMX9/1JvIggnsWX4H1VLm+lVkg=
 github.com/urfave/cli v1.22.5 h1:lNq9sAHXK2qfdI8W+GRItjCEkI+2oR4d+MEHy1CKXoU=
 github.com/urfave/cli v1.22.5/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 golang.org/x/sys v0.0.0-20191026070338-33540a1f6037 h1:YyJpGZS1sBuBCzLAR1VEpK193GlqGZbnPFnPV/5Rsb4=
