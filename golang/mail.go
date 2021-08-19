@@ -3,7 +3,11 @@ package main
 import (
 	"crypto/tls"
 	"encoding/json"
+	"errors"
+	"flag"
 	"fmt"
+	"io"
+	"mime"
 	"os"
 	"regexp"
 	"time"
@@ -11,7 +15,7 @@ import (
 	"github.com/mxk/go-imap/imap"
 )
 
-// https://datatracker.ietf.org/doc/html/rfc3501#section-6.4.5
+// https://datatracker.ietf.org/doc/html/rfc3501
 // https://vimsky.com/zh-tw/examples/detail/golang-ex-github.com.mxk.go-imap.imap-Command---class.html
 
 type Email struct {
@@ -95,9 +99,10 @@ func (e *Email) Handle(configs []config) error {
 	end := time.Unix(0, 0)
 
 	now := time.Now()
+	format := "2006-01-02"
 	for _, config := range configs {
 		fmt.Println("job config:", config.Name)
-		fmt.Printf("date range: [%s -> %s]\n", config.Since, config.Before)
+		fmt.Printf("date range: [%s -> %s]\n", config.Since.Format(format), config.Before.Format(format))
 		if config.Since.After(now) {
 			config.Since = now
 		}
@@ -125,14 +130,13 @@ func (e *Email) Handle(configs []config) error {
 		start, end = end, start
 	}
 
-	_, err := handle(e.client.Select("INBOX", false))
+	_, err := imap.Wait(e.client.Select("INBOX", false))
 	if err != nil {
 		return err
 	}
 
 	before := "BEFORE " + end.Format("02-Jan-2006")
 	since := "SINCE " + start.Format("02-Jan-2006")
-	fmt.Println(before, since)
 	cmd, err := imap.Wait(e.client.UIDSearch(before, since))
 	if err != nil {
 		return err
@@ -145,7 +149,6 @@ func (e *Email) Handle(configs []config) error {
 		}
 	}
 
-	uids = uids[:5]
 	fmt.Println("mail len:", len(uids))
 	set := new(imap.SeqSet)
 	for _, uid := range uids {
@@ -162,187 +165,177 @@ func (e *Email) Handle(configs []config) error {
 		}
 		for _, response := range cmd.Data {
 			fileds := response.MessageInfo().Attrs
-			envelope := fileds["ENVELOPE"]
-			flags := fileds["FLAGS"]
+			_ = fileds["FLAGS"]
 			text := fileds["RFC822.TEXT"]
-
-			_, _ = text, envelope
-			fmt.Println(imap.AsList(envelope))
-
-			fmt.Println(flags)
-			//header := imap.AsBytes(msgFields["BODY[]"])
-			//if msg, _ := mail.ReadMessage(bytes.NewReader(header)); msg != nil {
-			//	m.debg.Println("CheckNewMails:PostMail")
-			//	if err := m.PostMail(msg); err != nil {
-			//		return err
-			//	}
-			//	postmail = true
-			//}
+			envelope := parseEnvelope(fileds["ENVELOPE"])
+			e.handleMessage(uid, envelope, imap.AsString(text), conds)
 		}
 	}
-
-	//for msg := range ch {
-	//	message, err := e.ParseMessage(msg)
-	//	if err != nil {
-	//		continue
-	//	}
-	//	e.handleMessage(message, conds)
-	//}
-	//
 
 	return nil
 }
 
-func handle(cmd *imap.Command, err error) (*imap.Response, error) {
-	if err == nil {
-		return cmd.Result(imap.OK)
-	}
-
-	return nil, err
+type Addr struct {
+	Addr   string
+	Person string
+}
+type Envelope struct {
+	Date      time.Time
+	Subject   string
+	From      []Addr
+	Sender    []Addr
+	ReplyTo   []Addr
+	To        []Addr
+	Cc        []Addr
+	Bcc       []Addr
+	InReplyTo string
+	MessageId string
 }
 
-//
-//const (
-//	HeaderType   = "Content-Type"
-//	HeaderCoding = "Content-Transfer-Encoding"
-//)
-//
-//type Message struct {
-//	Date    time.Time
-//	From    string
-//	To      string
-//	Subject string
-//	Body    string
-//	Origin  *imap.Message
-//}
-//
-//func (e *Email) ParseMessage(message *imap.Message) (msg Message, err error) {
-//	env := message.Envelope
-//	msg.Subject = env.Subject
-//	msg.Date = env.Date
-//	msg.To = env.To[0].MailboxName + "@" + env.To[0].HostName
-//	msg.From = env.From[0].MailboxName + "@" + env.From[0].HostName
-//	msg.Origin = message
-//
-//	for _, val := range message.Body {
-//		var buf bytes.Buffer
-//		io.Copy(&buf, val)
-//		backup := buf.String()
-//		reader := bufio.NewReader(&buf)
-//		var (
-//			line, ctype, coding, data string
-//			begin                     bool
-//		)
-//		brline, err := reader.ReadString('\n')
-//		for err == nil && line != brline {
-//			if begin {
-//				data += line
-//			}
-//			if strings.HasPrefix(line, HeaderType) {
-//				ctype = strings.Split(line, ":")[1]
-//				ctype = strings.TrimSpace(ctype)
-//			}
-//			if strings.HasPrefix(line, HeaderCoding) {
-//				coding = strings.Split(line, ":")[1]
-//				coding = strings.TrimSpace(coding)
-//				begin = true
-//			}
-//			line, err = reader.ReadString('\n')
-//		}
-//		if err != nil && err != io.EOF {
-//			return msg, err
-//		}
-//
-//		// base64, quoted-printable
-//		var raw []byte
-//		data = strings.TrimSpace(data)
-//		if coding == "base64" {
-//			raw, err = base64.StdEncoding.DecodeString(data)
-//		} else if coding == "quoted-printable" {
-//			var reader io.Reader
-//			reader = quotedprintable.NewReader(bytes.NewBufferString(data))
-//			if strings.Contains(ctype, "gbk") {
-//				reader = transform.NewReader(reader, simplifiedchinese.GBK.NewEncoder())
-//			}
-//			raw, err = ioutil.ReadAll(reader)
-//		} else {
-//			raw, err = []byte(backup), nil
-//		}
-//
-//		msg.Body = string(raw)
-//		return msg, err
-//	}
-//
-//	return msg, errors.New("invalid body")
-//}
-//
-//func (e *Email) handleMessage(message Message, conds []condition) {
-//	for _, cond := range conds {
-//		ts := message.Date.Unix()
-//		if cond.start.Unix() < ts && ts < cond.end.Unix() &&
-//			match(message.From, cond.rfrom) &&
-//			match(message.Body, cond.rbody) &&
-//			match(message.Subject, cond.rsubj) {
-//			switch cond.operate.Type {
-//			case OPDEL:
-//				e.delete(message)
-//			case OPREAD:
-//				e.seen(message)
-//			case OPMOVE:
-//				e.move(message, cond)
-//			}
-//		}
-//	}
-//}
-//
-//func (e *Email) seen(message Message) {
-//	fmt.Printf("tag mail to READ from [%v].\n", message.From)
-//	cmd := Tag{Uid: message.Origin.Uid, Value: "\\Seen"}
-//	e.client.Execute(cmd, nil)
-//}
-//
-//func (e *Email) delete(message Message) {
-//	fmt.Printf("delete mail from [%v] [%v].\n", message.From, message.Subject)
-//	set := new(imap.SeqSet)
-//	set.AddNum(message.Origin.Uid)
-//	err := e.client.UidStore(set, "+FLAGS", `(\Deleted)`, make(chan *imap.Message))
-//	fmt.Println(err)
-//	ch := make(chan uint32, 1)
-//	ch <- message.Origin.Uid
-//	go func() {
-//		e.client.Expunge(ch)
-//	}()
-//}
-//
-//func (e *Email) move(message Message, cond condition) {
-//	fmt.Printf("move mails from [%v]\n", message.From)
-//	set := new(imap.SeqSet)
-//	set.AddNum(message.Origin.Uid)
-//	cmd := commands.Copy{
-//		SeqSet:  set,
-//		Mailbox: cond.operate.MailBox,
-//	}
-//	e.client.Execute(&cmd, nil)
-//	e.delete(message)
-//}
-//
-//type Tag struct {
-//	Uid   uint32
-//	Value string
-//}
-//
-//func (e Tag) Command() *imap.Command {
-//	set := new(imap.SeqSet)
-//	set.AddNum(e.Uid)
-//	store := &commands.Store{
-//		SeqSet: set,
-//		Item:   imap.AddFlags,
-//		Value:  e.Value,
-//	}
-//	return store.Command()
-//}
+func parseEnvelope(field imap.Field) (envelope Envelope) {
+	// date, subject, from, sender, reply-to, to, cc, bcc, in-reply-to, message-id
+	list := imap.AsList(field)
+
+	// date: Tue, 06 Apr 2021 07:36:28 -0700
+	var err error
+	envelope.Date, err = parseMessageDateTime(imap.AsString(list[0]))
+	if err != nil {
+		fmt.Println("err", err)
+	}
+
+	// subject
+	envelope.Subject, _ = decodeHeader(imap.AsString(list[1]))
+
+	// from, sender, reply-to, to, cc, bcc
+	envelope.From, _ = parseAddrList(list[2])
+	envelope.Sender, _ = parseAddrList(list[3])
+	envelope.ReplyTo, _ = parseAddrList(list[4])
+	envelope.To, _ = parseAddrList(list[5])
+	envelope.Cc, _ = parseAddrList(list[6])
+	envelope.Bcc, _ = parseAddrList(list[7])
+
+	// in-reply-to, message-id
+	envelope.InReplyTo = imap.AsString(list[8])
+	envelope.MessageId = imap.AsString(list[9])
+	return envelope
+}
+
+func parseAddrList(field imap.Field) (list []Addr, err error) {
+	tokens := imap.AsList(field)
+	for i := range tokens {
+		// (person,domain,mailbox,host)
+		values := imap.AsList(tokens[i])
+		if len(values) != 4 {
+			return nil, errors.New("invalid addr")
+		}
+		var addr Addr
+		addr.Person, err = decodeHeader(imap.AsString(values[0]))
+		if err != nil {
+			return nil, err
+		}
+		addr.Addr = imap.AsString(values[2]) + "@" + imap.AsString(values[3])
+		list = append(list, addr)
+	}
+
+	return list, nil
+}
+
+var CharsetReader func(charset string, r io.Reader) (io.Reader, error)
+var wordDecoder = &mime.WordDecoder{
+	CharsetReader: func(charset string, input io.Reader) (io.Reader, error) {
+		if CharsetReader != nil {
+			return CharsetReader(charset, input)
+		}
+		return nil, fmt.Errorf("imap: unhandled charset %q", charset)
+	},
+}
+
+func decodeHeader(s string) (string, error) {
+	dec, err := wordDecoder.DecodeHeader(s)
+	if err != nil {
+		return s, err
+	}
+	return dec, nil
+}
+
+var envelopeDateTimeLayouts = [...]string{
+	"Mon, 02 Jan 2006 15:04:05 -0700", // popular, try it first
+	"Mon, 02 Jan 2006 15:04:05 MST",
+	"Mon, 2 Jan 2006 15:04:05 -0700",
+}
+
+var commentRE = regexp.MustCompile(`[ \t]+\(.*\)$`)
+
+func parseMessageDateTime(maybeDate string) (time.Time, error) {
+	maybeDate = commentRE.ReplaceAllString(maybeDate, "")
+	for _, layout := range envelopeDateTimeLayouts {
+		parsed, err := time.Parse(layout, maybeDate)
+		if err == nil {
+			return parsed, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("date %s could not be parsed", maybeDate)
+}
+
+func encodeHeader(s string) string {
+	return mime.QEncoding.Encode("utf-8", s)
+}
+
+func (e *Email) handleMessage(uid uint32, envelop Envelope, body string, conds []condition) {
+	for _, cond := range conds {
+		ts := envelop.Date.Unix()
+		if cond.start.Unix() < ts && ts < cond.end.Unix() &&
+			match(envelop.From[0].Addr, cond.rfrom) &&
+			match(body, cond.rbody) &&
+			match(envelop.Subject, cond.rsubj) {
+			switch cond.operate.Type {
+			case OPDEL:
+				e.delete(uid, envelop)
+			case OPREAD:
+				e.seen(uid, envelop)
+			case OPMOVE:
+				e.move(uid, envelop, cond)
+			}
+		}
+	}
+}
+
+func (e *Email) seen(uid uint32, envelop Envelope) {
+	fmt.Printf("tag mail to READ from [%v].\n", envelop.From[0].Addr)
+	set := new(imap.SeqSet)
+	set.AddNum(uid)
+	imap.Wait(e.client.UIDStore(set, "+FLAGS", "\\Seen"))
+}
+
+func (e *Email) delete(uid uint32, envelop Envelope) {
+	fmt.Printf("delete mail from [%v] [%v].\n", envelop.From[0].Addr, envelop.Subject)
+	set := new(imap.SeqSet)
+	set.AddNum(uid)
+	imap.Wait(e.client.UIDStore(set, "+FLAGS", "\\Deleted"))
+	imap.Wait(e.client.Expunge(set))
+}
+
+func (e *Email) move(uid uint32, envelop Envelope, cond condition) {
+	fmt.Printf("move mails from [%v]\n", envelop.From[0].Addr)
+	set := new(imap.SeqSet)
+	set.AddNum(uid)
+	imap.Wait(e.client.UIDCopy(set, cond.operate.MailBox))
+	e.delete(uid, envelop)
+}
+
+func (e *Email) reply(uid uint32, envelop Envelope, cond condition) {
+
+}
 
 func main() {
+	username := flag.String("u", "", "username")
+	password := flag.String("p", "", "password")
+	flag.Parse()
+	if *username == "" || *password == "" {
+		fmt.Println("no username or password")
+		os.Exit(1)
+	}
+
 	cfg := `[{
         "name": "github",
         "since": "2021-01-10T00:00:00Z",
@@ -358,7 +351,7 @@ func main() {
         "name": "google",
         "since": "2021-01-10T00:00:00Z",
         "before": "2022-04-18T00:00:00Z",
-        "from": ["no-reply@accounts.google.com"],
+        "from": ["accounts.google.com"],
         "subject": ["安全提醒", "帐号的安全性"],
         "op": {
            "type": "delete"
@@ -371,18 +364,37 @@ func main() {
         "op": {
             "type": "delete"
         }
-    }]`
+    }, {
+		"name": "hkisl",
+ 	    "since": "2021-01-10T00:00:00Z",
+        "before": "2022-04-18T00:00:00Z",
+		"from": ["noreply-wms@hkisl.net"],
+        "op": {
+            "type": "delete"
+        }
+	}, {
+		"name": "qovery",
+ 	    "since": "2021-01-10T00:00:00Z",
+        "before": "2022-04-18T00:00:00Z",
+		"from": ["qovery.com"],
+        "op": {
+            "type": "delete"
+        }
+	}]`
 
 	var configs []config
-	json.Unmarshal([]byte(cfg), &configs)
-	fmt.Println("len", len(configs))
-
-	e := Email{
-		Username: "",
-		Password: "",
+	err := json.Unmarshal([]byte(cfg), &configs)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
-	err := e.Login()
+	e := Email{
+		Username: *username,
+		Password: *password,
+	}
+
+	err = e.Login()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

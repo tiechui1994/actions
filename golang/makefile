@@ -1,5 +1,5 @@
 UTIL=util.go
-LDFLAGS=-mod=mod
+LDFLAGS=-mod=readonly
 
 upload:clear
 	go build $(LDFLAGS) -o upload upload.go $(UTIL)
