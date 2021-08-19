@@ -1,15 +1,22 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"html/template"
 	"io"
 	"mime"
+	"net"
+	"net/smtp"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mxk/go-imap/imap"
@@ -49,9 +56,10 @@ type condition struct {
 }
 
 const (
-	OPDEL  = "delete"
-	OPREAD = "read"
-	OPMOVE = "move"
+	OPDEL   = "delete"
+	OPREAD  = "read"
+	OPMOVE  = "move"
+	OPREPLY = "reply"
 )
 
 func regex(str []string) []*regexp.Regexp {
@@ -168,6 +176,7 @@ func (e *Email) Handle(configs []config) error {
 			_ = fileds["FLAGS"]
 			text := fileds["RFC822.TEXT"]
 			envelope := parseEnvelope(fileds["ENVELOPE"])
+			parseText(text)
 			e.handleMessage(uid, envelope, imap.AsString(text), conds)
 		}
 	}
@@ -240,6 +249,32 @@ func parseAddrList(field imap.Field) (list []Addr, err error) {
 	return list, nil
 }
 
+// TODO
+func parseText(field imap.Field) {
+	text := imap.AsString(field)
+	var (
+		line string
+	)
+
+	reader := bufio.NewReader(bytes.NewBufferString(text))
+	breakline, err := reader.ReadString('\n')
+
+	for err == nil && breakline != line {
+
+	}
+}
+
+type Text struct {
+	Type    string
+	Charset string
+	Content string
+}
+
+type EmailBody struct {
+	Plain *Text
+	Html  *Text
+}
+
 var CharsetReader func(charset string, r io.Reader) (io.Reader, error)
 var wordDecoder = &mime.WordDecoder{
 	CharsetReader: func(charset string, input io.Reader) (io.Reader, error) {
@@ -295,6 +330,8 @@ func (e *Email) handleMessage(uid uint32, envelop Envelope, body string, conds [
 				e.seen(uid, envelop)
 			case OPMOVE:
 				e.move(uid, envelop, cond)
+			case OPREPLY:
+				e.reply(uid, envelop, cond, body)
 			}
 		}
 	}
@@ -323,8 +360,112 @@ func (e *Email) move(uid uint32, envelop Envelope, cond condition) {
 	e.delete(uid, envelop)
 }
 
-func (e *Email) reply(uid uint32, envelop Envelope, cond condition) {
+func (e *Email) reply(uid uint32, envelop Envelope, cond condition, body string) {
+	fmt.Printf("reply mail from [%v]\n", envelop.From[0].Addr)
+	s := NewSMTP(smtp.PlainAuth("", e.Username, e.Password, "smtp.qq.com"),
+		"smtp.qq.com", 587)
+	from := envelop.To[0].Addr
+	to := []string{envelop.From[0].Addr}
+	subject := "回复: " + envelop.Subject
 
+	html := `
+	<div>
+    	<div>
+        	{{.Reply}}
+    	</div>
+    	<blockquote style="margin:0px 0px 0px 0.8ex;
+        	border-left:2px solid rgb({{.R}},{{.G}},{{.B}});
+        	padding-left:1ex">
+        	{{.Origin}}
+    	</blockquote>
+	<div>
+	`
+
+	var data struct {
+		R, G, B uint8
+		Reply   string
+		Origin  string
+	}
+	data.R, data.G, data.B = 0, 0, 0
+	data.Reply = "Hello " + envelop.From[0].Person
+	data.Origin = body
+
+	tpl, _ := template.New("").Parse(html)
+	var buf bytes.Buffer
+	tpl.Execute(&buf, data)
+	err := s.Send(from, to, subject, buf.String())
+	fmt.Println(err)
+}
+
+type SMTP struct {
+	smtp.Auth
+	host string
+	port int
+}
+
+func NewSMTP(auth smtp.Auth, host string, port int) *SMTP {
+	return &SMTP{Auth: auth, host: host, port: port}
+}
+
+func (s *SMTP) connect() (*smtp.Client, error) {
+	conn, err := net.DialTimeout("tcp", s.host+":"+strconv.Itoa(s.port), 15*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	conn.(*net.TCPConn).SetKeepAlive(true)
+
+	return smtp.NewClient(conn, s.host)
+}
+
+func (s *SMTP) Send(from string, to []string, subject, body string) error {
+	client, err := s.connect()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	err = client.Auth(s)
+	if err != nil {
+		fmt.Println("Auth", err)
+		return err
+	}
+
+	err = client.Mail(from)
+	if err != nil {
+		fmt.Println("Mail", err)
+		return err
+	}
+
+	message := "From: " + from
+	for _, v := range to {
+		err = client.Rcpt(v)
+		if err != nil {
+			return err
+		}
+		message = message + "~To: " + v
+	}
+	MIMETYPE := "Content-Type: text/html; charset=UTF-8"
+	message = message + "~Subject: " + subject + "~" + MIMETYPE + "~~"
+
+	writer, err := client.Data()
+	if err != nil {
+		return err
+	}
+	defer writer.Close()
+
+	message = strings.Replace(message, "~", "\r\n", -1) + body
+	_, err = writer.Write([]byte(message))
+	return err
+}
+
+func (s *SMTP) Start(server *smtp.ServerInfo) (proto string, toServer []byte, err error) {
+	c := *server
+	c.TLS = true
+	return s.Auth.Start(&c)
+}
+
+func (s *SMTP) Next(fromServer []byte, more bool) (toServer []byte, err error) {
+	return s.Auth.Next(fromServer, more)
 }
 
 func main() {
