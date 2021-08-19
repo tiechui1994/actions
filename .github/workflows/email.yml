@@ -3,20 +3,20 @@ on:
   push:
     branches: master
   schedule:
-  - cron: '*/10 * * * *'
+  - cron: '*/30 * * * *'
 
 jobs:
   email:
     runs-on: ubuntu-20.04
     steps:
-    - name: checkout code
+    - name: Checkout
       timeout-minutes: 1
       uses: actions/checkout@v2
       with:
         persist-credentials: false
 
-    - name: drop emails
+    - name: Delete emails
       timeout-minutes: 5
       run: |
-        make -C golang mail && \
-        golang/mail -u ${{secrets.EMAIL_USERNAME}} -p ${{secrets.EMAIL_PASSWORD}}
+        make -C golang email && \
+        golang/email -u ${{secrets.EMAIL_USERNAME}} -p ${{secrets.EMAIL_PASSWORD}}

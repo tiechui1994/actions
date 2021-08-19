@@ -1,7 +1,11 @@
 name: nginx
 on:
-  push:
-    branches: master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'nginx version'
+        required: true
+        default: ''
 
 jobs:
   nginx:
@@ -17,7 +21,7 @@ jobs:
       id: build
       timeout-minutes: 10
       run: |
-        bash script/nginx.sh ${{ secrets.GIT_TOKEN }}
+        bash script/nginx.sh ${{ secrets.GIT_TOKEN }} ${{github.event.inputs.version}}
       shell: bash
 
     - name: Release

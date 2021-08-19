@@ -30,14 +30,14 @@ func main() {
 	}
 
 	const (
-		EVENT_SCHEDULE = "schedule"
+		EVENTSCHEDULE = "schedule"
 	)
 
 	schedule := time.Now().Add(-3 * 24 * time.Hour)
 	common := time.Now().Add(-7 * 24 * time.Hour)
 
 	for _, v := range list {
-		if v.Event == EVENT_SCHEDULE && v.CreatedAt.Before(schedule) ||
+		if v.Event == EVENTSCHEDULE && v.CreatedAt.Before(schedule) ||
 			v.CreatedAt.Before(common) {
 			err = DeleteRun(*r, v.ID, *t)
 			fmt.Println("detail:", v.CreatedAt.Format("2006-01-02T15:04:05Z"), v.Name, v.Event, err)

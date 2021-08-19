@@ -1,7 +1,11 @@
 name: redis
 on:
-  push:
-    branches: master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'redis version'
+        required: true
+        default: ''
 
 jobs:
   redis:
@@ -17,7 +21,7 @@ jobs:
         id: build
         timeout-minutes: 10
         run: |
-          bash script/redis.sh ${{ secrets.GIT_TOKEN }}
+          bash script/redis.sh ${{ secrets.GIT_TOKEN }} ${{github.event.inputs.version}}
         shell: bash
 
       - name: Release

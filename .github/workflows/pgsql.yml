@@ -1,7 +1,11 @@
 name: pgsql
 on:
-  push:
-    branches: master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'pgsql version'
+        required: true
+        default: ''
 
 jobs:
   pgsql:
@@ -17,18 +21,18 @@ jobs:
       id: build
       timeout-minutes: 60
       run: |
-        bash script/pgsql.sh ${{ secrets.GIT_TOKEN }} 12.0
+        bash script/pgsql.sh ${{ secrets.GIT_TOKEN }} ${{github.event.inputs.version}}
       shell: bash
 
-#    - name: Release
-#      timeout-minutes: 1
-#      if: ${{env.DEB}}
-#      uses: svenstaro/upload-release-action@v2
-#      with:
-#        repo_token: ${{ secrets.GIT_TOKEN }}
-#        file: ${{github.workspace}}/pgsql_*
-#        asset_name: ${{env.DEB}}
-#        tag: ${{env.TAG}}
-#        overwrite: true
-#        body: "release ${{env.TAG}}"
-#        file_glob: true
+    - name: Release
+      timeout-minutes: 1
+      if: ${{env.DEB}}
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GIT_TOKEN }}
+        file: ${{github.workspace}}/pgsql_*
+        asset_name: ${{env.DEB}}
+        tag: ${{env.TAG}}
+        overwrite: true
+        body: "release ${{env.TAG}}"
+        file_glob: true

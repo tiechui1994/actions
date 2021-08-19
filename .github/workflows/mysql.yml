@@ -1,7 +1,11 @@
 name: mysql
 on:
-  push:
-    branches: master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'mysql version'
+        required: true
+        default: ''
 
 jobs:
   mysql:
@@ -17,7 +21,7 @@ jobs:
       id: build
       timeout-minutes: 60
       run: |
-        bash script/mysql.sh ${{ secrets.GIT_TOKEN }} 5.7.24
+        bash script/mysql.sh ${{ secrets.GIT_TOKEN }} ${{github.event.inputs.version}}
       shell: bash
 
     - name: Release

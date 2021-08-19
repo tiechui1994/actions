@@ -5,7 +5,7 @@ on:
 
 jobs:
   sign:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         go: [ '1.14' ]
@@ -23,4 +23,5 @@ jobs:
 
     - name: Job Sign
       run: |
-        make -C golang sign && ./golang/sign -u ${{secrets.IKUUU_EMAIL}} -p ${{secrets.IKUUU_PASSWD}}
+        make -C golang sign && \
+        golang/sign -u ${{secrets.IKUUU_EMAIL}} -p ${{secrets.IKUUU_PASSWD}}

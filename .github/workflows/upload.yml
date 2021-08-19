@@ -37,4 +37,5 @@ jobs:
     - name: Upload
       if: ${{ success() }}
       run: |
-        make -C golang upload && ./golang/upload -upload -file ${{github.event.inputs.name}}
+        make -C golang upload && \
+        golang/upload -upload -file ${{github.event.inputs.name}}
