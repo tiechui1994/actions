@@ -4,13 +4,17 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"html/template"
 	"io"
+	"io/ioutil"
+	"math/rand"
 	"mime"
+	"mime/quotedprintable"
 	"net"
 	"net/smtp"
 	"os"
@@ -156,9 +160,9 @@ func (e *Email) Handle(configs []config) error {
 			uids = append(uids, uid)
 		}
 	}
-
 	fmt.Println("mail len:", len(uids))
 	set := new(imap.SeqSet)
+
 	for _, uid := range uids {
 		set.Clear()
 		set.AddNum(uid)
@@ -176,8 +180,7 @@ func (e *Email) Handle(configs []config) error {
 			_ = fileds["FLAGS"]
 			text := fileds["RFC822.TEXT"]
 			envelope := parseEnvelope(fileds["ENVELOPE"])
-			//parseText(text)
-			e.handleMessage(uid, envelope, imap.AsString(text), conds)
+			e.handleMessage(uid, envelope, text, conds)
 		}
 	}
 
@@ -249,30 +252,133 @@ func parseAddrList(field imap.Field) (list []Addr, err error) {
 	return list, nil
 }
 
-// TODO
-func parseText(field imap.Field) {
-	text := imap.AsString(field)
-	var (
-		line string
-	)
+const (
+	etype    = "Content-Type"
+	encoding = "Content-Transfer-Encoding"
+)
 
-	reader := bufio.NewReader(bytes.NewBufferString(text))
-	breakline, err := reader.ReadString('\n')
+var (
+	recharset = regexp.MustCompile(`charset="?(utf-8|gb2312|UTF-8|GB2312)"?`)
+	retype    = regexp.MustCompile(`Content-Type\s*:\s*(.*?);`)
+)
 
-	for err == nil && breakline != line {
-
-	}
+func isNextPart(line, boundory string) bool {
+	line = strings.TrimSpace(line)
+	return strings.HasPrefix(line, boundory)
 }
 
 type Text struct {
-	Type    string
-	Charset string
-	Content string
+	Coding      string
+	ContentType string
+	Charset     string
+	Content     string
+	Raw         string
 }
 
-type EmailBody struct {
-	Plain *Text
-	Html  *Text
+func parseText(uid uint32, field imap.Field) (plain, html Text, err error) {
+	raw := imap.AsString(field)
+	if strings.Contains(raw, etype) && strings.Contains(raw, encoding) {
+		var (
+			line, data string
+			beigin     bool
+		)
+
+		if strings.Contains(raw, "multipart/related") {
+			return
+		}
+
+		if !strings.HasPrefix(raw, "--") {
+			raw = raw[strings.Index(raw, "--"):]
+		}
+		reader := bufio.NewReader(bytes.NewBufferString(raw))
+		breakline, err := reader.ReadString('\n')
+		breakline = strings.TrimSpace(breakline)
+
+		var text Text
+		for err == nil {
+			line = strings.TrimSpace(line)
+			if isNextPart(line, breakline) {
+				text.Raw = strings.TrimSpace(data)
+				if text.ContentType == "text/plain" {
+					plain = text
+				} else {
+					html = text
+				}
+				text = Text{}
+				breakline = line
+				beigin = false
+				data = ""
+				line, err = reader.ReadString('\n')
+				continue
+			}
+
+			if beigin {
+				if text.Coding == "base64" {
+					data += line
+				} else {
+					data += line + "\n"
+				}
+			}
+			if text.Charset == "" && strings.Contains(line, "charset") {
+				tokens := recharset.FindAllStringSubmatch(line, 1)
+				if len(tokens) > 0 {
+					charset := strings.Trim(tokens[0][1], `"`)
+					text.Charset = strings.ToLower(charset)
+				}
+			}
+			if text.ContentType == "" && strings.Contains(line, etype) {
+				tokens := retype.FindAllStringSubmatch(line, 1)
+				if len(tokens) > 0 {
+					text.ContentType = tokens[0][1]
+				}
+			}
+			if strings.HasPrefix(line, encoding) {
+				coding := strings.Split(line, ":")[1]
+				text.Coding = strings.TrimSpace(coding)
+				beigin = true
+			}
+			line, err = reader.ReadString('\n')
+		}
+
+		decode := func(text *Text) error {
+			switch text.Coding {
+			case "base64":
+				var content []byte
+				content, err = base64.StdEncoding.DecodeString(text.Raw)
+				if err != nil {
+					fmt.Println("uid", uid, err)
+					return err
+				}
+
+				text.Content = string(content)
+			case "quoted-printable":
+				reader := quotedprintable.NewReader(bytes.NewBufferString(text.Raw))
+				content, err := ioutil.ReadAll(reader)
+				if err != nil && err != bufio.ErrBufferFull && err != io.EOF {
+					fmt.Println("uid", uid, err)
+					return err
+				}
+				text.Content = string(content)
+			case "7bit":
+				text.Content = text.Raw
+			}
+
+			return nil
+		}
+
+		err = decode(&plain)
+		if err != nil {
+			return plain, html, err
+		}
+		err = decode(&html)
+		if err != nil {
+			return plain, html, err
+		}
+
+		return plain, html, nil
+	}
+
+	return plain, html, errors.New("invalid mail text")
 }
 
 var CharsetReader func(charset string, r io.Reader) (io.Reader, error)
@@ -316,7 +422,8 @@ func encodeHeader(s string) string {
 	return mime.QEncoding.Encode("utf-8", s)
 }
 
-func (e *Email) handleMessage(uid uint32, envelop Envelope, body string, conds []condition) {
+func (e *Email) handleMessage(uid uint32, envelop Envelope, text imap.Field, conds []condition) {
+	body := imap.AsString(text)
 	for _, cond := range conds {
 		ts := envelop.Date.Unix()
 		if cond.start.Unix() < ts && ts < cond.end.Unix() &&
@@ -331,7 +438,7 @@ func (e *Email) handleMessage(uid uint32, envelop Envelope, body string, conds [
 			case OPMOVE:
 				e.move(uid, envelop, cond)
 			case OPREPLY:
-				e.reply(uid, envelop, cond, body)
+				e.reply(uid, envelop, cond, text)
 			}
 		}
 	}
@@ -360,7 +467,13 @@ func (e *Email) move(uid uint32, envelop Envelope, cond condition) {
 	e.delete(uid, envelop)
 }
 
-func (e *Email) reply(uid uint32, envelop Envelope, cond condition, body string) {
+func (e *Email) reply(uid uint32, envelop Envelope, cond condition, body imap.Field) {
+	_, html, err := parseText(uid, body)
+	if err != nil {
+		fmt.Println("parseText", err)
+		return
+	}
+
 	fmt.Printf("reply mail from [%v]\n", envelop.From[0].Addr)
 	s := NewSMTP(smtp.PlainAuth("", e.Username, e.Password, "smtp.qq.com"),
 		"smtp.qq.com", 587)
@@ -368,7 +481,7 @@ func (e *Email) reply(uid uint32, envelop Envelope, cond condition, body string)
 	to := []string{envelop.From[0].Addr}
 	subject := "回复: " + envelop.Subject
 
-	html := `
+	tl := `
 	<div>
     	<div>
         	{{.Reply}}
@@ -376,7 +489,7 @@ func (e *Email) reply(uid uint32, envelop Envelope, cond condition, body string)
     	<blockquote style="margin:0px 0px 0px 0.8ex;
         	border-left:2px solid rgb({{.R}},{{.G}},{{.B}});
         	padding-left:1ex">
-        	{{.Origin}}
+        	$text
     	</blockquote>
 	<div>
 	`
@@ -386,15 +499,18 @@ func (e *Email) reply(uid uint32, envelop Envelope, cond condition, body string)
 		Reply   string
 		Origin  string
 	}
-	data.R, data.G, data.B = 0, 0, 0
+	rnd := rand.New(rand.NewSource(time.Now().Unix()))
+	data.R, data.G, data.B = uint8(rnd.Int31n(256)), uint8(rnd.Int31n(256)), uint8(rnd.Int31n(256))
 	data.Reply = "Hello " + envelop.From[0].Person
-	data.Origin = body
+	data.Origin = html.Content
 
-	tpl, _ := template.New("").Parse(html)
+	tpl, _ := template.New("").Parse(tl)
 	var buf bytes.Buffer
 	tpl.Execute(&buf, data)
-	err := s.Send(from, to, subject, buf.String())
-	fmt.Println(err)
+	err = s.Send(from, to, subject, strings.ReplaceAll(buf.String(), "$text", data.Origin))
+	if err != nil {
+		fmt.Println("Send", err)
+	}
 }
 
 type SMTP struct {
