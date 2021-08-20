@@ -137,13 +137,13 @@ download_openssl() {
 
 build_denpend() {
      cd "$workdir/openssl"
-     ./config && make && make install 
+     ./config --prefix=/tmp/openssl '-fPIC' && make && make install
 }
 
 build() {
     # depend
     sudo apt-get update && \
-    sudo apt-get install libreadline-dev libpam-dev libsystemd-dev libssl-dev -y
+    sudo apt-get install libreadline-dev libpam-dev libsystemd-dev -y
     if [[ $? -ne 0 ]]; then
         log_error "install depency fail"
         return ${failure}
@@ -164,7 +164,8 @@ build() {
     --with-pam \
     --with-openssl \
     --with-systemd \
-    LDFLAGS="-Bstatic -lssl -lpam -lcrypto -L $workdir/openssl"
+    CFLAGS="-I/tmp/openssl/include" \
+    LDFLAGS="-Bstatic -lssl -lpam -lcrypto -L/tmp/openssl/lib"
     if [[ $? -ne 0 ]]; then
         log_error "configure fail, plaease check and try again.."
         return ${failure}
