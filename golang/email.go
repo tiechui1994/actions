@@ -176,7 +176,7 @@ func (e *Email) Handle(configs []config) error {
 			_ = fileds["FLAGS"]
 			text := fileds["RFC822.TEXT"]
 			envelope := parseEnvelope(fileds["ENVELOPE"])
-			parseText(text)
+			//parseText(text)
 			e.handleMessage(uid, envelope, imap.AsString(text), conds)
 		}
 	}
