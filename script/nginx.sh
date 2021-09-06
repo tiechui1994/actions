@@ -116,12 +116,6 @@ check() {
     return ${failure}
 }
 
-insatll_depend() {
-    sudo apt-get update && \
-    sudo apt-get install build-essential zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev libxml2 \
-    libxml2-dev libxslt-dev -y
-}
-
 download_nginx() {
     url="http://nginx.org/download/nginx-$version.tar.gz"
     download "nginx.tar.gz" "$url" curl 1
@@ -198,10 +192,13 @@ build_luajit() {
 # other module
 # doc: https://openresty.org/en/download.html
 build() {
+    sudo apt-get update && \
+    sudo apt-get install build-essential zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev libxml2 \
+    libxml2-dev libxslt-dev -y
+
     # create nginx dir
     rm -rf ${installdir} && \
     mkdir -p ${installdir} && \
-    chmod -R 755 ${installdir} && \
     mkdir -p ${installdir}/thirdpart && \
     mkdir -p ${installdir}/init.d && \
     mkdir -p ${installdir}/tmp/client && \
@@ -271,6 +268,9 @@ build() {
     export LUAJIT_LIB="${installdir}/thirdpart/luajit/lib"
     export LUAJIT_INC="${installdir}/thirdpart/luajit/include/luajit-2.1"
 
+    ls -l $LUAJIT_LIB
+    ls -l $LUAJIT_INC
+
     ./configure \
     --user=www  \
     --group=www \
@@ -304,14 +304,15 @@ build() {
     --with-pcre=${workdir}/pcre \
     --with-openssl=${workdir}/openssl \
     --add-module=${workdir}/ngx_http_proxy_connect_module \
-    --with-ld-opt="-Wl,-rpath,$LUAJIT_LIB" \
     --add-module=${workdir}/ngx_devel_kit \
     --add-module=${workdir}/lua-nginx-module \
     --http-client-body-temp-path=${installdir}/tmp/client \
     --http-proxy-temp-path=${installdir}/tmp/proxy \
     --http-fastcgi-temp-path=${installdir}/tmp/fcgi \
     --http-uwsgi-temp-path=${installdir}/tmp/uwsgi \
-    --http-scgi-temp-path=${installdir}/tmp/scgi
+    --http-scgi-temp-path=${installdir}/tmp/scgi \
+    --with-cc-opt="-I$LUAJIT_INC" \
+    --with-ld-opt="-L$LUAJIT_LIB -Wl,--whole-archive -lluajit -Wl,--no-whole-archive"
 
     if [[ $? -ne 0 ]]; then
         log_error "configure fail"
@@ -681,7 +682,7 @@ Provides: github
 
 EOF
         # postinst
-read -r -d '' conf <<- 'EOF'
+    read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
 # user and group
@@ -749,7 +750,7 @@ EOF
     echo "TAR=nginx_${version}_amd64.tgz" >> ${GITHUB_ENV}
 }
 
-clean_file() {
+clean() {
     sudo rm -rf ${workdir}/nginx
     sudo rm -rf ${workdir}/nginx.tar.gz
     sudo rm -rf ${workdir}/openssl*
@@ -766,8 +767,6 @@ do_install(){
      if [[ $? -ne ${success} ]]; then
         return
      fi
-
-     insatll_depend
 
      download_openssl
      if [[ $? -ne ${success} ]]; then
@@ -819,7 +818,7 @@ do_install(){
         exit $?
      fi
 
-     clean_file
+     clean
 }
 
 do_install
