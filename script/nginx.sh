@@ -268,9 +268,6 @@ build() {
     export LUAJIT_LIB="${installdir}/thirdpart/luajit/lib"
     export LUAJIT_INC="${installdir}/thirdpart/luajit/include/luajit-2.1"
 
-    ls -l $LUAJIT_LIB
-    ls -l $LUAJIT_INC
-
     ./configure \
     --user=www  \
     --group=www \
@@ -311,8 +308,7 @@ build() {
     --http-fastcgi-temp-path=${installdir}/tmp/fcgi \
     --http-uwsgi-temp-path=${installdir}/tmp/uwsgi \
     --http-scgi-temp-path=${installdir}/tmp/scgi \
-    --with-cc-opt="-I$LUAJIT_INC" \
-    --with-ld-opt="-L$LUAJIT_LIB -Wl,--whole-archive -lluajit -Wl,--no-whole-archive"
+    --with-ld-opt="-Wl,-rpath,$LUAJIT_LIB"
 
     if [[ $? -ne 0 ]]; then
         log_error "configure fail"
