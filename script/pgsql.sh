@@ -7,8 +7,8 @@ declare -r version=${VERSION:=12.0}
 declare -r workdir=$(pwd)
 declare -r installdir=/opt/local/pgsql
 
-declare -r  success=0
-declare -r  failure=1
+declare -r success=0
+declare -r failure=1
 
 # log
 log_error(){
@@ -150,8 +150,7 @@ build() {
     fi
 
     # remove old directory
-    rm -rf ${installdir} && \
-    mkdir -p ${installdir}/conf
+    rm -rf ${installdir}
 
     # in workspace
     cd "$workdir/pgsql"
@@ -195,6 +194,8 @@ build() {
 }
 
 service() {
+    mkdir -p ${installdir}/conf
+
     read -r -d '' conf <<- 'EOF'
 [Unit]
 Description=PostgreSQL database server
@@ -221,7 +222,7 @@ package() {
     sudo rm -rf debian && mkdir -p debian/DEBIAN
 
     # control
-cat > debian/DEBIAN/control <<- EOF
+    cat > debian/DEBIAN/control <<- EOF
 Package: PgSQL
 Version: ${version}
 Description: PgSQL server deb package
@@ -236,7 +237,7 @@ Provides: github
 EOF
 
     # postinst
-read -r -d '' conf <<- 'EOF'
+    read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
 # user and group
@@ -273,7 +274,7 @@ EOF
     repl="$installdir"
     printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/postinst
 
-cat > debian/DEBIAN/prerm <<- 'EOF'
+    cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
 
 systemctl stop pgsql.service
@@ -281,7 +282,7 @@ EOF
 
 
     # postrm
-cat > debian/DEBIAN/postrm <<- EOF
+    cat > debian/DEBIAN/postrm <<- EOF
 #!/bin/bash
 
 rm -rf ${installdir}

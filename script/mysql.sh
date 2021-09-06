@@ -7,8 +7,8 @@ declare -r version=${VERSION:=5.7.34}
 declare -r workdir=$(pwd)
 declare -r installdir=/opt/local/mysql
 
-declare -r  success=0
-declare -r  failure=1
+declare -r success=0
+declare -r failure=1
 
 # log
 log_error(){
@@ -148,12 +148,7 @@ build() {
     fi
 
     # remove old directory
-    rm -rf ${installdir} && \
-    mkdir -p ${installdir}/mysql && \
-    mkdir -p ${installdir}/data && \
-    mkdir -p ${installdir}/logs && \
-    mkdir -p ${installdir}/tmp && \
-    mkdir -p ${installdir}/conf
+    rm -rf ${installdir}
 
     # in workspace
     cd "$workdir/mysql"
@@ -199,6 +194,11 @@ build() {
 }
 
 service() {
+    mkdir -p ${installdir}/data && \
+    mkdir -p ${installdir}/logs && \
+    mkdir -p ${installdir}/tmp && \
+    mkdir -p ${installdir}/conf
+
     read -r -d '' conf <<- 'EOF'
 [client]
     port=3306
@@ -331,7 +331,7 @@ EOF
     repl="$installdir"
     printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/postinst
 
-cat > debian/DEBIAN/prerm <<- 'EOF'
+    cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
 
 service mysqld stop
@@ -339,7 +339,7 @@ EOF
 
 
     # postrm
-cat > debian/DEBIAN/postrm <<- EOF
+    cat > debian/DEBIAN/postrm <<- EOF
 #!/bin/bash
 
 update-rc.d mysqld remove

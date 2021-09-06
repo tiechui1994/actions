@@ -123,10 +123,12 @@ download_redis() {
 }
 
 build() {
-    rm -rf ${installdir} && mkdir -p ${installdir}
+    rm -rf ${installdir}
+
+    cd ${workdir}/redis
 
     cpu=$(cat /proc/cpuinfo | grep 'processor' | wc -l)
-    cd ${workdir}/redis && make -j ${cpu}
+    make -j ${cpu}
     if [[ $? -ne 0 ]]; then
         log_error "build fail"
         return ${failure}
@@ -244,8 +246,8 @@ Provides: github
 
 EOF
 
-        # postinst
-read -r -d '' conf <<- 'EOF'
+    # postinst
+    read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
 # link file
@@ -275,7 +277,7 @@ EOF
 
 
     # postrm
-cat > debian/DEBIAN/postrm <<- EOF
+    cat > debian/DEBIAN/postrm <<- EOF
 #!/bin/bash
 
 update-rc.d redis remove
