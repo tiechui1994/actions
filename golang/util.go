@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -14,33 +15,29 @@ import (
 	"time"
 )
 
-type entry struct {
-	Name       string    `json:"name"`
-	Value      string    `json:"value"`
-	Domain     string    `json:"domain"`
-	Path       string    `json:"path"`
-	SameSite   string    `json:"samesite"`
-	Secure     bool      `json:"secure"`
-	HttpOnly   bool      `json:"httponly"`
-	Persistent bool      `json:"persistent"`
-	HostOnly   bool      `json:"host_only"`
-	Expires    time.Time `json:"expires"`
-	Creation   time.Time `json:"creation"`
-	LastAccess time.Time `json:"lastaccess"`
-	SeqNum     uint64    `json:"seqnum"`
-}
-
 var (
 	jar http.CookieJar
 )
 
 func init() {
 	jar, _ = cookiejar.New(nil)
+	resolver := net.Resolver{
+		PreferGo: false,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{
+				Timeout: time.Millisecond * time.Duration(10000),
+			}
+
+			conn, err := d.DialContext(ctx, network, "8.8.4.4:53")
+			return conn, err
+		},
+	}
 	http.DefaultClient = &http.Client{
 		Transport: &http.Transport{
 			DialContext: (&net.Dialer{
 				Timeout:   30 * time.Second, //设置建立连接超时
 				KeepAlive: 0,
+				Resolver:  &resolver,
 			}).DialContext,
 			DisableKeepAlives: true,
 			TLSClientConfig: &tls.Config{
