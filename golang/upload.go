@@ -132,7 +132,13 @@ func handleUpload(token aliyun.Token, dir, filename string) {
 
 func Get() (token aliyun.Token, err error) {
 	u := "https://jobs.tiechui1994.tk/api/aliyun?response_type=refresh_token&key=yunpan"
+	retry := 0
+tryagin:
 	raw, err := GET(u, nil)
+	if _, ok := err.(CodeError); ok && retry < 4 {
+		retry += 1
+		goto tryagin
+	}
 	if err != nil {
 		return token, err
 	}
