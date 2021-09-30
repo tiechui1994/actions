@@ -62,17 +62,24 @@ download() {
 
     # decompress file
     if [[ -f "$name" ]]; then
-        if [[ ${decompress} && ${extends[$extend]} && $(file -i "$name") =~ ${extends[$extend]} ]]; then
-            rm -rf ${filename} && mkdir ${filename}
-            tar -xf ${name} -C ${filename} --strip-components 1
-            if [[ $? -ne 0 ]]; then
-                log_error "$name decopress failed"
-                rm -rf ${filename} && rm -rf ${name}
-                return ${failure}
+        if [[ ${decompress} && ${extends[$extend]} ]]; then
+            if [[ $(file -i "$name") =~ ${extends[$extend]} ]]; then
+                rm -rf ${filename} && mkdir ${filename}
+                tar -xf ${name} -C ${filename} --strip-components 1
+                if [[ $? -ne 0 ]]; then
+                    log_error "$name decopress failed"
+                    rm -rf ${filename} && rm -rf ${name}
+                    return ${failure}
+                fi
+
+                return ${success} # success
             fi
+
+            log_error "download file $name is invalid"
+            return ${failure}
         fi
 
-        return ${success} #2
+        return ${success} # success
     fi
 
     # download
@@ -95,18 +102,25 @@ download() {
     log_info "success to download $name"
 
     # uncompress file
-    if [[ ${decompress} && ${extends[$extend]} && $(file -i "$name") =~ ${extends[$extend]} ]]; then
-        rm -rf ${filename} && mkdir ${filename}
-        tar -xf ${name} -C ${filename} --strip-components 1
-        if [[ $? -ne 0 ]]; then
-            log_error "$name decopress failed"
-            rm -rf ${filename} && rm -rf ${name}
-            return ${failure}
+    if [[ ${decompress} && ${extends[$extend]} ]]; then
+        if [[ $(file -i "$name") =~ ${extends[$extend]} ]]; then
+            rm -rf ${filename} && mkdir ${filename}
+            tar -xf ${name} -C ${filename} --strip-components 1
+            if [[ $? -ne 0 ]]; then
+                log_error "$name decopress failed"
+                rm -rf ${filename} && rm -rf ${name}
+                return ${failure}
+             fi
+
+            log_info "success to decompress $name"
+            return ${success} # success
         fi
 
-        log_info "success to decompress $name"
-        return ${success} #2
+        log_error "download file $name is invalid"
+        return ${failure}
     fi
+
+    return ${success} # success
 }
 
 download ${name} ${url} curl
