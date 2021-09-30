@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/tiechui1994/tool/aliyun"
+	"github.com/tiechui1994/tool/util"
 )
 
 /*
@@ -88,41 +89,31 @@ func handleUpload(token aliyun.Token, dir, filename string) {
 		os.Exit(1)
 	}
 
-	var dirinfo aliyun.File
+	var dirFile aliyun.File
 	var exist bool
 	for _, v := range files {
 		if v.Name == dir {
 			exist = true
-			dirinfo = v
+			dirFile = v
 			break
 		}
 	}
 	if !exist {
-		err = aliyun.CreateDirectory(dir, "root", token)
+		upload, err := aliyun.CreateDirectory(dir, "root", token)
 		if err != nil {
 			fmt.Println("CreateDirectory:", err)
 			return
 		}
-		files, err = aliyun.Files("root", token)
-		if err != nil {
-			fmt.Println("Files:", err)
-			return
-		}
-		for _, v := range files {
-			if v.Name == dir {
-				dirinfo = v
-				break
-			}
-		}
+		dirFile.FileID = upload.FileID
 	}
 
-	_, err = aliyun.UploadFile(filename, dirinfo.FileID, token)
+	_, err = aliyun.UploadFile(filename, dirFile.FileID, token)
 	if err != nil {
 		fmt.Println("UploadFile:", err)
 		os.Exit(1)
 	}
 
-	_, err = aliyun.UploadFile(filename+".SHA1", dirinfo.FileID, token)
+	_, err = aliyun.UploadFile(filename+".SHA1", dirFile.FileID, token)
 	if err != nil {
 		fmt.Println("UploadFile:", err, filename+".SHA1")
 	}
@@ -134,8 +125,8 @@ func Get() (token aliyun.Token, err error) {
 	u := "https://jobs.tiechui1994.tk/api/aliyun?response_type=refresh_token&key=yunpan"
 	retry := 0
 tryagin:
-	raw, err := GET(u, nil)
-	if _, ok := err.(CodeError); ok && retry < 4 {
+	raw, err := util.GET(u, nil)
+	if _, ok := err.(util.CodeError); ok && retry < 4 {
 		retry += 1
 		goto tryagin
 	}

@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"time"
+
+	"github.com/tiechui1994/tool/util"
 )
 
 /*
@@ -54,7 +56,7 @@ func login(email, passwd string) error {
 		"content-type": "application/x-www-form-urlencoded",
 	}
 
-	raw, err := POST(u, value.Encode(), header)
+	raw, err := util.POST(u, value.Encode(), header)
 	var result struct {
 		Ret int    `json:"ret"`
 		Msg string `json:"msg"`
@@ -76,7 +78,7 @@ func sign() error {
 	header := map[string]string{
 		"accept": "application/json, text/javascript",
 	}
-	raw, err := POST(u, "", header)
+	raw, err := util.POST(u, "", header)
 	var result struct {
 		Ret int    `json:"ret"`
 		Msg string `json:"msg"`

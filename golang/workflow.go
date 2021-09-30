@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tiechui1994/tool/util"
 )
 
 func main() {
@@ -73,7 +75,7 @@ func Runs(repo string, page, pagesize int, token string) (list []RunInfo, err er
 		"authorization": "token " + token,
 	}
 
-	raw, err := GET(u, header)
+	raw, err := util.GET(u, header)
 	if err != nil {
 		return list, err
 	}
@@ -109,6 +111,6 @@ func DeleteRun(repo string, runid int, token string) error {
 		"authorization": "token " + token,
 	}
 
-	_, err := DELETE(u, header)
+	_, err := util.DELETE(u, header)
 	return err
 }
