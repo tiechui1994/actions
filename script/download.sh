@@ -60,7 +60,7 @@ download() {
          filename="${temp%%.*}"
     fi
 
-    # uncompress file
+    # decompress file
     if [[ -f "$name" ]]; then
         if [[ ${decompress} && ${extends[$extend]} && $(file -i "$name") =~ ${extends[$extend]} ]]; then
             rm -rf ${filename} && mkdir ${filename}
@@ -104,6 +104,7 @@ download() {
             return ${failure}
         fi
 
+        log_info "success to decompress $name"
         return ${success} #2
     fi
 }
