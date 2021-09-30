@@ -52,7 +52,7 @@ download() {
          filename="${temp%%.*}"
     fi
 
-    # uncompress file
+    # decompress file
     if [[ -f "$name" ]]; then
         if [[ ${decompress} && ${extends[$extend]} && $(file -i "$name") =~ ${extends[$extend]} ]]; then
             rm -rf ${filename} && mkdir ${filename}
@@ -96,6 +96,7 @@ download() {
             return ${failure}
         fi
 
+        log_info "success to decompress $name"
         return ${success} #2
     fi
 }
@@ -127,8 +128,8 @@ download_mysql() {
 }
 
 download_boost(){
-    url="https://codeload.github.com/boostorg/boost/tar.gz/boost-1.59.0"
-    #url="https://codeload.github.com/boostorg/boost/tar.gz/boost-1.61.0"
+    url="https://udomain.dl.sourceforge.net/project/boost/boost/1.61.0/boost_1_61_0.tar.gz"
+    url="https://udomain.dl.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.gz"
     download "boost.tar.gz" ${url} axel 1
     if [[ $? -eq ${success} ]]; then
         mv "$workdir/boost" "$workdir/mysql/boost"
