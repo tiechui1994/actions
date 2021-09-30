@@ -1,4 +1,4 @@
-UTIL=util.go
+UTIL=
 LDFLAGS=-mod=readonly
 
 upload:clean verify
