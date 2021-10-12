@@ -174,7 +174,6 @@ build() {
     ./configure \
     --prefix=${installdir} \
     --enable-debug \
-    --enable-profiling \
     --with-pam \
     --with-openssl \
     --with-systemd \
