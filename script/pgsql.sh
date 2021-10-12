@@ -265,14 +265,13 @@ fi
 
 # data
 rm -rf $installdir/data && mkdir -p $installdir/data
-chmod -R 755 $installdir
+chmod -R 775 $installdir
 chown -R postgres:postgres $installdir
 
 # init db
-$installdir/bin/initdb --pgdata=$installdir/data \
-     --auth-host=127.0.0.1:5432 \
+sudo -u postgres $installdir/bin/initdb --pgdata=$installdir/data \
      --encoding=UTF8 \
-     --locale=Asia/Shanghai \
+     --locale=en_US.UTF-8 \
      --username=postgres \
      --pwprompt
 
@@ -300,10 +299,9 @@ EOF
     cat > debian/DEBIAN/postrm <<- EOF
 #!/bin/bash
 
-rm -rf ${installdir}
-
-groupdel -f postgres
-userdel -f -r postgres
+if [[ -d ${installdir} ]]; then
+    rm -rf ${installdir}
+fi
 EOF
 
     # chmod
