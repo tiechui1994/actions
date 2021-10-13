@@ -250,6 +250,19 @@ Provides: github
 
 EOF
 
+     # postinst
+    read -r -d '' conf <<- 'EOF'
+#!/bin/bash
+
+if [[ -d ${installdir} ]]; then
+    rm -rf ${installdir}
+fi
+EOF
+
+    regex='$installdir'
+    repl="$installdir"
+    printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/preinst
+
     # postinst
     read -r -d '' conf <<- 'EOF'
 #!/bin/bash
@@ -304,6 +317,7 @@ fi
 EOF
 
     # chmod
+    sudo chmod a+x debian/DEBIAN/preinst
     sudo chmod a+x debian/DEBIAN/postinst
     sudo chmod a+x debian/DEBIAN/postrm
     sudo chmod a+x debian/DEBIAN/prerm
