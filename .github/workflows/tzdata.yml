@@ -4,8 +4,8 @@ on:
     branches: master
 
 jobs:
-  cctv2:
-    runs-on: ubuntu-20.04
+  tzdata:
+    runs-on: ubuntu-18.04
 
     steps:
     - name: Checkout
