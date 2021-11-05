@@ -90,6 +90,9 @@ func match(str string, r []*regexp.Regexp) bool {
 
 func (e *Email) Login() error {
 	var err error
+	var retry uint
+
+again:
 	e.client, err = imap.DialTLS("imap.qq.com:993", &tls.Config{
 		ServerName: "imap.qq.com",
 	})
@@ -98,6 +101,12 @@ func (e *Email) Login() error {
 	}
 
 	_, err = e.client.Login(e.Username, e.Password)
+	if err != nil && strings.Contains(err.Error(), "try agai") && retry < 3 {
+		time.Sleep(time.Duration(1<<retry) * time.Second)
+		retry += 1
+		goto again
+	}
+
 	if err != nil {
 		return err
 	}
@@ -643,7 +652,7 @@ func main() {
 	err := json.Unmarshal([]byte(cfg), &configs)
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	e := Email{
@@ -654,7 +663,7 @@ func main() {
 	err = e.Login()
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		os.Exit(0)
 	}
 	e.Handle(configs)
 }
