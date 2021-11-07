@@ -652,7 +652,7 @@ func main() {
 	err := json.Unmarshal([]byte(cfg), &configs)
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(0)
+		os.Exit(1)
 	}
 
 	e := Email{
@@ -663,7 +663,7 @@ func main() {
 	err = e.Login()
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(0)
+		os.Exit(1)
 	}
 	e.Handle(configs)
 }
