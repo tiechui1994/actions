@@ -2,10 +2,11 @@
 
 TOKEN=$1
 VERSION=$2
+INSTALL=$3
 
 declare -r version=${VERSION:=5.0.0}
 declare -r workdir=$(pwd)
-declare -r installdir=/opt/local/redis
+declare -r installdir=${INSTALL:=/opt/local/redis}
 
 declare -r success=0
 declare -r failure=1
