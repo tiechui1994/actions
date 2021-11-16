@@ -151,6 +151,7 @@ download_openssl() {
 
 download_pcre() {
     url="https://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz"
+    url="https://nchc.dl.sourceforge.net/project/pcre/pcre/8.44/pcre-8.44.tar.gz"
     download "pcre.tar.gz" "$url" curl 1
     return $?
 }
