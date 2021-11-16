@@ -6,6 +6,10 @@ on:
         description: 'pgsql version'
         required: true
         default: ''
+      install:
+        description: 'pgsql install dir'
+        required: false
+        default: '/opt/local/pgsql'
 
 jobs:
   pgsql:
@@ -21,7 +25,7 @@ jobs:
       id: build
       timeout-minutes: 60
       run: |
-        bash script/pgsql.sh ${{ secrets.GIT_TOKEN }} ${{github.event.inputs.version}}
+        bash script/pgsql.sh ${{ secrets.GIT_TOKEN }} ${{github.event.inputs.version}} ${{github.event.inputs.install}}
       shell: bash
 
     - name: Release
@@ -34,5 +38,5 @@ jobs:
         asset_name: ${{env.DEB}}
         tag: ${{env.TAG}}
         overwrite: true
-        body: "release ${{env.TAG}}"
+        body: "release ${{env.TAG}} install in ${{github.event.inputs.install}}"
         file_glob: true
