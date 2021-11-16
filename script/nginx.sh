@@ -166,7 +166,7 @@ download_zlib() {
 # https proxy
 # doc: https://github.com/chobits/ngx_http_proxy_connect_module
 download_proxy_connect() {
-    url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.1"
+    url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.2"
     download "ngx_http_proxy_connect_module.tar.gz" "$url" curl 1
     return $?
 }
