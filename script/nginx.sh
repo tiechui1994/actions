@@ -191,10 +191,17 @@ donwnload_nginx_lua() {
     return $?
 }
 
-# nginx rtmp
+# nginx rtmp, 实时流推送
 download_rtmp() {
     url="https://codeload.github.com/arut/nginx-rtmp-module/tar.gz/v1.2.2"
     download "nginx-rtmp-module.tar.gz" "$url" curl 1
+    return $?
+}
+
+# nginx flv, http flv 格式实时流, 该模块是在 nginx-rtmp-module 基础上修改的.
+download_flv() {
+    url="https://codeload.github.com/winshining/nginx-http-flv-module/tar.gz/v1.2.9"
+    download "nginx-http-flv-module.tar.gz" "$url" curl 1
     return $?
 }
 
@@ -251,8 +258,8 @@ build() {
     #   ngx_http_geoip_module  可以用于IP访问限制
     #   ngx_http_sub_module  允许用一些其他文本替换nginx响应中的一些文本
     #   ngx_http_dav_module  增加PUT,DELETE,MKCOL(创建集合),COPY和MOVE方法
-    #   ngx_http_flv_module  提供寻求内存使用基于时间的偏移量文件(流媒体点播)
-    #   ngx_http_mp4_module
+    #   ngx_http_flv_module  flv(流媒体点播)
+    #   ngx_http_mp4_module  mp4(流媒体点播)
     #   ngx_http_gunzip_module
     #   ngx_http_gzip_static_module  在线实时压缩输出数据流
     #   ngx_http_auth_request_module 第三方auth支持
@@ -327,7 +334,7 @@ build() {
     --add-module=${workdir}/ngx_http_proxy_connect_module \
     --add-module=${workdir}/ngx_devel_kit \
     --add-module=${workdir}/lua-nginx-module \
-    --add-module=${workdir}/nginx-rtmp-module \
+    --add-module=${workdir}/nginx-http-flv-module \
     --http-client-body-temp-path=${installdir}/tmp/client \
     --http-proxy-temp-path=${installdir}/tmp/proxy \
     --http-fastcgi-temp-path=${installdir}/tmp/fcgi \
@@ -814,7 +821,7 @@ do_install(){
         exit $?
      fi
 
-     download_rtmp
+     download_flv
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
