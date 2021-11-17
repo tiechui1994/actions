@@ -191,6 +191,13 @@ donwnload_nginx_lua() {
     return $?
 }
 
+# nginx rtmp
+download_rtmp() {
+    url="https://codeload.github.com/arut/nginx-rtmp-module/tar.gz/v1.2.2"
+    download "nginx-rtmp-module.tar.gz" "$url" curl 1
+    return $?
+}
+
 build_luajit() {
     cd ${workdir}/luajit && make
     if [[ $? -ne 0 ]]; then
@@ -320,6 +327,7 @@ build() {
     --add-module=${workdir}/ngx_http_proxy_connect_module \
     --add-module=${workdir}/ngx_devel_kit \
     --add-module=${workdir}/lua-nginx-module \
+    --add-module=${workdir}/nginx-rtmp-module \
     --http-client-body-temp-path=${installdir}/tmp/client \
     --http-proxy-temp-path=${installdir}/tmp/proxy \
     --http-fastcgi-temp-path=${installdir}/tmp/fcgi \
@@ -802,6 +810,11 @@ do_install(){
      fi
 
      donwnload_nginx_lua
+     if [[ $? -ne ${success} ]]; then
+        exit $?
+     fi
+
+     download_rtmp
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
