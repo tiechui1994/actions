@@ -31,6 +31,11 @@ log_info() {
     echo -e "$green$msg$reset"
 }
 
+init() {
+    apt-get update
+    apt-get install -y g++ build-essential sudo curl make gcc file tar patch
+}
+
 download() {
     name=$1
     url=$2
@@ -792,6 +797,8 @@ clean() {
 }
 
 do_install(){
+     init
+
      check
      if [[ $? -ne ${success} ]]; then
         return
