@@ -159,6 +159,7 @@ download_pcre() {
 
 download_zlib() {
     url="http://www.zlib.net/fossils/zlib-1.2.11.tar.gz"
+    url="https://codeload.github.com/madler/zlib/tar.gz/refs/tags/v1.2.11"
     download "zlib.tar.gz" "$url" curl 1
     return $?
 }
