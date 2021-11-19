@@ -1,8 +1,9 @@
 #!/bin/bash
 
-TOKEN=$1
-VERSION=$2
-INSTALL=$3
+VERSION=$1
+INSTALL=$2
+INIT=$3
+NAME=$4
 
 declare -r version=${VERSION:=5.0.0}
 declare -r workdir=$(pwd)
@@ -116,20 +117,11 @@ download() {
     return ${success} # success
 }
 
-check() {
-    sudo apt-get update && \
-    sudo apt-get install jq -y
-    url=https://api.github.com/repos/tiechui1994/jobs/releases/tags/redis_${version}
-    result=$(curl -H "Accept: application/vnd.github.v3+json" \
-                  -H "Authorization: token ${TOKEN}" ${url})
-    log_info "result: $(echo ${result} | jq .)"
-    message=$(echo ${result} | jq .message)
-    log_info "message: ${message}"
-    if [[ ${message} = '"Not Found"' ]]; then
-        return ${success}
-    fi
-
-    return ${failure}
+init() {
+    apt-get update
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=Asia/Shanghai
+    apt-get install -y build-essential g++ sudo curl make gcc file tar patch openssl tzdata
 }
 
 download_redis() {
@@ -155,6 +147,10 @@ build() {
         log_error "install failed"
         return ${failure}
     fi
+
+    log_info "build redis success"
+    log_info "redis-server info:$(ldd ${installdir}/bin/redis-server)"
+    log_info "redis-cli info:$(ldd ${installdir}/bin/redis-cli)"
 }
 
 service() {
@@ -316,28 +312,20 @@ EOF
 
     # deb
     sudo dpkg-deb --build debian
-    sudo mv debian.deb ${GITHUB_WORKSPACE}/redis_${version}_amd64.deb
-    echo "TAG=redis_${version}" >> ${GITHUB_ENV}
-    echo "DEB=redis_${version}_amd64.deb" >> ${GITHUB_ENV}
-
-    # tgz
-    rm -rf binary && mkdir -p binary
-    sudo cp -r ${installdir}/bin/* binary
-    sudo cp -r ${installdir}/conf/*.conf binary
-    tar cvf redis_${version}_amd64.tgz binary
-    sudo mv redis_${version}_amd64.tgz ${GITHUB_WORKSPACE}/redis_${version}_amd64.tgz
-    echo "TAR=redis_${version}.tgz"
+    if [[ -z ${NAME} ]]; then
+        NAME=redis_${version}_ubuntu_$(lsb_release -r --short)_$(uname -m).deb
+    fi
+    sudo mv debian.deb ${workdir}/${NAME}
 }
 
-clean_file(){
+clean(){
     sudo rm -rf ${workdir}/redis
     sudo rm -rf ${workdir}/redis.tar.gz
 }
 
 do_install() {
-    check
-    if [[ $? -ne ${success} ]]; then
-        return
+    if [[ ${INIT} ]]; then
+       init
     fi
 
     download_redis
@@ -360,7 +348,7 @@ do_install() {
         return
     fi
 
-    clean_file
+    clean
 }
 
 do_install
