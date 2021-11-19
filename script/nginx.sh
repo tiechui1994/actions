@@ -3,6 +3,7 @@
 TOKEN=$1
 VERSION=$2
 INSTALL=$3
+INIT=$4
 
 declare -r version=${VERSION:=1.15.8}
 declare -r workdir=$(pwd)
@@ -777,8 +778,11 @@ EOF
 
     # deb
     sudo dpkg-deb --build debian
-    sudo mv debian.deb ${GITHUB_WORKSPACE}/nginx_${version}_amd64.deb
-    sudo mv nginx.tar.gz ${GITHUB_WORKSPACE}/nginx_${version}_amd64.tgz
+    sudo mv debian.deb ${workdir}/nginx_${version}_ubuntu_$(lsb_release -r --short)_$(uname -m).deb
+    sudo mv nginx.tar.gz ${workdir}/nginx_${version}_amd64.tgz
+    if [[ ! ${GITHUB_ENV} ]]; then
+        GITHUB_ENV=${workdir}/env
+    fi
     echo "TAG=nginx_${version}" >> ${GITHUB_ENV}
     echo "DEB=nginx_${version}_amd64.deb" >> ${GITHUB_ENV}
     echo "TAR=nginx_${version}_amd64.tgz" >> ${GITHUB_ENV}
@@ -794,10 +798,14 @@ clean() {
     sudo rm -rf ${workdir}/lua-nginx-module*
     sudo rm -rf ${workdir}/ngx_devel_kit*
     sudo rm -rf ${workdir}/ngx_http_proxy_connect_module*
+    sudo rm -rf ${workdir}/nginx-http-flv-module*
+    sudo rm -rf ${workdir}/nginx-rtmp-module*
 }
 
 do_install(){
-     init
+     if [[ ${INIT} ]]; then
+        init
+     fi
 
      check
      if [[ $? -ne ${success} ]]; then
