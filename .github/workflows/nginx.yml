@@ -70,6 +70,8 @@ jobs:
   release:
     needs: [build]
     runs-on: ubuntu-18.04
+    outputs:
+      count: ${{ steps.files.outputs.count }}
 
     steps:
     - name: Checkout
@@ -95,7 +97,7 @@ jobs:
       id: files
       run: |
         echo ${PWD}
-        echo "::count::$(ls|grep nginx_${{github.event.inputs.version}}|wc -l)"
+        echo "::set-output name=count::$(ls|grep nginx_${{github.event.inputs.version}}|wc -l)"
         ls -Al .
 
     - name: Release

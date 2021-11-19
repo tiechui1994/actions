@@ -36,11 +36,11 @@ check() {
     message=$(echo ${result} | jq .message)
     log_info "message: ${message}"
     if [[ ${message} = '"Not Found"' ]]; then
-        echo "::needbuild::${success}"
+        echo "::set-output name=needbuild::${success}"
         return
     fi
 
-    echo "::needbuild::${failure}"
+    echo "::set-output name=needbuild::${failure}"
 }
 
 check
