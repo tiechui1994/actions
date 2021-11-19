@@ -14,6 +14,10 @@ on:
 jobs:
   nginx:
     runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        platform: [linux/amd64]
+        os: [16.04, 18.04]
     steps:
     - name: Checkout
       timeout-minutes: 1
@@ -26,12 +30,12 @@ jobs:
       with:
         install: true
 
-    - name: Build
+    - name: Build with ubuntu_${{matrix.os}} ${{matrix.platform}}
       id: build
       timeout-minutes: 10
       run: |
-        docker run -v ${PWD}:/app --platform linux/amd64 ubuntu:16.04 \
-        bash /app/script/nginx.sh ${{ secrets.GIT_TOKEN }} ${{github.event.inputs.version}} ${{github.event.inputs.install}}
+        docker run -v ${PWD}:/app --platform ${{matrix.platform}} ubuntu:${{matrix.os}} \
+        bash /app/script/nginx.sh ${{secrets.GIT_TOKEN}} ${{github.event.inputs.version}} ${{github.event.inputs.install}} 1
       shell: bash
 
 #    - name: Release
