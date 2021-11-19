@@ -1,9 +1,9 @@
 #!/bin/bash
 
-TOKEN=$1
-VERSION=$2
-INSTALL=$3
-INIT=$4
+VERSION=$1
+INSTALL=$2
+INIT=$3
+NAME=$4
 
 declare -r version=${VERSION:=1.15.8}
 declare -r workdir=$(pwd)
@@ -34,7 +34,9 @@ log_info() {
 
 init() {
     apt-get update
-    apt-get install -y g++ build-essential sudo curl make gcc file tar patch
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=Asia/Shanghai
+    apt-get install -y build-essential g++ sudo curl make gcc file tar patch openssl tzdata
 }
 
 download() {
@@ -120,22 +122,6 @@ download() {
     fi
 
     return ${success} # success
-}
-
-check() {
-    sudo apt-get update && \
-    sudo apt-get install jq -y
-    url=https://api.github.com/repos/tiechui1994/jobs/releases/tags/nginx_${version}
-    result=$(curl -H "Accept: application/vnd.github.v3+json" \
-                  -H "Authorization: token ${TOKEN}" ${url})
-    log_info "result: $(echo ${result} | jq .)"
-    message=$(echo ${result} | jq .message)
-    log_info "message: ${message}"
-    if [[ ${message} = '"Not Found"' ]]; then
-        return ${success}
-    fi
-
-    return ${failure}
 }
 
 download_nginx() {
@@ -231,8 +217,8 @@ build_luajit() {
 # doc: https://openresty.org/en/download.html
 build() {
     sudo apt-get update && \
-    sudo apt-get install build-essential zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev libxml2 \
-    libxml2-dev libxslt-dev -y
+    sudo apt-get install build-essential \
+        zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev libxml2 libxml2-dev libxslt-dev -y
 
     # create nginx dir
     rm -rf ${installdir} && \
@@ -778,14 +764,10 @@ EOF
 
     # deb
     sudo dpkg-deb --build debian
-    sudo mv debian.deb ${workdir}/nginx_${version}_ubuntu_$(lsb_release -r --short)_$(uname -m).deb
-    sudo mv nginx.tar.gz ${workdir}/nginx_${version}_amd64.tgz
-    if [[ ! ${GITHUB_ENV} ]]; then
-        GITHUB_ENV=${workdir}/env
+    if [[ -z ${NAME} ]]; then
+        NAME=nginx_${version}_ubuntu_$(lsb_release -r --short)_$(uname -m).deb
     fi
-    echo "TAG=nginx_${version}" >> ${GITHUB_ENV}
-    echo "DEB=nginx_${version}_amd64.deb" >> ${GITHUB_ENV}
-    echo "TAR=nginx_${version}_amd64.tgz" >> ${GITHUB_ENV}
+    sudo mv debian.deb ${workdir}/${NAME}
 }
 
 clean() {
@@ -805,11 +787,6 @@ clean() {
 do_install(){
      if [[ ${INIT} ]]; then
         init
-     fi
-
-     check
-     if [[ $? -ne ${success} ]]; then
-        return
      fi
 
      download_openssl
