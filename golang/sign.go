@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/tiechui1994/tool/util"
@@ -25,6 +26,10 @@ func main() {
 		os.Exit(1)
 	}
 	err := login(*email, *passwd)
+	if err != nil && strings.Contains(err.Error(), "邮箱不存在") {
+		fmt.Println("user not exist !!!")
+		return
+	}
 	if err != nil {
 		fmt.Println("login err:", err)
 		os.Exit(1)
