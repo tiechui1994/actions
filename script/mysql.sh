@@ -149,7 +149,7 @@ download_boost(){
 build() {
     # depend
     sudo apt-get update && \
-    sudo apt-get install cmake build-essential libncurses5-dev bison libssl-dev -y
+    sudo apt-get install cmake build-essential libncurses5-dev bison libssl-dev pkg-config -y
     if [[ $? -ne 0 ]]; then
         log_error "install depency fail"
         return ${failure}
