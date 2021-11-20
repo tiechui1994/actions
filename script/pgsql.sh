@@ -1,8 +1,9 @@
 #!/bin/bash
 
-TOKEN=$1
-VERSION=$2
-INSTALL=$3
+VERSION=$1
+INSTALL=$2
+INIT=$3
+NAME=$4
 
 declare -r version=${VERSION:=12.0}
 declare -r workdir=$(pwd)
@@ -29,6 +30,13 @@ log_info() {
     reset="\033[0m"
     msg="[I] $@"
     echo -e "$green$msg$reset"
+}
+
+init() {
+    apt-get update
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=Asia/Shanghai
+    apt-get install -y build-essential g++ sudo curl make gcc file tar patch openssl tzdata
 }
 
 download() {
@@ -116,22 +124,6 @@ download() {
     return ${success} # success
 }
 
-check() {
-    sudo apt-get update && \
-    sudo apt-get install jq -y
-    url=https://api.github.com/repos/tiechui1994/jobs/releases/tags/pgsql_${version}
-    result=$(curl -H "Accept: application/vnd.github.v3+json" \
-                  -H "Authorization: token ${TOKEN}" ${url})
-    log_info "result: $(echo ${result} | jq .)"
-    message=$(echo ${result} | jq .message)
-    log_info "message: ${message}"
-    if [[ ${message} = '"Not Found"' ]]; then
-        return ${success}
-    fi
-
-    return ${failure}
-}
-
 download_pgsql() {
     url="https://ftp.postgresql.org/pub/source/v$version/postgresql-$version.tar.gz"
     download "pgsql.tar.gz" ${url} curl 1
@@ -151,9 +143,19 @@ download_openssl() {
     return $?
 }
 
+download_zlib() {
+    url="http://www.zlib.net/fossils/zlib-1.2.11.tar.gz"
+    url="https://codeload.github.com/madler/zlib/tar.gz/refs/tags/v1.2.11"
+    download "zlib.tar.gz" "$url" curl 1
+    return $?
+}
+
 build_denpend() {
      cd "$workdir/openssl"
      ./config --prefix=/tmp/openssl '-fPIC' && make && make install
+
+      cd "$workdir/zlib"
+     ./configure --prefix=/tmp/zlib && make && make install
 }
 
 build() {
@@ -178,8 +180,8 @@ build() {
     --with-pam \
     --with-openssl \
     --with-systemd \
-    CFLAGS="-I/tmp/openssl/include" \
-    LDFLAGS="-Bstatic -lssl -lpam -lcrypto -L/tmp/openssl/lib"
+    CFLAGS="-I/tmp/openssl/include -I/tmp/zlib/include" \
+    LDFLAGS="-Bstatic -lssl -lpam -lcrypto -L/tmp/openssl/lib -L/tmp/zlib/lib"
     if [[ $? -ne 0 ]]; then
         log_error "configure fail, plaease check and try again.."
         return ${failure}
@@ -200,10 +202,10 @@ build() {
     fi
 
     # service script
-    for x in $(ls /opt/local/pgsql/bin);
+    log_info "build pgsql success"
+    for i in $(ls "$installdir/bin");
     do
-        log_info "/opt/local/pgsql/bin/$x"
-        ldd "/opt/local/pgsql/bin/$x"
+        log_info "$installdir/bin/$i:"$(ldd "$installdir/bin/$i")
         log_info
     done
 }
@@ -330,22 +332,20 @@ EOF
 
     # deb
     sudo dpkg-deb --build debian
-    sudo mv debian.deb ${GITHUB_WORKSPACE}/pgsql_${version}_amd64.deb
-    sudo mv pgsql.tar.gz ${GITHUB_WORKSPACE}/pgsql_${version}_amd64.tgz
-    echo "TAG=pgsql_${version}" >> ${GITHUB_ENV}
-    echo "DEB=pgsql_${version}_amd64.deb" >> ${GITHUB_ENV}
-    echo "TAR=pgsql_${version}_amd64.tgz" >> ${GITHUB_ENV}
+    if [[ -z ${NAME} ]]; then
+        NAME=pgsql_${version}_ubuntu_$(lsb_release -r --short)_$(uname -m).deb
+    fi
+    sudo mv debian.deb ${workdir}/${NAME}
 }
 
-clean_file(){
+clean(){
     sudo rm -rf ${workdir}/pgsql
     sudo rm -rf ${workdir}/pgsql.tar.gz
 }
 
 do_install() {
-    check
-    if [[ $? -ne ${success} ]]; then
-        return
+    if [[ ${INIT} ]]; then
+        init
     fi
 
     download_pgsql
@@ -353,7 +353,7 @@ do_install() {
         exit $?
     fi
 
-    download_openssl
+    download_openssl && download_zlib
     if [[ $? -ne ${success} ]]; then
         exit $?
     fi
@@ -378,7 +378,7 @@ do_install() {
         exit $?
     fi
 
-    clean_file
+    clean
 }
 
 do_install

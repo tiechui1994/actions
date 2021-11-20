@@ -1,8 +1,9 @@
 #!/bin/bash
 
-TOKEN=$1
-VERSION=$2
-INSTALL=$3
+VERSION=$1
+INSTALL=$2
+INIT=$3
+NAME=$4
 
 declare -r version=${VERSION:=5.7.34}
 declare -r workdir=$(pwd)
@@ -116,27 +117,18 @@ download() {
     return ${success} # success
 }
 
-check() {
-    sudo apt-get update && \
-    sudo apt-get install jq -y
-    url=https://api.github.com/repos/tiechui1994/jobs/releases/tags/mysql_${version}
-    result=$(curl -H "Accept: application/vnd.github.v3+json" \
-                  -H "Authorization: token ${TOKEN}" ${url})
-    log_info "result: $(echo ${result} | jq .)"
-    message=$(echo ${result} | jq .message)
-    log_info "message: ${message}"
-    if [[ ${message} = '"Not Found"' ]]; then
-        return ${success}
-    fi
-
-    return ${failure}
+init() {
+    apt-get update
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=Asia/Shanghai
+    apt-get install -y build-essential g++ sudo curl make gcc file tar patch openssl tzdata
 }
 
 download_mysql() {
     # tencent, mirrorservice, mysql(https://downloads.mysql.com/archives/community)
     url="https://mirrors.cloud.tencent.com/mysql/downloads/MySQL-5.7/mysql-$version.tar.gz"
     url="https://www.mirrorservice.org/sites/ftp.mysql.com/Downloads/MySQL-5.7/mysql-$version.tar.gz"
-    url="https://cdn.mysql.com/archives/mysql-5.7/mysql-$version-linux-glibc2.12-x86_64.tar.gz"
+    url="https://cdn.mysql.com/archives/mysql-5.7/mysql-$version.tar.gz"
     download "mysql.tar.gz" ${url} axel 1
 
     return $?
@@ -205,8 +197,15 @@ build() {
     fi
 
     # service script
-    cp ${installdir}/mysql/support-files/mysql.server ${installdir}/conf/mysqld
-    chmod a+x ${installdir}/conf/mysqld
+    mkdir -p ${installdir}/init.d
+    cp ${installdir}/mysql/support-files/mysql.server ${installdir}/init.d/mysqld
+    chmod a+x ${installdir}/init.d/mysqld
+
+
+    log_info "build mysql success"
+    log_info "mysqld info:$(ldd ${installdir}/mysql/bin/mysqld)"
+    log_info "mysql info:$(ldd ${installdir}/mysql/bin/mysql)"
+    log_info "mysqldump ingo: $(ldd ${installdir}/mysql/bin/mysqldump)"
 }
 
 service() {
@@ -298,7 +297,7 @@ mkdir -p /usr/local/share/man/man1
 mkdir -p /usr/local/share/man/man8
 ln -sf $installdir/mysql/mysql/man/man1/* /usr/local/share/man/man1
 ln -sf $installdir/mysql/mysql/man/man8/* /usr/local/share/man/man8
-ln -sf $installdir/conf/mysqld /etc/init.d/mysqld
+ln -sf $installdir/init.d/mysqld /etc/init.d/mysqld
 
 # clear logs and data
 rm -rf $installdir/logs/* && rm -rf $installdir/data/*
@@ -378,14 +377,13 @@ EOF
 
     # deb
     sudo dpkg-deb --build debian
-    sudo mv debian.deb ${GITHUB_WORKSPACE}/mysql_${version}_amd64.deb
-    sudo mv mysql.tar.gz ${GITHUB_WORKSPACE}/mysql_${version}_amd64.tgz
-    echo "TAG=mysql_${version}" >> ${GITHUB_ENV}
-    echo "DEB=mysql_${version}_amd64.deb" >> ${GITHUB_ENV}
-    echo "TAR=mysql_${version}_amd64.tgz" >> ${GITHUB_ENV}
+     if [[ -z ${NAME} ]]; then
+        NAME=mysql_${version}_ubuntu_$(lsb_release -r --short)_$(uname -m).deb
+    fi
+    sudo mv debian.deb ${workdir}/${NAME}
 }
 
-clean_file(){
+clean(){
     sudo rm -rf ${workdir}/mysql
     sudo rm -rf ${workdir}/mysql.tar.gz
     sudo rm -rf ${workdir}/boost
@@ -393,10 +391,9 @@ clean_file(){
 }
 
 do_install() {
-    check
-    if [[ $? -ne ${success} ]]; then
-        return
-    fi
+    if [[ ${INIT} ]]; then
+        init
+     fi
 
     download_mysql
     if [[ $? -ne ${success} ]]; then
@@ -423,7 +420,7 @@ do_install() {
         exit $?
     fi
 
-    clean_file
+    clean
 }
 
 do_install
