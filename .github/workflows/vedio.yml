@@ -1,0 +1,44 @@
+name: vedio
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'download url'
+        required: true
+        default: ''
+      parallel:
+        description: 'parallel count'
+        required: false
+        default: 10
+
+jobs:
+  vedio:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        go: [ '1.14' ]
+
+    steps:
+    - name: Use Go ${{ matrix.go }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
+
+    - name: Downalod
+      run: |
+        make -C golang vedio && \
+        golang/vedio -name ${{github.workspace}}/vedio.mpg -url ${{github.event.inputs.url}} -batch ${{github.event.inputs.parallel}}
+
+    - name: Upload
+      if: ${{ success() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: vedio
+        path: ${{github.workspace}}/vedio.mpg
+        retention-days: 1
