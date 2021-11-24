@@ -13,9 +13,12 @@ sign:clean verify
 email:clean verify
 	go build $(LDFLAGS) -o email email.go $(UTIL)
 
+vedio:clean verify
+	go build $(LDFLAGS) -o vedio vedio.go $(UTIL)
+
 verify:
 	go mod verify
 	go mod tidy
 
 clean:
-	rm -rf upload workflow sign email
+	rm -rf upload workflow sign email vedio
