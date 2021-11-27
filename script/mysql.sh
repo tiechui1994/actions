@@ -128,7 +128,7 @@ download_mysql() {
     # tencent, mirrorservice, mysql(https://downloads.mysql.com/archives/community)
     url="https://mirrors.cloud.tencent.com/mysql/downloads/MySQL-5.7/mysql-$version.tar.gz"
     url="https://www.mirrorservice.org/sites/ftp.mysql.com/Downloads/MySQL-5.7/mysql-$version.tar.gz"
-    url="https://cdn.mysql.com/archives/mysql-5.7/mysql-$version.tar.gz"
+    url="https://cdn.mysql.com/archives/mysql-${version:0:3}/mysql-$version.tar.gz"
     download "mysql.tar.gz" ${url} axel 1
 
     return $?
@@ -137,6 +137,7 @@ download_mysql() {
 download_boost(){
     url="https://udomain.dl.sourceforge.net/project/boost/boost/1.61.0/boost_1_61_0.tar.gz"
     url="https://udomain.dl.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.gz"
+    url="https://cdn.mysql.com/archives/mysql-${version:0:3}/mysql-boost-$version.tar.gz"
     download "boost.tar.gz" ${url} axel 1
     if [[ $? -eq ${success} ]]; then
         mv "$workdir/boost" "$workdir/mysql/boost"
