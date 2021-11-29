@@ -305,7 +305,7 @@ EOF
 allow_anonymous true
 
 persistence true
-persistence_location ${installdir}/data/
+persistence_location ${installdir}/data
 
 listener 1883
 socket_domain ipv4
@@ -318,7 +318,7 @@ Description=MQTT server
 After=network.target auditd.service
 
 [Service]
-Type=notify
+Type=forking
 ExecStart=$dir/sbin/mosquitto -c $dir/conf/mosquitto.conf
 ExecStop=/bin/kill -s QUIT $MAINPID
 Restart=on-failure
@@ -328,6 +328,7 @@ LimitNOFILE=900000
 
 [Install]
 WantedBy=multi-user.target
+
 EOF
 
     regex='$dir'
