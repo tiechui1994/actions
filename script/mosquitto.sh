@@ -5,7 +5,7 @@ INSTALL=$2
 INIT=$3
 NAME=$4
 
-declare -r version=${VERSION:=1.15.8}
+declare -r version=${VERSION:=2.0.14}
 declare -r workdir=$(pwd)
 declare -r installdir=${INSTALL:=/opt/local/mqtt}
 
@@ -121,11 +121,11 @@ init() {
     apt-get update
     export DEBIAN_FRONTEND=noninteractive
     export TZ=Asia/Shanghai
-    apt-get install -y build-essential g++ sudo curl make gcc file tar patch openssl tzdata
+    apt-get install -y build-essential g++ sudo curl make gcc file tar patch tzdata rsync
 }
 
 download_mosquitto() {
-    url="https://codeload.github.com/eclipse/mosquitto/tar.gz/refs/tags/v2.0.14"
+    url="https://codeload.github.com/eclipse/mosquitto/tar.gz/refs/tags/v$version"
     download "mosquitto.tar.gz" "$url" curl 1
     return $?
 }
@@ -133,7 +133,9 @@ download_mosquitto() {
 download_openssl() {
     prefix="https://ftp.openssl.org/source/old"
     openssl="$(openssl version |cut -d " " -f2)"
-    openssl="1.1.1"
+    if [[ ${openssl} < "1.1.1" ]]; then
+        openssl="1.1.1"
+    fi
     if [[ ${openssl} =~ ^1\.[0-1]\.[0-2]$ ]]; then
         url=$(printf "%s/%s/openssl-%s.tar.gz" ${prefix} ${openssl} ${openssl})
     else
@@ -156,16 +158,18 @@ download_uthash() {
 }
 
 build_denpend() {
+     cpu=$(cat /proc/cpuinfo | grep 'processor' | wc -l)
+
      # /usr/local/include /usr/local/lib /usr/local/share/[doc|man]
      cd "$workdir/openssl"
-     ./config '-fPIC' && make && sudo make install
+     ./config '-fPIC' && make -j${cpu} && sudo make install
      if [[ $? -ne ${success} ]]; then
         return $?
      fi
 
      # /usr/local/include /usr/local/lib
      cd "$workdir/cjson"
-     make && sudo make install &&
+     make -j${cpu} && sudo make install &&
      sudo cp libcjson.a /usr/local/lib &&
      sudo cp libcjson_utils.a /usr/local/lib
      if [[ $? -ne ${success} ]]; then
@@ -173,22 +177,22 @@ build_denpend() {
      fi
 
      sudo apt-get update &&
-     sudo apt-get install xsltproc docbook-xsl
+     sudo apt-get install xsltproc docbook-xsl -y
 }
 
 build() {
     cd ${workdir}/mosquitto
 
     make clean &&
-    make WITH_STATIC_LIBRARIES=yes WITH_SHARED_LIBRARIES=no \
-        LDFLAGS="-Wl,--static -lssl -lcrypto -lcjson -Wl,-Bdynamic -ldl"
+    make WITH_STATIC_LIBRARIES=yes WITH_SHARED_LIBRARIES=no
     if [[ $? -ne 0 ]]; then
         log_error "make fail, plaease check and try again..."
         return ${failure}
     fi
 
-    sudo make DESTDIR=/tmp/mqtt WITH_STATIC_LIBRARIES=yes WITH_SHARED_LIBRARIES=no \
-        LDFLAGS="-Wl,--static -lssl -lcrypto -lcjson -Wl,-Bdynamic -ldl" \
+    path="/tmp/mosquitto"
+    sudo rm -rf "$path" && \
+    sudo make DESTDIR="$path" WITH_STATIC_LIBRARIES=yes WITH_SHARED_LIBRARIES=no \
         install
     if [[ $? -ne 0 ]]; then
         log_error "make install fail, plaease check and try again..."
@@ -196,6 +200,147 @@ build() {
     fi
 
     log_info "build mqtt success"
+}
+
+copylib() {
+    target=$1
+
+    declare -A uniqueso=()
+    path="/tmp/mosquitto"
+    files=$(find "$path" -type f -executable -exec file -i '{}' \;|grep 'charset=binary'|cut -d ':' -f1)
+    for file in ${files}; do
+        # not found lib
+        sofiles=$(ldd "$file"|sed -n -r '/not found$/ s|\s||gp'|grep -E -o '^lib[^=]+')
+        for so in ${sofiles}; do
+            uniqueso["$so"]=""
+        done
+        # /usr/local lib
+        sofiles=$(ldd "$file"|sed -n -r '/\/usr\/local/ s|\s||gp'|grep -E -o '^lib[^=]+')
+        for so in ${sofiles}; do
+            uniqueso["$so"]=""
+        done
+    done
+
+    path="/usr/local/lib"
+    for key in ${!uniqueso[@]}; do
+        file=$(find "$path" -name "$key")
+        log_info "so: $key, file: $file"
+        rsync --copy-links ${file} ${target}
+    done
+}
+
+package() {
+    cd ${workdir}
+    sudo rm -rf debian && mkdir -p debian/DEBIAN
+
+    # control
+    cat > debian/DEBIAN/control <<- EOF
+Package: mosquitto
+Version: ${version}
+Description: MQTT server deb package
+Section: utils
+Priority: standard
+Essential: no
+Architecture: amd64
+Depends:
+Maintainer: tiechui1994 <2904951429@qq.com>
+Provides: github
+
+EOF
+
+    # postinst
+    read -r -d '' conf <<- 'EOF'
+#!/bin/bash
+ldconfig
+
+systemctl daemon-reload && systemctl mosquitto.service start
+if [[ $? -ne 0 ]]; then
+    echo "service start mosquitto failed"
+fi
+EOF
+
+    regex='$installdir'
+    repl="$installdir"
+    printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/postinst
+
+    # prerm
+    cat > debian/DEBIAN/prerm <<- 'EOF'
+#!/bin/bash
+
+systemctl mosquitto.service stop
+EOF
+
+    # postrm
+    cat > debian/DEBIAN/postrm <<- EOF
+#!/bin/bash
+
+rm -rf /etc/systemd/system/mosquitto.service
+rm -rf /etc/ld.so.conf.d/mosquitto.conf
+rm -rf ${installdir}
+EOF
+
+    # chmod
+    sudo chmod a+x debian/DEBIAN/postinst
+    sudo chmod a+x debian/DEBIAN/postrm
+    sudo chmod a+x debian/DEBIAN/prerm
+
+    # copy files
+    path="/tmp/mosquitto"
+    mkdir -p debian/${installdir}/data
+    sudo cp -r ${path}/usr/local/* debian/${installdir}
+    sudo cp -r ${path}/etc/mosquitto debian/${installdir}/conf
+
+    copylib debian/${installdir}/lib
+    if [[ $? -ne ${success} ]]; then
+        return $?
+    fi
+
+    mkdir -p debian/etc/ld.so.conf.d
+    cat > debian/etc/ld.so.conf.d/mosquitto.conf <<- EOF
+${installdir}/lib
+EOF
+
+    # service
+    cat > debian/${installdir}/conf/mosquitto.conf <<-EOF
+allow_anonymous true
+
+persistence true
+persistence_location ${installdir}/data/
+
+listener 1883
+socket_domain ipv4
+EOF
+
+    mkdir -p debian/etc/systemd/system
+    read -r -d '' conf <<- 'EOF'
+[Unit]
+Description=MQTT server
+After=network.target auditd.service
+
+[Service]
+Type=notify
+ExecStart=$dir/sbin/mosquitto -c $dir/conf/mosquitto.conf
+ExecStop=/bin/kill -s QUIT $MAINPID
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=900000
+
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    regex='$dir'
+    repl="$installdir"
+    printf "%s" "${conf//$regex/$repl}" > debian/etc/systemd/system/mosquitto.service
+
+
+    # deb
+    sudo dpkg-deb --build debian
+    if [[ -z ${NAME} ]]; then
+        NAME=mqtt_${version}_ubuntu_$(lsb_release -r --short)_$(uname -m).deb
+    fi
+    sudo mv debian.deb ${workdir}/${NAME}
 }
 
 clean(){
@@ -223,6 +368,11 @@ do_install() {
     fi
 
     build
+    if [[ $? -ne ${success} ]]; then
+        exit $?
+    fi
+
+    package
     if [[ $? -ne ${success} ]]; then
         exit $?
     fi
