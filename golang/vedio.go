@@ -75,6 +75,9 @@ func Download(u string, batch int, fd io.Writer) error {
 			} else if strings.HasPrefix(u, "/") {
 				urls = append(urls, endpoint+u)
 				idx += 1
+			} else {
+				urls = append(urls, endpoint+"/"+u)
+				idx += 1
 			}
 		}
 	}

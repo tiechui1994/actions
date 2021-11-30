@@ -35,6 +35,12 @@ jobs:
         make -C golang vedio && \
         golang/vedio -name ${{github.workspace}}/vedio.mpg -url ${{github.event.inputs.url}} -batch ${{github.event.inputs.parallel}}
 
+    - name: Compress
+      run: |
+        cd ${{github.workspace}}
+        declare -i size=$(du vedio.mpg|grep -o -E '^[0-9]+')
+        echo "vedio.mpg size: ${size} KB"
+        
     - name: Upload
       if: ${{ success() }}
       uses: actions/upload-artifact@v2
