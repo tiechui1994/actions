@@ -1,0 +1,113 @@
+name: strongswan
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'strongswan version'
+        required: true
+        default: ''
+      install:
+        description: 'strongswan install dir'
+        required: false
+        default: '/opt/local/strongswan'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      needbuild: ${{ steps.checktag.outputs.needbuild }}
+
+    steps:
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
+    - name: Check tag
+      id: checktag
+      run: bash script/checktag.sh ${{secrets.GIT_TOKEN}} strongswan_${{github.event.inputs.version}}
+
+  build:
+    needs: [check]
+    if: ${{ needs.check.outputs.needbuild == 0 }}
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        platform: [linux/amd64]
+        os: [16.04, 18.04, 20.04]
+
+    steps:
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
+
+    - name: Setup
+      uses: docker/setup-buildx-action@v1
+      with:
+        install: true
+
+    - name: Build with ubuntu_${{matrix.os}} ${{matrix.platform}}
+      id: build
+      timeout-minutes: 10
+      run: |
+        docker run -v ${PWD}:/app --workdir /app --platform ${{matrix.platform}} ubuntu:${{matrix.os}} \
+          bash /app/script/strongswan.sh \
+              ${{github.event.inputs.version}} \
+              ${{github.event.inputs.install}} \
+              1 \
+              strongswan_${{github.event.inputs.version}}_ubuntu_${{matrix.os}}_amd64.deb
+      shell: bash
+
+    - name: Cache files
+      id: restore-build
+      uses: actions/cache@v2
+      with:
+        path: ./strongswan_${{github.event.inputs.version}}_ubuntu_${{matrix.os}}_amd64.deb
+        key: ${{github.sha}}-${{matrix.os}}
+
+  release:
+    needs: [build]
+    runs-on: ubuntu-18.04
+    outputs:
+      count: ${{ steps.files.outputs.count }}
+
+    steps:
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
+
+    - uses: actions/cache@v2
+      with:
+        path: ./strongswan_${{github.event.inputs.version}}_ubuntu_16.04_amd64.deb
+        key: ${{github.sha}}-16.04
+    - uses: actions/cache@v2
+      with:
+        path: ./strongswan_${{github.event.inputs.version}}_ubuntu_18.04_amd64.deb
+        key: ${{github.sha}}-18.04
+    - uses: actions/cache@v2
+      with:
+        path: ./strongswan_${{github.event.inputs.version}}_ubuntu_20.04_amd64.deb
+        key: ${{github.sha}}-20.04
+
+    - name: Files
+      id: files
+      run: |
+        echo ${PWD}
+        echo "::set-output name=count::$(ls|grep strongswan_${{github.event.inputs.version}}|wc -l)"
+        ls -Al .
+
+    - name: Release
+      if: ${{ success() && steps.files.outputs.count == 3 }}
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GIT_TOKEN }}
+        file: ${{github.workspace}}/strongswan_${{github.event.inputs.version}}_*
+        asset_name: strongswan_${{github.event.inputs.version}}
+        tag: strongswan_${{github.event.inputs.version}}
+        overwrite: true
+        body: "release strongswan_${{github.event.inputs.version}} install in ${{github.event.inputs.install}}"
+        file_glob: true
