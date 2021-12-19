@@ -746,11 +746,11 @@ EOF
 
     # postrm
     cat > debian/DEBIAN/postrm <<- EOF
-    #!/bin/bash
+#!/bin/bash
 
-    update-rc.d nginx remove
-    rm -rf /etc/init.d/nginx
-    rm -rf ${installdir}
+update-rc.d nginx remove
+rm -rf /etc/init.d/nginx
+rm -rf ${installdir}
 EOF
 
     # chmod
