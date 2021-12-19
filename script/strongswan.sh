@@ -205,6 +205,7 @@ Restart=on-abnormal
 
 [Install]
 WantedBy=multi-user.target
+
 EOF
 
     regex='$installdir'
@@ -232,15 +233,15 @@ Provides: github
 EOF
 
     # postinst
-    cat > debian/DEBIAN/postinst <<- EOF
+    read -d '' -r conf <<- 'EOF'
 #!/bin/bash
 
 # lib
-echo "${installdir}/lib" > /etc/ld.so.conf.d/strongswan.conf
+echo "$installdir/lib/ipsec" > /etc/ld.so.conf.d/strongswan.conf
 ldconfig
 
 # copy file
-cp ${installdir}/systemd/strongswan.service /etc/systemd/system/strongswan.service
+cp $installdir/systemd/strongswan.service /etc/systemd/system/strongswan.service
 
 # start
 systemctl daemon-reload && \
@@ -250,27 +251,33 @@ if [[ $? -ne 0 ]]; then
 fi
 
 # test pid
-if [[ $(pgrep ${installdir}/lib/ipsec/starter) ]]; then
+if [[ $(pgrep $installdir/lib/ipsec/starter) ]]; then
     echo "strongswan install successfully !"
 fi
 EOF
+    regex='$installdir'
+    repl="$installdir"
+    printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/postinst
 
     # prerm
-    cat > debian/DEBIAN/prerm <<- EOF
+    cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
 
 systemctl stop strongswan.service
 EOF
 
     # postrm
-    cat > debian/DEBIAN/postrm <<- EOF
+    read -d '' -r conf <<- 'EOF'
 #!/bin/bash
 
 rm -rf /etc/systemd/system/strongswan.service
 rm -rf /etc/ld.so.conf.d/strongswan.conf
-rm -rf ${installdir}
+rm -rf $installdir
 ldconfig
 EOF
+    regex='$installdir'
+    repl="$installdir"
+    printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/postrm
 
     # chmod
     sudo chmod a+x debian/DEBIAN/postinst
