@@ -14,6 +14,7 @@ Compiled software:
 
 - mqtt(mosquitto)
 
+- strongswan(IKEv2 VPN)
 
 Compiled tools:
 
