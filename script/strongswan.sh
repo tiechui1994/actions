@@ -241,8 +241,10 @@ echo "$installdir/lib/ipsec" > /etc/ld.so.conf.d/strongswan.conf
 ldconfig
 
 # profile
-echo "export SWANHOME=$installdir" > /etc/profile.d/strongswan.sh
-echo "export PATH=$PATH:$SWANHOME/bin:$SWANHOME/sbin" >> /etc/profile.d/strongswan.sh
+cat > /etc/profile.d/strongswan.sh <<-'PROFILE'
+export SWANHOME=$installdir
+export PATH=$PATH:$SWANHOME/bin:$SWANHOME/sbin
+PROFILE
 
 # copy file
 cp $installdir/systemd/strongswan.service /etc/systemd/system/strongswan.service
