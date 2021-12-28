@@ -247,7 +247,7 @@ build() {
     #   ngx_http_realip_module 用于改变客户端地址和可选端口在发送的头字段
     #   ngx_http_addition_module  在响应之前和之后添加文件内容
     #   ngx_http_xslt_module  过滤转换XML请求
-    #   ngx_http_image_filter_module 实现图片裁剪、缩放、旋转功能，支持jpg、gif、png格式, 需要gd库
+    #   ngx_http_image_filter_module 实现图片裁剪, 缩放, 旋转功能, 支持jpg, gif, png格式, 需要gd库.
     #   ngx_http_geoip_module  可以用于IP访问限制
     #   ngx_http_sub_module  允许用一些其他文本替换nginx响应中的一些文本
     #   ngx_http_dav_module  增加PUT,DELETE,MKCOL(创建集合),COPY和MOVE方法
