@@ -127,7 +127,6 @@ download() {
 download_nginx() {
     url="http://nginx.org/download/nginx-$version.tar.gz"
     download "nginx.tar.gz" "$url" curl 1
-    return $?
 }
 
 download_openssl() {
@@ -139,21 +138,18 @@ download_openssl() {
         url=$(printf "%s/%s/openssl-%s.tar.gz" ${prefix} ${openssl:0:${#openssl}-1} ${openssl})
     fi
     download "openssl.tar.gz" "$url" curl 1
-    return $?
 }
 
 download_pcre() {
     url="https://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz"
     url="https://nchc.dl.sourceforge.net/project/pcre/pcre/8.44/pcre-8.44.tar.gz"
     download "pcre.tar.gz" "$url" curl 1
-    return $?
 }
 
 download_zlib() {
     url="http://www.zlib.net/fossils/zlib-1.2.11.tar.gz"
     url="https://codeload.github.com/madler/zlib/tar.gz/refs/tags/v1.2.11"
     download "zlib.tar.gz" "$url" curl 1
-    return $?
 }
 
 # https proxy
@@ -161,7 +157,6 @@ download_zlib() {
 download_proxy_connect() {
     url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.2"
     download "ngx_http_proxy_connect_module.tar.gz" "$url" curl 1
-    return $?
 }
 
 # nginx lua
@@ -176,26 +171,23 @@ donwnload_nginx_lua() {
     ngx_devel_kit="https://codeload.github.com/vision5/ngx_devel_kit/tar.gz/v0.3.1"
     download "ngx_devel_kit.tar.gz" "$ngx_devel_kit" curl 1
     if [[ $? -ne ${success} ]]; then
-        return $?
+        return ${failure}
     fi
 
     ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.14"
     download "lua-nginx-module.tar.gz" "$ngx_lua" curl 1
-    return $?
 }
 
 # nginx rtmp, 实时流推送
 download_rtmp() {
     url="https://codeload.github.com/arut/nginx-rtmp-module/tar.gz/v1.2.2"
     download "nginx-rtmp-module.tar.gz" "$url" curl 1
-    return $?
 }
 
 # nginx flv, http flv 格式实时流, 该模块是在 nginx-rtmp-module 基础上修改的.
 download_flv() {
     url="https://codeload.github.com/winshining/nginx-http-flv-module/tar.gz/v1.2.9"
     download "nginx-http-flv-module.tar.gz" "$url" curl 1
-    return $?
 }
 
 build_luajit() {
