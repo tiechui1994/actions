@@ -5,7 +5,7 @@ on:
       version:
         description: 'openvpn version'
         required: true
-        default: ''
+        default: '2.5.5'
       install:
         description: 'openvpn install dir'
         required: false
@@ -99,6 +99,14 @@ jobs:
         echo ${PWD}
         echo "::set-output name=count::$(ls|grep openvpn_${{github.event.inputs.version}}|wc -l)"
         ls -Al .
+
+    - name: Upload
+      if: ${{ success() && steps.files.outputs.count == 3 }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: openvpn
+        path: ${{github.workspace}}/openvpn_${{github.event.inputs.version}}_*
+        retention-days: 1
 
 #    - name: Release
 #      if: ${{ success() && steps.files.outputs.count == 3 }}

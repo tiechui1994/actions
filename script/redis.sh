@@ -127,7 +127,6 @@ init() {
 download_redis() {
     url="https://codeload.github.com/redis/redis/tar.gz/$version"
     download "redis.tar.gz" ${url} curl 1
-    return $?
 }
 
 build() {
@@ -330,22 +329,22 @@ do_install() {
 
     download_redis
     if [[ $? -ne ${success} ]]; then
-        return
+        exit $?
     fi
 
     build
     if [[ $? -ne ${success} ]]; then
-        return
+        exit $?
     fi
 
     service
     if [[ $? -ne ${success} ]]; then
-        return
+        exit $?
     fi
 
     package
     if [[ $? -ne ${success} ]]; then
-        return
+        exit $?
     fi
 
     clean

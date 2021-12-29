@@ -127,7 +127,6 @@ init() {
 download_mosquitto() {
     url="https://codeload.github.com/eclipse/mosquitto/tar.gz/refs/tags/v$version"
     download "mosquitto.tar.gz" "$url" curl 1
-    return $?
 }
 
 download_openssl() {
@@ -142,19 +141,16 @@ download_openssl() {
         url=$(printf "%s/%s/openssl-%s.tar.gz" ${prefix} ${openssl:0:${#openssl}-1} ${openssl})
     fi
     download "openssl.tar.gz" "$url" curl 1
-    return $?
 }
 
 download_cjson() {
     url="https://codeload.github.com/DaveGamble/cJSON/tar.gz/refs/tags/v1.7.15"
     download "cjson.tar.gz" "$url" curl 1
-    return $?
 }
 
 download_uthash() {
     url="https://codeload.github.com/troydhanson/uthash/tar.gz/refs/tags/v2.3.0"
     download "uthash.tar.gz" "$url" curl 1
-    return $?
 }
 
 build_denpend() {
@@ -164,7 +160,7 @@ build_denpend() {
      cd "$workdir/openssl"
      ./config '-fPIC' && make -j${cpu} && sudo make install
      if [[ $? -ne ${success} ]]; then
-        return $?
+        return ${failure}
      fi
 
      # /usr/local/include /usr/local/lib
@@ -173,7 +169,7 @@ build_denpend() {
      sudo cp libcjson.a /usr/local/lib &&
      sudo cp libcjson_utils.a /usr/local/lib
      if [[ $? -ne ${success} ]]; then
-        return $?
+        return ${failure}
      fi
 
      sudo apt-get update &&
@@ -292,7 +288,7 @@ EOF
 
     copylib debian/${installdir}/lib
     if [[ $? -ne ${success} ]]; then
-        return $?
+        return ${failure}
     fi
 
     mkdir -p debian/etc/ld.so.conf.d

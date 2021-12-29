@@ -113,8 +113,6 @@ download_ffmpeg() {
     url="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
     url="https://github.com/tiechui1994/jobs/releases/download/ffmpeg_4.4/ffmpeg-release-amd64-static.tar.xz"
     download "ffmpeg.tar.xz" ${url} curl 1
-
-    return $?
 }
 
 download_vedio() {
@@ -131,7 +129,7 @@ download_vedio() {
          -threads 0 ${filename}
 
     if [[ $? -ne ${success} ]]; then
-        return $?
+        return ${failure}
     fi
 
     sudo mv ${filename} ${GITHUB_WORKSPACE}/${filename}

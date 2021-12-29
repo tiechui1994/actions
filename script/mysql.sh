@@ -130,8 +130,6 @@ download_mysql() {
     url="https://www.mirrorservice.org/sites/ftp.mysql.com/Downloads/MySQL-5.7/mysql-$version.tar.gz"
     url="https://cdn.mysql.com/archives/mysql-${version:0:3}/mysql-$version.tar.gz"
     download "mysql.tar.gz" ${url} axel 1
-
-    return $?
 }
 
 download_boost(){
@@ -141,10 +139,10 @@ download_boost(){
     download "boost.tar.gz" ${url} axel 1
     if [[ $? -eq ${success} ]]; then
         mv "$workdir/boost" "$workdir/mysql/boost"
-        return $?
+        return ${success}
     fi
 
-    return $?
+    return ${failure}
 }
 
 build() {

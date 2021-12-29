@@ -128,7 +128,6 @@ download() {
 download_strongswan() {
     url="https://download.strongswan.org/strongswan-$version.tar.gz"
     download "strongswan.tar.gz" "$url" curl 1
-    return $?
 }
 
 build() {
