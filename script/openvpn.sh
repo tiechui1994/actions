@@ -205,9 +205,6 @@ build_pkcs11() {
         return ${failure}
     fi
 
-    ls -Al "$workdir/x64/include"
-    ls -Al "$workdir/x64/lib"
-
     cd "$workdir/pkcs11"
     ./configure \
        --disable-crypto-engine-gnutls \
@@ -346,7 +343,7 @@ Documentation=https://community.openvpn.net/openvpn/wiki/Openvpn24ManPage
 Documentation=https://community.openvpn.net/openvpn/wiki/HOWTO
 
 [Service]
-Type=notify
+Type=simple
 PrivateTmp=true
 WorkingDirectory=$installdir/etc
 ExecStart=$installdir/sbin/openvpn --daemon ovpn-%i --status /run/openvpn/%i.status 10 --cd $installdir/etc --config $installdir/etc/%i.conf --writepid /run/openvpn/%i.pid
@@ -377,7 +374,7 @@ Documentation=https://community.openvpn.net/openvpn/wiki/Openvpn24ManPage
 Documentation=https://community.openvpn.net/openvpn/wiki/HOWTO
 
 [Service]
-Type=notify
+Type=simple
 PrivateTmp=true
 WorkingDirectory=$installdir/etc/client
 ExecStart=$installdir/sbin/openvpn --suppress-timestamps --nobind --config %i.conf
@@ -404,7 +401,7 @@ Documentation=https://community.openvpn.net/openvpn/wiki/Openvpn24ManPage
 Documentation=https://community.openvpn.net/openvpn/wiki/HOWTO
 
 [Service]
-Type=notify
+Type=simple
 PrivateTmp=true
 WorkingDirectory=$installdir/etc/server
 ExecStart=$installdir/sbin/openvpn --status %t/openvpn-server/status-%i.log --status-version 2 --suppress-timestamps --config %i.conf

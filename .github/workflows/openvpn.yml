@@ -100,6 +100,18 @@ jobs:
         echo "::set-output name=count::$(ls|grep openvpn_${{github.event.inputs.version}}|wc -l)"
         ls -Al .
 
+    - name: Release
+      if: ${{ success() && steps.files.outputs.count == 3 }}
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GIT_TOKEN }}
+        file: ${{github.workspace}}/openvpn_${{github.event.inputs.version}}_*
+        asset_name: openvpn_${{github.event.inputs.version}}
+        tag: openvpn_${{github.event.inputs.version}}
+        overwrite: true
+        body: "release openvpn_${{github.event.inputs.version}} install in ${{github.event.inputs.install}}"
+        file_glob: true
+
     - name: Upload
       if: ${{ success() && steps.files.outputs.count == 3 }}
       uses: actions/upload-artifact@v2
@@ -107,15 +119,3 @@ jobs:
         name: openvpn
         path: ${{github.workspace}}/openvpn_${{github.event.inputs.version}}_*
         retention-days: 1
-
-#    - name: Release
-#      if: ${{ success() && steps.files.outputs.count == 3 }}
-#      uses: svenstaro/upload-release-action@v2
-#      with:
-#        repo_token: ${{ secrets.GIT_TOKEN }}
-#        file: ${{github.workspace}}/openvpn_${{github.event.inputs.version}}_*
-#        asset_name: openvpn_${{github.event.inputs.version}}
-#        tag: openvpn_${{github.event.inputs.version}}
-#        overwrite: true
-#        body: "release openvpn_${{github.event.inputs.version}} install in ${{github.event.inputs.install}}"
-#        file_glob: true
