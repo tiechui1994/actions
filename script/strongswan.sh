@@ -155,7 +155,6 @@ build() {
     --enable-eap-dynamic \
     --enable-eap-radius \
     --enable-xauth-eap  \
-    --enable-xauth-pam  \
     --enable-dhcp  \
     --enable-openssl  \
     --enable-addrblock \
@@ -163,7 +162,9 @@ build() {
     --enable-certexpire \
     --enable-radattr \
     --enable-swanctl \
-    --enable-openssl \
+    --enable-tnccs-20 \
+    --enable-tnc-imc \
+    --enable-tnc-imv \
     --disable-gmp
 
     if [[ $? -ne 0 ]]; then
