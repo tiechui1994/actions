@@ -162,7 +162,7 @@ download_proxy_connect() {
 # nginx lua
 # doc: https://github.com/openresty/lua-nginx-module#installation
 donwnload_nginx_lua() {
-    luajit="https://codeload.github.com/openresty/luajit2/tar.gz/refs/tags/v2.1-20201229"
+    luajit="https://codeload.github.com/openresty/luajit2/tar.gz/refs/tags/v2.1-20211210"
     download "luajit.tar.gz" "$luajit" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
@@ -174,7 +174,7 @@ donwnload_nginx_lua() {
         return ${failure}
     fi
 
-    ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.14"
+    ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.20"
     download "lua-nginx-module.tar.gz" "$ngx_lua" curl 1
 }
 
@@ -360,23 +360,23 @@ service() {
 user  www;
 worker_processes 1;
 
-error_log  $dir/logs/error.log  notice;
-pid        $dir/logs/nginx.pid;
+error_log  $installdir/logs/error.log  notice;
+pid        $installdir/logs/nginx.pid;
 
 events {
-     worker_connections  1024;
+    worker_connections  1024;
 }
 
 http {
     include       mime.types;
     default_type  application/octet-stream;
-    log_format  main   '$remote_addr - $remote_user [$time_local] "$request" '
-                       '$status $body_bytes_sent "$http_referer" '
-                       '"$http_user_agent" "$http_x_forwarded_for"';
+    log_format    main  '$remote_addr - $remote_user [$time_local] "$request" '
+                        '$status $body_bytes_sent "$http_referer" '
+                        '"$http_user_agent" "$http_x_forwarded_for"';
 
-    access_log  $dir/logs/access.log  main;
-    sendfile        on;
-    tcp_nopush      on;
+    access_log   $installdir/logs/access.log  main;
+    sendfile     on;
+    tcp_nopush   on;
     keepalive_timeout  65;
     gzip  on;
 
@@ -451,9 +451,7 @@ http {
     include conf.d/*.conf;
 }
 EOF
-    regex='$dir'
-    repl="$installdir"
-    printf "%s" "${conf//$regex/$repl}" > /tmp/nginx.conf
+    printf "%s" "${conf//'$installdir'/$installdir}" > /tmp/nginx.conf
     sudo mv /tmp/nginx.conf ${installdir}/conf/nginx.conf
 
     if [[ ! -d ${installdir}/conf/conf.d ]]; then
@@ -473,9 +471,9 @@ EOF
 # Description:       starts nginx using start-stop-daemon
 ### END INIT INFO
 
-DAEMON=$dir/sbin/nginx
-CONF=$dir/conf/nginx.conf
-PID=$dir/logs/nginx.pid
+DAEMON=$installdir/sbin/nginx
+CONF=$installdir/conf/nginx.conf
+PID=$installdir/logs/nginx.pid
 NAME=nginx
 DESC=nginx
 
@@ -669,9 +667,7 @@ esac
 :
 EOF
 
-    regex='$dir'
-    repl="$installdir"
-    printf "%s" "${startup//$regex/$repl}" > /tmp/nginx
+    printf "%s" "${startup//'$installdir'/$installdir}" > /tmp/nginx
     chmod a+x /tmp/nginx
     sudo mv /tmp/nginx ${installdir}/init.d/nginx
 }
@@ -725,9 +721,7 @@ if [[ $(pgrep nginx) ]]; then
 fi
 EOF
 
-    regex='$installdir'
-    repl="$installdir"
-    printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
 
     # prerm
     cat > debian/DEBIAN/prerm <<- 'EOF'

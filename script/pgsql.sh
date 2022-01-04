@@ -214,9 +214,9 @@ service() {
 Description=PostgreSQL database server
 
 [Service]
-Type=notify
+Type=simple
 User=postgres
-ExecStart=$dir/bin/postgres -D $dir/data
+ExecStart=$installdir/bin/postgres -D $installdir/data
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=mixed
 KillSignal=SIGINT
@@ -225,9 +225,7 @@ TimeoutSec=0
 [Install]
 WantedBy=multi-user.target
 EOF
-    regex='$dir'
-    repl="$installdir"
-    printf "%s" "${conf//$regex/$repl}" > ${installdir}/conf/pgsql.service
+    printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/conf/pgsql.service
 }
 
 package() {
@@ -253,14 +251,12 @@ EOF
     read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
-if [[ -d ${installdir} ]]; then
-    rm -rf ${installdir}
+if [[ -d $installdir ]]; then
+    rm -rf $installdir
 fi
 EOF
 
-    regex='$installdir'
-    repl="$installdir"
-    printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/preinst
+    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/preinst
 
     # postinst
     read -r -d '' conf <<- 'EOF'
@@ -295,9 +291,7 @@ if [[ $? -ne 0 ]]; then
 fi
 EOF
 
-    regex='$installdir'
-    repl="$installdir"
-    printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
 
     cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash

@@ -208,9 +208,7 @@ WantedBy=multi-user.target
 
 EOF
 
-    regex='$installdir'
-    repl="$installdir"
-    printf "%s" "${conf//$regex/$repl}" > ${installdir}/systemd/strongswan.service
+    printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/systemd/strongswan.service
 }
 
 package() {
@@ -261,9 +259,7 @@ if [[ $(pgrep $installdir/lib/ipsec/starter) ]]; then
     echo "strongswan install successfully !"
 fi
 EOF
-    regex='$installdir'
-    repl="$installdir"
-    printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
 
     # prerm
     cat > debian/DEBIAN/prerm <<- 'EOF'
@@ -282,9 +278,7 @@ rm -rf /etc/profile.d/strongswan.sh
 rm -rf $installdir
 ldconfig
 EOF
-    regex='$installdir'
-    repl="$installdir"
-    printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/postrm
+    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postrm
 
     # chmod
     sudo chmod a+x debian/DEBIAN/postinst
