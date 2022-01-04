@@ -216,29 +216,29 @@ service() {
     read -r -d '' conf <<- 'EOF'
 [client]
     port=3306
-    socket=$dir/data/mysql.sock
+    socket=$installdir/data/mysql.sock
     default-character-set=utf8
 
 [mysqld]
     port=3306
     user=mysql
-    socket=$dir/data/mysql.sock
-    pid-file=$dir/data/mysql.pid
-    basedir=$dir/mysql  # 安装目录
-    datadir=$dir/data   # 数据目录
-    tmpdir=$dir/tmp     # 临时目录
+    socket=$installdir/data/mysql.sock
+    pid-file=$installdir/data/mysql.pid
+    basedir=$installdir/mysql  # 安装目录
+    datadir=$installdir/data   # 数据目录
+    tmpdir=$installdir/tmp     # 临时目录
     character-set-server=utf8
-    log_error=$dir/logs/mysql.err
+    log_error=$installdir/logs/mysql.err
 
     server-id=2
-    log_bin=$dir/logs/binlog
+    log_bin=$installdir/logs/binlog
 
-    general_log_file=$dir/logs/general_log
+    general_log_file=$installdir/logs/general_log
     general_log=1
 
     slow_query_log=ON
     long_query_time=2
-    slow_query_log_file=$dir/logs/query_log
+    slow_query_log_file=$installdir/logs/query_log
     log_queries_not_using_indexes=ON
 
     bulk_insert_buffer_size=64M
@@ -251,9 +251,7 @@ service() {
 EOF
 
     # create config file my.cnf
-    regex='$dir'
-    repl="$installdir"
-    printf "%s" "${conf//$regex/$repl}" > ${installdir}/conf/my.cnf
+    printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/conf/my.cnf
 }
 
 package() {
@@ -341,9 +339,7 @@ echo "FLUSH PRIVILEGES;"
 echo "mysql install successfully"
 EOF
 
-    regex='$installdir'
-    repl="$installdir"
-    printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
 
     cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash

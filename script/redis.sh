@@ -189,11 +189,11 @@ service() {
 ### END INIT INFO
 
 REDISPORT=6379
-EXEC=$dir/bin/redis-server
-CLIEXEC=$dir/bin/redis-cli
+EXEC=$installdir/bin/redis-server
+CLIEXEC=$installdir/bin/redis-cli
 
-PIDFILE=$dir/logs/redis_${REDISPORT}.pid
-CONF=$dir/conf/redis.conf
+PIDFILE=$installdir/logs/redis_${REDISPORT}.pid
+CONF=$installdir/conf/redis.conf
 
 . /lib/lsb/init-functions
 
@@ -234,9 +234,7 @@ case "$1" in
 esac
 EOF
 
-    regex='$dir'
-    repl="$installdir"
-    printf "%s" "${startup//$regex/$repl}" > ${installdir}/conf/redis.server
+    printf "%s" "${startup//'$installdir'/$installdir}" > ${installdir}/conf/redis.server
 }
 
 package() {
@@ -276,9 +274,7 @@ if [[ $? -ne 0 ]]; then
 fi
 EOF
 
-    regex='$installdir'
-    repl="$installdir"
-    printf "%s" "${conf//$regex/$repl}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
 
 cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
