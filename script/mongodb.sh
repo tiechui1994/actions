@@ -66,10 +66,12 @@ download() {
                     return ${failure}
                 fi
 
+                log_info "success to decompress $name"
                 return ${success} # success
             fi
 
             log_error "download file $name is invalid"
+            rm -rf ${filename} && rm -rf ${name}
             return ${failure}
         fi
 
@@ -89,7 +91,7 @@ download() {
     fi
     if [[ $? -ne 0 ]]; then
         log_error "download file $name failed !!"
-        rm -rf ${name}
+        rm -rf ${filename} && rm -rf ${name}
         return ${failure}
     fi
 
@@ -111,6 +113,7 @@ download() {
         fi
 
         log_error "download file $name is invalid"
+        rm -rf ${filename} && rm -rf ${name}
         return ${failure}
     fi
 
@@ -121,7 +124,7 @@ init() {
     apt-get update
     export DEBIAN_FRONTEND=noninteractive
     export TZ=Asia/Shanghai
-    apt-get install -y build-essential sudo curl make gcc file tar tzdata
+    apt-get install -y build-essential gcc sudo curl make file tar tzdata
 }
 
 build_openssl() {
@@ -154,8 +157,14 @@ build_openssl() {
 download_mongodb() {
     cd "$workdir"
     if [[ "${version}" > "4.2" ]]; then
-        url="https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-${version}.tgz"
+        source /etc/lsb-release
+        os=$(echo "${DISTRIB_ID}${DISTRIB_RELEASE//'.'/''}"|awk '{print tolower($0)}')
+        url="https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-${os}-${version}.tgz"
         download "mongodb.tar.gz" ${url} curl 1
+        if [[ $? -ne ${success} && ${os} = "ubuntu2004" ]]; then
+            url="https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-${version}.tgz"
+            download "mongodb.tar.gz" ${url} curl 1
+        fi
     else
         url="https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-${version}.tgz"
         download "mongodb.tar.gz" ${url} curl 1
@@ -164,20 +173,22 @@ download_mongodb() {
         return ${failure}
     fi
 
-    mkdir -p "$workdir/mongodb/lib" && \
-    cp -Lr "$workdir/x64/lib/libcrypto.so.1.1" "$workdir/mongodb/lib"
-    cp -Lr "$workdir/x64/lib/libssl.so.1.1" "$workdir/mongodb/lib"
+    mkdir -p ${installdir}
+    mv ${workdir}/mongodb/* ${installdir}
+
+    mkdir -p ${installdir}/lib
+    cp -Lr "$workdir/x64/lib/libcrypto.so.1.1" "$installdir/lib"
+    cp -Lr "$workdir/x64/lib/libssl.so.1.1" "$installdir/lib"
 
     log_info "build mongodb success"
-    log_info "mongo info: $(ldd ${workdir}/mongodb/bin/mongo)"
-    log_info "mongod info: $(ldd ${workdir}/mongodb/bin/mongod)"
-    log_info "mysqldump ingo: $(ldd ${workdir}/mongodb/bin/mongodump)"
+    log_info "mongo info: $(ldd ${installdir}/bin/mongo)"
+    log_info "mongod info: $(ldd ${installdir}/bin/mongod)"
+    log_info "mysqldump ingo: $(ldd ${installdir}/bin/mongodump)"
 }
 
 service() {
     mkdir -p ${installdir}/data && \
     mkdir -p ${installdir}/logs && \
-    mkdir -p ${installdir}/tmp && \
     mkdir -p ${installdir}/conf && \
     mkdir -p ${installdir}/init.d
 
@@ -442,6 +453,7 @@ esac
 exit 0
 EOF
     printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/init.d/mongodb
+    sudo chmod a+x  ${installdir}/init.d/mongodb
 }
 
 package() {
@@ -530,7 +542,7 @@ EOF
 ${installdir}/lib
 EOF
     mkdir -p debian/${installdir}
-    sudo mv ${workdir}/mongodb/* debian/${installdir}
+    mv ${installdir}/* debian/${installdir}
 
 
     # deb
