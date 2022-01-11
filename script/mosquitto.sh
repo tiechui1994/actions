@@ -247,8 +247,11 @@ EOF
     # postinst
     read -r -d '' conf <<- 'EOF'
 #!/bin/bash
+
+# load lib
 ldconfig
 
+# start mqtt server
 systemctl daemon-reload && systemctl mosquitto.service start
 if [[ $? -ne 0 ]]; then
     echo "service start mosquitto failed"
@@ -271,6 +274,7 @@ EOF
 rm -rf /etc/systemd/system/mosquitto.service
 rm -rf /etc/ld.so.conf.d/mosquitto.conf
 rm -rf ${installdir}
+ldconfig
 EOF
 
     # chmod
