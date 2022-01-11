@@ -16,6 +16,8 @@ Compiled software:
 
 - strongswan(IKEv2 VPN)
 
+- openvpn(OpenVPN)
+
 Compiled tools:
 
 - dlv
