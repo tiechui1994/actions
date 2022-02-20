@@ -100,14 +100,14 @@ jobs:
         echo "::set-output name=count::$(ls|grep mysql_${{github.event.inputs.version}}|wc -l)"
         ls -Al .
 
-#    - name: Release
-#      if: ${{ success() && steps.files.outputs.count == 3 }}
-#      uses: svenstaro/upload-release-action@v2
-#      with:
-#        repo_token: ${{ secrets.GIT_TOKEN }}
-#        file: ${{github.workspace}}/mysql_${{github.event.inputs.version}}_*
-#        asset_name: mysql_${{github.event.inputs.version}}
-#        tag: mysql_${{github.event.inputs.version}}
-#        overwrite: true
-#        body: "release mysql_${{github.event.inputs.version}} install in ${{github.event.inputs.install}}"
-#        file_glob: true
+    - name: Release
+      if: ${{ success() && steps.files.outputs.count == 3 }}
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GIT_TOKEN }}
+        file: ${{github.workspace}}/mysql_${{github.event.inputs.version}}_*
+        asset_name: mysql_${{github.event.inputs.version}}
+        tag: mysql_${{github.event.inputs.version}}
+        overwrite: true
+        body: "release mysql_${{github.event.inputs.version}} install in ${{github.event.inputs.install}}"
+        file_glob: true
