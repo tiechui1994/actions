@@ -166,10 +166,11 @@ build() {
     # DWITH_UNIT_TESTS 是否使用单元测试编译 MySQL
     cmake . \
     -DCMAKE_INSTALL_PREFIX=${installdir}/mysql \
-    -DMYSQL_DATADIR=${installdir}/data \
     -DSYSCONFDIR=${installdir}/conf \
     -DDOWNLOAD_BOOST=1 \
     -DWITH_BOOST=${workdir}/mysql/boost \
+    -DDEFAULT_CHARSET=utf8 \
+    -DDEFAULT_COLLATION=utf8_general_ci \
     -DWITH_INNOBASE_STORAGE_ENGINE=1 \
     -DWITH_PARTITION_STORAGE_ENGINE=1 \
     -DWITH_FEDERATED_STORAGE_ENGINE=1 \
@@ -180,9 +181,7 @@ build() {
     -DWITH_EMBEDDED_SERVER=0 \
     -DWITH_DEBUG=0 \
     -DENABLE_DTRACE=0 \
-    -DWITH_UNIT_TESTS=0 \
-    -DDEFAULT_CHARSET=utf8 \
-    -DDEFAULT_COLLATION=utf8_general_ci
+    -DWITH_UNIT_TESTS=0
     if [[ $? -ne 0 ]]; then
         log_error "cmake fail, plaease check and try again.."
         return ${failure}
@@ -227,17 +226,17 @@ service() {
     basedir=$installdir/mysql  # 安装目录
     datadir=$installdir/data   # 数据目录
     tmpdir=$installdir/tmp     # 临时目录
-    character-set-server=utf8
+
     log_error=$installdir/logs/mysql.err
 
     server-id=2
     log_bin=$installdir/logs/binlog
 
-    general_log_file=$installdir/logs/general_log
     general_log=1
+    general_log_file=$installdir/logs/general_log
 
     slow_query_log=ON
-    long_query_time=2
+    long_query_time=5
     slow_query_log_file=$installdir/logs/query_log
     log_queries_not_using_indexes=ON
 
@@ -245,9 +244,9 @@ service() {
     binlog_rows_query_log_events=ON
 
     sort_buffer_size=64M #默认是128K
-    binlog_format=row #默认是mixed
-    join_buffer_size=128M #默认是256K
-    max_allowed_packet=512M #默认是16M
+    binlog_format=row # 默认是mixed
+    join_buffer_size=128M # 默认是256K
+    max_allowed_packet=512M # 默认是16M
 
 EOF
 
@@ -418,10 +417,27 @@ wait_for_pid () {
   fi
 }
 
-# Get arguments from the my.cnf file,
-# the only group, which is read from now on is [mysqld]
+# Get arguments from the my.cnf file, the only group, which is read from now on is [mysqld]
 if test -x "$bindir/my_print_defaults"; then
   print_defaults="$bindir/my_print_defaults"
+else
+  # Try to find basedir in /etc/my.cnf
+  conf=/etc/my.cnf
+  print_defaults=
+  if test -r ${conf}; then
+    subpat='^[^=]*basedir[^=]*=\(.*\)$'
+    dirs=$(sed -e "/$subpat/!d" -e 's//\1/' ${conf})
+    for d in ${dirs}; do
+      d=$(echo ${d} | sed -e 's/[ 	]//g')
+      if test -x "$d/bin/my_print_defaults"; then
+        print_defaults="$d/bin/my_print_defaults"
+        break
+      fi
+    done
+  fi
+
+  # Hope it's in the PATH ... but I doubt it
+  test -z "$print_defaults" && print_defaults="my_print_defaults"
 fi
 
 #
@@ -429,8 +445,8 @@ fi
 # check if it's in the old (depricated) place (datadir) and read it from there
 #
 extra_args=""
-if test -r "$basedir/conf/my.cnf"; then
-  extra_args="-e $basedir/conf/my.cnf"
+if test -r "$basedir/my.cnf"; then
+  extra_args="-e $basedir/my.cnf"
 fi
 
 parse_server_arguments $("$print_defaults" "$extra_args" mysqld server mysql_server mysql.server)
@@ -570,10 +586,10 @@ esac
 
 exit 0
 EOF
-    conf=${conf//'$BASEDIR'/"$installdir"}
-    conf=${conf//'$BINDIR'/"$installdir/bin"}
-    conf=${conf//'$SBINDIR'/"$installdir/bin"}
-    conf=${conf//'$LIBEXECDIR'/"$installdir/bin"}
+    conf=${conf//'$BASEDIR'/"$installdir/mysql"}
+    conf=${conf//'$BINDIR'/"$installdir/mysql/bin"}
+    conf=${conf//'$SBINDIR'/"$installdir/mysql/bin"}
+    conf=${conf//'$LIBEXECDIR'/"$installdir/mysql/bin"}
     conf=${conf//'$DATADIR'/"$installdir/data"}
 
     # service script
@@ -587,7 +603,7 @@ package() {
     sudo rm -rf debian && mkdir -p debian/DEBIAN
 
     # control
-cat > debian/DEBIAN/control <<- EOF
+    cat > debian/DEBIAN/control <<- EOF
 Package: MySQL
 Version: ${version}
 Description: MySQL server deb package
@@ -602,7 +618,7 @@ Provides: github
 EOF
 
     # postinst
-read -r -d '' conf <<- 'EOF'
+    read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
 # user and group
@@ -614,15 +630,18 @@ if [[ -z "$(cat /etc/passwd | grep -E '^mysql:')" ]]; then
 fi
 
 # dir owner and privileges
-chmod -R 755 $installdir
 chown -R mysql:mysql $installdir
 
 # link file
 mkdir -p /usr/local/share/man/man1
 mkdir -p /usr/local/share/man/man8
-ln -sf $installdir/mysql/mysql/man/man1/* /usr/local/share/man/man1
-ln -sf $installdir/mysql/mysql/man/man8/* /usr/local/share/man/man8
+ln -sf $installdir/mysql/man/man1/* /usr/local/share/man/man1
+ln -sf $installdir/mysql/man/man8/* /usr/local/share/man/man8
 ln -sf $installdir/init.d/mysqld /etc/init.d/mysqld
+
+ln -sf $installdir/mysql/bin/mysql /usr/local/bin/mysql
+ln -sf $installdir/mysql/bin/mysqldump /usr/local/bin/mysqldump
+ln -sf $installdir/mysql/bin/mysqlbinlog /usr/local/bin/mysqlbinlog
 
 # clear logs and data
 rm -rf $installdir/logs/* && rm -rf $installdir/data/*
@@ -677,16 +696,26 @@ EOF
 
 
     # postrm
-    cat > debian/DEBIAN/postrm <<- EOF
+    read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
 update-rc.d mysqld remove
 rm -rf /etc/init.d/mysqld
-rm -rf ${installdir}
+rm -rf /usr/local/bin/mysql
+rm -rf /usr/local/bin/mysqldump
+rm -rf /usr/local/bin/mysqlbinlog
 
-groupdel -f mysql
-userdel -f -r mysql
+rm -rf $installdir
+
+if [[ -n "$(cat /etc/group | grep -E '^mysql:')" ]]; then
+    groupdel -f mysql
+fi
+if [[ -n "$(cat /etc/passwd | grep -E '^mysql:')" ]]; then
+    userdel -f -r mysql
+fi
+
 EOF
+    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postrm
 
     # chmod
     sudo chmod a+x debian/DEBIAN/postinst
