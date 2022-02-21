@@ -272,7 +272,6 @@ fi
 
 # data
 rm -rf $installdir/data && mkdir -p $installdir/data
-chmod -R 775 $installdir
 chown -R postgres:postgres $installdir
 
 # init db
@@ -301,13 +300,19 @@ EOF
 
 
     # postrm
-    cat > debian/DEBIAN/postrm <<- EOF
+    read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
-if [[ -d ${installdir} ]]; then
-    rm -rf ${installdir}
+rm -rf $installdir
+
+if [[ -n "$(cat /etc/group | grep -E '^postgres:')" ]]; then
+    groupdel -f postgres
+fi
+if [[ -n "$(cat /etc/passwd | grep -E '^postgres:')" ]]; then
+    userdel -f -r postgres
 fi
 EOF
+    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postrm
 
     # chmod
     sudo chmod a+x debian/DEBIAN/preinst
