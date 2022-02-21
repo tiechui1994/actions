@@ -10,6 +10,16 @@ on:
         description: 'pgsql install dir'
         required: false
         default: '/opt/local/pgsql'
+      temporary:
+        description: 'temporary build system version'
+        required: false
+        default: ''
+        type: choice
+        options:
+        - 'false'
+        - '16.04'
+        - '18.04'
+        - '20.04'
 
 jobs:
   check:
@@ -29,7 +39,7 @@ jobs:
 
   build:
     needs: [check]
-    if: ${{ needs.check.outputs.needbuild == 0 }}
+    if: ${{ github.event.inputs.temporary != 'false' || needs.check.outputs.needbuild == 0 }}
     runs-on: ubuntu-18.04
     strategy:
       matrix:
@@ -101,7 +111,7 @@ jobs:
         ls -Al .
 
     - name: Release
-      if: ${{ success() && steps.files.outputs.count == 3 }}
+      if: ${{ success() && steps.files.outputs.count == 3 && github.event.inputs.temporary == 'false' }}
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GIT_TOKEN }}
@@ -111,3 +121,11 @@ jobs:
         overwrite: true
         body: "release pgsql_${{github.event.inputs.version}} install in ${{github.event.inputs.install}}"
         file_glob: true
+
+    - name: Upload temporary
+      if: ${{ github.event.inputs.temporary != 'false' }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: pgsql_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64.deb
+        path: ${{github.workspace}}/pgsql_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64.deb
+        retention-days: 1

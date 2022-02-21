@@ -216,16 +216,21 @@ service() {
     read -r -d '' conf <<- 'EOF'
 [client]
     port=3306
-    socket=$installdir/data/mysql.sock
 
 [mysqld]
     port=3306
     user=mysql
-    socket=$installdir/logs/mysql.sock
     pid-file=$installdir/logs/mysql.pid
     basedir=$installdir/mysql  # 安装目录
     datadir=$installdir/data   # 数据目录
     tmpdir=$installdir/tmp     # 临时目录
+
+    default_storage_engine=InnoDB
+    innodb_file_per_table=ON
+    innodb_flush_log_at_trx_commit=1
+    innodb_lock_wait_timeout=60
+    wait_timeout=28800
+    interactive_timeout=28800
 
     log_error=$installdir/logs/mysql.err
 
@@ -512,8 +517,7 @@ case "$mode" in
       fi
 
       # Delete lock for RedHat / SuSE
-      if test -f "$lock_file_path"
-      then
+      if test -f "$lock_file_path"; then
         rm -f "$lock_file_path"
       fi
       exit ${return_value}
