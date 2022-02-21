@@ -731,13 +731,22 @@ service nginx stop
 EOF
 
     # postrm
-    cat > debian/DEBIAN/postrm <<- EOF
+    read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
 update-rc.d nginx remove
 rm -rf /etc/init.d/nginx
-rm -rf ${installdir}
+rm -rf $installdir
+
+if [[ -n "$(cat /etc/group | grep -E '^www:')" ]]; then
+    groupdel -f www
+fi
+if [[ -n "$(cat /etc/passwd | grep -E '^www:')" ]]; then
+    userdel -f -r www
+fi
+
 EOF
+    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postrm
 
     # chmod
     sudo chmod a+x debian/DEBIAN/postinst

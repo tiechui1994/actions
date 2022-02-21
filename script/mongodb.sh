@@ -488,10 +488,10 @@ if [[ -z "$(cat /etc/passwd | grep -E '^mongodb:')" ]]; then
 fi
 
 # dir owner and privileges
-chmod -R 755 $installdir
 chown -R mongodb:mongodb $installdir
 
 # link file
+ln -sf $installdir/bin/mongo /usr/local/bin/mongo
 ln -sf $installdir/init.d/mongodb /etc/init.d/mongodb
 
 # lib load
@@ -517,19 +517,26 @@ service mongodb stop
 EOF
 
     # postrm
-    cat > debian/DEBIAN/postrm <<- EOF
+    read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
 update-rc.d mongodb remove
 rm -rf /etc/ld.so.conf.d/mongodb.conf
+rm -rf /usr/local/bin/mongo
 rm -rf /etc/init.d/mongodb
-rm -rf ${installdir}
+rm -rf $installdir
 
-groupdel -f mongodb
-userdel -f -r mongodb
+if [[ -n "$(cat /etc/group | grep -E '^mongodb:')" ]]; then
+    groupdel -f mongodb
+fi
+if [[ -n "$(cat /etc/passwd | grep -E '^mongodb:')" ]]; then
+    userdel -f -r mongodb
+fi
 
 ldconfig
+
 EOF
+    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postrm
 
     # chmod
     sudo chmod a+x debian/DEBIAN/postinst
@@ -561,7 +568,7 @@ clean(){
 do_install() {
     if [[ ${INIT} ]]; then
         init
-     fi
+    fi
 
     build_openssl
     if [[ $? -ne ${success} ]]; then
