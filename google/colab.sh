@@ -1,30 +1,5 @@
 #!/usr/bin/env bash
 
-colab_ngrok_args() {
-    local authtoken region log file OPTIND
-    authtoken=
-    region="us"
-    log="/var/log/ngrok.log"
-
-    OPTIND=1
-    while getopts a:r:l:f: opt ; do
-        case "$opt" in
-            a)
-                authtoken="$OPTARG" ;;
-            r)
-                region="$OPTARG" ;;
-            l)
-                log="$OPTARG" ;;
-            t)
-                file="$OPTARG"
-        esac
-    done
-    shift $(($OPTIND - 1))
-
-
-    echo "authtoken: $authtoken region: $region log: $log type, ${!type[@]}"
-}
-
 colab_init() {
     apt-get --quiet update && \
     apt-get --quiet install  --yes openssh-server net-tools iputils-ping iproute2 iptables openssl vim
@@ -197,6 +172,11 @@ EOF
 colab_ngrok_config() {
     local file OPTIND
 
+    if [[ $# -eq 0 ]]; then
+        echo "file must be set"
+        return 1
+    fi
+
     OPTIND=1
     while getopts f: opt ; do
         case "$opt" in
@@ -205,35 +185,22 @@ colab_ngrok_config() {
     done
     shift $(($OPTIND - 1))
 
-    if [[ -f "$file" ]]; then
-        echo "(-f file) must be set and exist"
-        exit 1
+
+    if [[ ! -f "$file" ]]; then
+        echo "the args (-f file) must be set and exist"
+        return 1
     fi
 
-    read -d '' -r conf <<-'EOF'
-authtoken: $authtoken
-# regions: us, jp, in, ap
-region: $region
-log: $log
-log_level: info
-log_format: json
-update: false
-update_channel: stable
-tunnels:
-  ssh:
-    addr: 22
-    proto: tcp
-  tcp:
-    addr: 5432
-    proto: tcp
-  http:
-    addr: 80
-    proto: http
-EOF
-    conf=${conf//'$authtoken'/$authtoken}
-    conf=${conf//'$region'/$region}
-    conf=${conf//'$log'/$log}
-    printf "%s" "$conf" > /etc/ngrok.yml
+    log="$(grep -E -o '^log:\s*/.*' ${file})"
+    format="$(grep -E -o '^log_format:\s*json$' ${file})"
+    authtoken="$(grep -E -o '^log_format:\s*.*$' ${file})"
+    if [[ -z "$log"  || -z "$format" || -z "$authtoken" ]]; then
+        echo "log, authtoken must set, format must be json"
+        return 1
+    fi
+
+    sed -i -E 's|^log:\s*/.*$|log: /var/log/ngrok.log|' "$file"
+    cp "$file" /etc/ngrok.yml
 
    read -d '' -r conf <<-'EOF'
 import json
@@ -290,7 +257,7 @@ try:
 except Exception as e:
     print(e)
 EOF
-   conf=${conf//'$log'/$log}
+   conf=${conf//'$log'/'/var/log/ngrok.log'}
    printf "%s" "$conf" > /usr/local/bin/upload.py
 }
 
