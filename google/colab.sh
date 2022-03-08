@@ -1,5 +1,30 @@
 #!/usr/bin/env bash
 
+colab_ngrok_args() {
+    local authtoken region log file OPTIND
+    authtoken=
+    region="us"
+    log="/var/log/ngrok.log"
+
+    OPTIND=1
+    while getopts a:r:l:f: opt ; do
+        case "$opt" in
+            a)
+                authtoken="$OPTARG" ;;
+            r)
+                region="$OPTARG" ;;
+            l)
+                log="$OPTARG" ;;
+            t)
+                file="$OPTARG"
+        esac
+    done
+    shift $(($OPTIND - 1))
+
+
+    echo "authtoken: $authtoken region: $region log: $log type, ${!type[@]}"
+}
+
 colab_init() {
     apt-get --quiet update && \
     apt-get --quiet install  --yes openssh-server net-tools iputils-ping iproute2 iptables openssl vim
@@ -170,23 +195,18 @@ EOF
 }
 
 colab_ngrok_config() {
-    local authtoken region log OPTIND
-    authtoken=
-    region="us"
-    log="/var/log/ngrok.log"
+    local file OPTIND
 
     OPTIND=1
-    while getopts a:r:l: opt ; do
+    while getopts f: opt ; do
         case "$opt" in
-            a)  authtoken="$OPTARG" ;;
-            r)  region="$OPTARG" ;;
-            l)  log="$OPTARG" ;;
+            f) file="$OPTARG" ;;
         esac
     done
     shift $(($OPTIND - 1))
 
-    if [[ -z "$authtoken" ]]; then
-        echo "(-a authtoken) must be set"
+    if [[ -f "$file" ]]; then
+        echo "(-f file) must be set and exist"
         exit 1
     fi
 
