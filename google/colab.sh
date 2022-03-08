@@ -2,17 +2,17 @@
 
 colab_init() {
     apt-get update && \
-    apt-get install -y openssh-server net-tools iputils-ping iproute2 iptables openssl vim
+    apt-get install --quiet --yes openssh-server net-tools iputils-ping iproute2 iptables openssl vim
 
     if [[ $# -gt 0 ]]; then
         for i in $@; do
-            apt-get install -y "$i"
+            apt-get --quiet install --yes "$i"
         done
     fi
 
     if [[ ! -x "/usr/local/bin/ngrok" ]]; then
-        wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.tgz -O ngrok.tgz
-        tar xvf ngrok.tgz && mv ngrok /usr/local/bin/ngrok && rm -rf ngrok.tgz
+        wget --quiet https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.tgz -O ngrok.tgz
+        tar xf ngrok.tgz && mv ngrok /usr/local/bin/ngrok && rm -rf ngrok.tgz
     fi
 }
 
