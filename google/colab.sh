@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 colab_init() {
-    apt-get update && \
-    apt-get install --quiet --yes openssh-server net-tools iputils-ping iproute2 iptables openssl vim
+    apt-get --quiet update && \
+    apt-get --quiet install  --yes openssh-server net-tools iputils-ping iproute2 iptables openssl vim
 
     if [[ $# -gt 0 ]]; then
         for i in $@; do
