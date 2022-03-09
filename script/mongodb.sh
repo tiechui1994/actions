@@ -502,7 +502,7 @@ rm -rf $installdir/logs/* && rm -rf $installdir/data/*
 
 # start mongodb service
 update-rc.d mongodb defaults && \
-systemctl daemon-reload && service mongodb start
+service mongodb start
 if [[ $? -ne 0 ]]; then
     echo "mongodb service start failed, please check and trg again..."
     exit
