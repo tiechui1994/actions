@@ -707,9 +707,9 @@ chown -R www:www $installdir
 
 # link file
 ln -sf $installdir/init.d/nginx /etc/init.d/nginx
-update-rc.d nginx defaults
 
 # start up
+update-rc.d nginx defaults && \
 service nginx start
 if [[ $? -ne 0 ]]; then
     echo "service start nginx failed"

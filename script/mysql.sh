@@ -207,7 +207,7 @@ build() {
     log_info "mysqldump ingo: $(ldd ${installdir}/mysql/bin/mysqldump)"
 }
 
-service() {
+config() {
     mkdir -p ${installdir}/data && \
     mkdir -p ${installdir}/logs && \
     mkdir -p ${installdir}/tmp && \
@@ -228,6 +228,7 @@ service() {
     default_storage_engine=InnoDB
     innodb_file_per_table=ON
     innodb_flush_log_at_trx_commit=1
+    binlog_sync=1
     innodb_lock_wait_timeout=60
     wait_timeout=28800
     interactive_timeout=28800
@@ -259,7 +260,7 @@ EOF
     printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/conf/my.cnf
 }
 
-systemd() {
+service() {
     read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
@@ -673,7 +674,7 @@ fi
 
 # start mysqld service
 update-rc.d mysqld defaults && \
-systemctl daemon-reload && service mysqld start
+service mysqld start
 if [[ $? -ne 0 ]]; then
     echo "mysqld service start failed, please check and trg again..."
     exit
@@ -766,7 +767,7 @@ do_install() {
         exit $?
     fi
 
-    service && systemd
+    config && service
     if [[ $? -ne ${success} ]]; then
         exit $?
     fi

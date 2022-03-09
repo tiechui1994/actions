@@ -267,7 +267,7 @@ ln -sf $installdir/bin/redis-server /usr/local/bin/redis-server
 
 # start redis service
 update-rc.d redis defaults && \
-systemctl daemon-reload && service redis start
+service redis start
 if [[ $? -ne 0 ]]; then
     echo "redis service start failed, please check and trg again..."
     exit
