@@ -7,9 +7,6 @@ upload:clean verify
 workflow:clean verify
 	go build $(LDFLAGS) -o workflow workflow.go $(UTIL)
 
-sign:clean verify
-	go build $(LDFLAGS) -o sign sign.go $(UTIL)
-
 email:clean verify
 	go build $(LDFLAGS) -o email email.go $(UTIL)
 
