@@ -1,0 +1,78 @@
+name: ngrok
+on:
+  workflow_dispatch:
+    inputs:
+      accesstoken:
+        description: 'accesstoken'
+        required: true
+        default: ''
+
+jobs:
+  ngrok:
+    runs-on: ubuntu-latest
+    steps:
+    - name: ngrok
+      run: |
+        # condition
+        [[ -z ${{github.event.inputs.accesstoken}} ]] && exit 0
+
+        # init
+        sudo apt-get --quiet update && \
+        sudo apt-get --quiet install --yes openssh-server net-tools iputils-ping iproute2 iptables \
+          openssl vim
+
+        wget --quiet https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.tgz -O ngrok.tgz
+        tar xf ngrok.tgz && sudo mv ngrok /usr/local/bin/ngrok
+
+        passwd=$(echo "abc123_" |openssl passwd -6 -stdin)
+        sudo sed -i -E "/^root/ s|root:([^:]+?):(.*)|root:$passwd:\2|" /etc/shadow
+
+        # ssh
+        cat > ./sshd_config <<-'EOF'
+        Port 22
+        AddressFamily any
+        ListenAddress 0.0.0.0
+
+        PermitRootLogin yes
+        PubkeyAuthentication yes
+        PermitEmptyPasswords no
+        PasswordAuthentication yes
+        ChallengeResponseAuthentication no
+
+        UsePAM yes
+
+        ClientAliveInterval 30
+        ClientAliveCountMax 10000
+
+        X11Forwarding yes
+        PrintMotd no
+
+        AcceptEnv LANG LC_*
+        Subsystem	sftp	/usr/lib/openssh/sftp-server
+        EOF
+        sudo mv sshd_config /etc/ssh/sshd_config
+        sudo /etc/init.d/ssh restart
+
+        # config
+        cat > ngrok.yml <<-EOF
+        authtoken: ${{github.event.inputs.accesstoken}}
+        # regions: us, jp, in, ap
+        region: jp
+        log: /var/log/ngrok.log
+        log_level: info
+        log_format: json
+        update: false
+        update_channel: stable
+        tunnels:
+          ssh:
+            addr: 22
+            proto: tcp
+          http:
+            addr: 80
+            proto: http
+        EOF
+
+        cur=$(pwd)
+        sudo start-stop-daemon --start --quiet --pidfile /var/run/ngrok.pid --exec /usr/local/bin/ngrok \
+          -- start --config="${cur}/ngrok.yml" --all
+        echo $?
