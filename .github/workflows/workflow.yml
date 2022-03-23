@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        go: [ '1.14' ]
+        go: [ '1.16' ]
 
     steps:
     - name: Use Go ${{ matrix.go }}
@@ -27,4 +27,5 @@ jobs:
     - name: Workflow Clean
       run: |
         make -C golang workflow && \
+        golang/workflow -r tiechui1994/fass -t ${{secrets.GIT_TOKEN}} && \
         golang/workflow -r tiechui1994/jobs -t ${{secrets.GIT_TOKEN}}
