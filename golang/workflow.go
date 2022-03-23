@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	r := flag.String("r", "", "github repo, eg: octocat/hello-world ")
+	r := flag.String("r", "", "github repo, eg: octocat/hello-world")
 	t := flag.String("t", "", "github token")
 	flag.Parse()
 	if *t == "" {
