@@ -60,7 +60,7 @@ jobs:
 
     - name: Build with ubuntu_${{matrix.os}} ${{matrix.platform}}
       id: build
-      timeout-minutes: 10
+      timeout-minutes: 20
       run: |
         docker run -v ${PWD}:/app --workdir /app --platform ${{matrix.platform}} ubuntu:${{matrix.os}} \
           bash /app/script/nginx.sh \
