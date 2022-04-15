@@ -154,9 +154,31 @@ download_zlib() {
 
 # https proxy
 # doc: https://github.com/chobits/ngx_http_proxy_connect_module
-download_proxy_connect() {
+build_proxy_connect() {
     url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.2"
     download "ngx_http_proxy_connect_module.tar.gz" "$url" curl 1
+    if [[ $? -ne ${success} ]]; then
+        return $?
+    fi
+
+    cd ${workdir}/nginx
+    
+    ./configure \
+    --with-compat \
+    --add-dynamic-module=${workdir}/ngx_http_proxy_connect_module
+    if [[ $? -ne 0 ]]; then
+        log_error "configure fail"
+        return ${failure}
+    fi
+
+    make modules
+    if [[ $? -ne 0 ]]; then
+        log_error "build fail"
+        return ${failure}
+    fi
+
+    log_info "ngx_http_proxy_connect_module info:$(ldd objs/ngx_http_proxy_connect_module.so)"
+    sudo cp objs/ngx_http_proxy_connect_module.so /etc/nginx/modules
 }
 
 # nginx lua
@@ -784,6 +806,11 @@ do_install(){
         init
      fi
 
+     download_nginx
+     if [[ $? -ne ${success} ]]; then
+        exit $?
+     fi
+
      download_openssl
      if [[ $? -ne ${success} ]]; then
         exit $?
@@ -799,11 +826,12 @@ do_install(){
         exit $?
      fi
 
-     download_proxy_connect
+     build_proxy_connect
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
 
+     return
      donwnload_nginx_lua
      if [[ $? -ne ${success} ]]; then
         exit $?
@@ -814,10 +842,6 @@ do_install(){
         exit $?
      fi
 
-     download_nginx
-     if [[ $? -ne ${success} ]]; then
-        exit $?
-     fi
 
      build_luajit
      if [[ $? -ne ${success} ]]; then
