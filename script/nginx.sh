@@ -125,6 +125,10 @@ download() {
 }
 
 download_nginx() {
+    sudo apt-get update && \
+    sudo apt-get install build-essential \
+        zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev libxml2 libxml2-dev libxslt-dev -y
+
     url="http://nginx.org/download/nginx-$version.tar.gz"
     download "nginx.tar.gz" "$url" curl 1
 }
@@ -162,9 +166,27 @@ build_proxy_connect() {
     fi
 
     cd ${workdir}/nginx
-    
+    # proxy_connect
+    if [[ "$version" =~ 1.13.* || "$version" =~ 1.14.* ]]; then
+        log_info "patch proxy_connect_rewrite_1014"
+        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_1014.patch
+    elif [[ "$version" = "1.15.2"  ]]; then
+        log_info "patch proxy_connect_rewrite_1015"
+        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_1015.patch
+    elif [[ "$version" =~ 1.15.* || "$version" =~ 1.16.* ]]; then
+        log_info "patch proxy_connect_rewrite_101504"
+        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_101504.patch
+    else
+        log_info "patch proxy_connect_rewrite_1018"
+        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_1018.patch
+    fi
+
     ./configure \
     --with-compat \
+    --with-pcre \
+    --with-zlib=${workdir}/zlib \
+    --with-pcre=${workdir}/pcre \
+    --with-openssl=${workdir}/openssl \
     --add-dynamic-module=${workdir}/ngx_http_proxy_connect_module
     if [[ $? -ne 0 ]]; then
         log_error "configure fail"
@@ -177,39 +199,7 @@ build_proxy_connect() {
         return ${failure}
     fi
 
-    log_info "ngx_http_proxy_connect_module info:$(ldd objs/ngx_http_proxy_connect_module.so)"
-    sudo cp objs/ngx_http_proxy_connect_module.so /etc/nginx/modules
-}
-
-# nginx lua
-# doc: https://github.com/openresty/lua-nginx-module#installation
-donwnload_nginx_lua() {
-    luajit="https://codeload.github.com/openresty/luajit2/tar.gz/refs/tags/v2.1-20211210"
-    download "luajit.tar.gz" "$luajit" curl 1
-    if [[ $? -ne ${success} ]]; then
-        return $?
-    fi
-
-    ngx_devel_kit="https://codeload.github.com/vision5/ngx_devel_kit/tar.gz/v0.3.1"
-    download "ngx_devel_kit.tar.gz" "$ngx_devel_kit" curl 1
-    if [[ $? -ne ${success} ]]; then
-        return ${failure}
-    fi
-
-    ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.20"
-    download "lua-nginx-module.tar.gz" "$ngx_lua" curl 1
-}
-
-# nginx rtmp, 实时流推送
-download_rtmp() {
-    url="https://codeload.github.com/arut/nginx-rtmp-module/tar.gz/v1.2.2"
-    download "nginx-rtmp-module.tar.gz" "$url" curl 1
-}
-
-# nginx flv, http flv 格式实时流, 该模块是在 nginx-rtmp-module 基础上修改的.
-download_flv() {
-    url="https://codeload.github.com/winshining/nginx-http-flv-module/tar.gz/v1.2.9"
-    download "nginx-http-flv-module.tar.gz" "$url" curl 1
+    log_info "ngx_http_proxy_connect_module info: $(ldd objs/ngx_http_proxy_connect_module.so)"
 }
 
 build_luajit() {
@@ -227,13 +217,107 @@ build_luajit() {
     fi
 }
 
+# nginx lua
+# doc: https://github.com/openresty/lua-nginx-module#installation
+build_nginx_lua() {
+    cd ${workdir}
+    luajit="https://codeload.github.com/openresty/luajit2/tar.gz/refs/tags/v2.1-20211210"
+    download "luajit.tar.gz" "$luajit" curl 1
+    if [[ $? -ne ${success} ]]; then
+        return $?
+    fi
+
+    build_luajit
+    if [[ $? -ne ${success} ]]; then
+        return $?
+    fi
+
+    cd ${workdir}
+    ngx_devel_kit="https://codeload.github.com/vision5/ngx_devel_kit/tar.gz/v0.3.1"
+    download "ngx_devel_kit.tar.gz" "$ngx_devel_kit" curl 1
+    if [[ $? -ne ${success} ]]; then
+        return ${failure}
+    fi
+
+    ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.20"
+    download "lua-nginx-module.tar.gz" "$ngx_lua" curl 1
+    if [[ $? -ne ${success} ]]; then
+        return $?
+    fi
+
+    cd ${workdir}/nginx
+    # sudo mv /tmp/luajit ${installdir}/thirdpart/
+    export LUAJIT_LIB="/tmp/luajit/lib"
+    export LUAJIT_INC="/tmp/luajit/include/luajit-2.1"
+
+    ./configure \
+    --with-compat \
+    --with-pcre \
+    --with-zlib=${workdir}/zlib \
+    --with-pcre=${workdir}/pcre \
+    --with-openssl=${workdir}/openssl \
+    --add-dynamic-module=${workdir}/ngx_devel_kit \
+    --add-dynamic-module=${workdir}/lua-nginx-module \
+    --with-ld-opt="-Wl,-rpath,$LUAJIT_LIB"
+    if [[ $? -ne 0 ]]; then
+        log_error "configure lua fail"
+        return ${failure}
+    fi
+
+    make modules 1> ${workdir}/log 2>&1
+    if [[ $? -ne 0 ]]; then
+        log_error "build lua fail"
+        tail -100 ${workdir}/log
+        return ${failure}
+    fi
+
+    log_info "$(ls objs|grep -E '*.so$')"
+    log_info "ngx_devel_kit info: $(ldd objs/ngx_devel_kit.so)"
+    log_info "lua-nginx-module info: $(ldd objs/lua-nginx-module.so)"
+}
+
+# nginx rtmp, 实时流推送
+download_rtmp() {
+    url="https://codeload.github.com/arut/nginx-rtmp-module/tar.gz/v1.2.2"
+    download "nginx-rtmp-module.tar.gz" "$url" curl 1
+}
+
+# nginx flv, http flv 格式实时流, 该模块是在 nginx-rtmp-module 基础上修改的.
+build_flv() {
+    cd ${workdir}
+    url="https://codeload.github.com/winshining/nginx-http-flv-module/tar.gz/v1.2.9"
+    download "nginx-http-flv-module.tar.gz" "$url" curl 1
+    if [[ $? -ne ${success} ]]; then
+        return $?
+    fi
+
+    cd ${workdir}/nginx
+    ./configure \
+    --with-compat \
+    --with-pcre \
+    --with-zlib=${workdir}/zlib \
+    --with-pcre=${workdir}/pcre \
+    --with-openssl=${workdir}/openssl \
+    --add-dynamic-module=${workdir}/nginx-http-flv-module
+    if [[ $? -ne 0 ]]; then
+        log_error "configure flv fail"
+        return ${failure}
+    fi
+
+    make modules > ${workdir}/log 2>&1
+    if [[ $? -ne 0 ]]; then
+        log_error "build flv fail"
+        tail -100 ${workdir}/log
+        return ${failure}
+    fi
+
+    log_info "$(ls objs|grep -E '*.so$')"
+    log_info "nginx-http-flv-module info: $(ldd objs/nginx-http-flv-module.so)"
+}
+
 # other module
 # doc: https://openresty.org/en/download.html
 build() {
-    sudo apt-get update && \
-    sudo apt-get install build-essential \
-        zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev libxml2 libxml2-dev libxslt-dev -y
-
     # create nginx dir
     rm -rf ${installdir} && \
     mkdir -p ${installdir} && \
@@ -831,22 +915,17 @@ do_install(){
         exit $?
      fi
 
+     build_nginx_lua
+     if [[ $? -ne ${success} ]]; then
+        exit $?
+     fi
+
+     build_flv
+     if [[ $? -ne ${success} ]]; then
+        exit $?
+     fi
+
      return
-     donwnload_nginx_lua
-     if [[ $? -ne ${success} ]]; then
-        exit $?
-     fi
-
-     download_flv
-     if [[ $? -ne ${success} ]]; then
-        exit $?
-     fi
-
-
-     build_luajit
-     if [[ $? -ne ${success} ]]; then
-        exit $?
-     fi
 
      build
      if [[ $? -ne ${success} ]]; then
