@@ -130,7 +130,7 @@ download_nginx() {
         zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev libxml2 libxml2-dev libxslt-dev -y
 
     url="http://nginx.org/download/nginx-$version.tar.gz"
-    download "nginx.tar.gz" "$url" curl 1
+    cd ${workdir} && download "nginx.tar.gz" "$url" curl 1
 }
 
 download_openssl() {
@@ -141,26 +141,26 @@ download_openssl() {
     else
         url=$(printf "%s/%s/openssl-%s.tar.gz" ${prefix} ${openssl:0:${#openssl}-1} ${openssl})
     fi
-    download "openssl.tar.gz" "$url" curl 1
+    cd ${workdir} && download "openssl.tar.gz" "$url" curl 1
 }
 
 download_pcre() {
     url="https://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz"
     url="https://nchc.dl.sourceforge.net/project/pcre/pcre/8.44/pcre-8.44.tar.gz"
-    download "pcre.tar.gz" "$url" curl 1
+    cd ${workdir} && download "pcre.tar.gz" "$url" curl 1
 }
 
 download_zlib() {
     url="http://www.zlib.net/fossils/zlib-1.2.11.tar.gz"
     url="https://codeload.github.com/madler/zlib/tar.gz/refs/tags/v1.2.11"
-    download "zlib.tar.gz" "$url" curl 1
+    cd ${workdir} && download "zlib.tar.gz" "$url" curl 1
 }
 
 # https proxy
 # doc: https://github.com/chobits/ngx_http_proxy_connect_module
 build_proxy_connect() {
     url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.2"
-    download "ngx_http_proxy_connect_module.tar.gz" "$url" curl 1
+    cd ${workdir} && download "ngx_http_proxy_connect_module.tar.gz" "$url" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
     fi
@@ -183,7 +183,6 @@ build_proxy_connect() {
 
     ./configure \
     --with-compat \
-    --with-pcre \
     --with-zlib=${workdir}/zlib \
     --with-pcre=${workdir}/pcre \
     --with-openssl=${workdir}/openssl \
@@ -200,6 +199,11 @@ build_proxy_connect() {
     fi
 
     log_info "ngx_http_proxy_connect_module info: $(ldd objs/ngx_http_proxy_connect_module.so)"
+    sudo cp objs/ngx_http_proxy_connect_module.so ${workdir}/modules
+
+    cat > ${workdir}/modules-available/50-mod-http-proxy-connect.conf <<-EOF
+load_module share/modules/ngx_http_proxy_connect_module.so;
+EOF
 }
 
 build_luajit() {
@@ -220,9 +224,8 @@ build_luajit() {
 # nginx lua
 # doc: https://github.com/openresty/lua-nginx-module#installation
 build_nginx_lua() {
-    cd ${workdir}
     luajit="https://codeload.github.com/openresty/luajit2/tar.gz/refs/tags/v2.1-20211210"
-    download "luajit.tar.gz" "$luajit" curl 1
+    cd ${workdir} && download "luajit.tar.gz" "$luajit" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
     fi
@@ -232,33 +235,34 @@ build_nginx_lua() {
         return $?
     fi
 
-    cd ${workdir}
     ngx_devel_kit="https://codeload.github.com/vision5/ngx_devel_kit/tar.gz/v0.3.1"
-    download "ngx_devel_kit.tar.gz" "$ngx_devel_kit" curl 1
+    cd ${workdir} && download "ngx_devel_kit.tar.gz" "$ngx_devel_kit" curl 1
     if [[ $? -ne ${success} ]]; then
         return ${failure}
     fi
 
     ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.20"
-    download "lua-nginx-module.tar.gz" "$ngx_lua" curl 1
+    if [[ "$version" =~ 1.15.* || "$version" =~ 1.16.* ||  "$version" =~ 1.18.* ]]; then
+        ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.14"
+    fi
+    cd ${workdir} && download "lua-nginx-module.tar.gz" "$ngx_lua" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
     fi
 
     cd ${workdir}/nginx
-    # sudo mv /tmp/luajit ${installdir}/thirdpart/
-    export LUAJIT_LIB="/tmp/luajit/lib"
-    export LUAJIT_INC="/tmp/luajit/include/luajit-2.1"
+    sudo mv /tmp/luajit ${installdir}/third/
+    export LUAJIT_LIB="${installdir}/third/luajit/lib"
+    export LUAJIT_INC="${installdir}/third/luajit/include/luajit-2.1"
 
     ./configure \
     --with-compat \
-    --with-pcre \
     --with-zlib=${workdir}/zlib \
     --with-pcre=${workdir}/pcre \
     --with-openssl=${workdir}/openssl \
     --add-dynamic-module=${workdir}/ngx_devel_kit \
     --add-dynamic-module=${workdir}/lua-nginx-module \
-    --with-ld-opt="-Wl,-rpath,$LUAJIT_LIB"
+    --with-ld-opt="-lpcre -Wl,-rpath,$LUAJIT_LIB"
     if [[ $? -ne 0 ]]; then
         log_error "configure lua fail"
         return ${failure}
@@ -272,8 +276,19 @@ build_nginx_lua() {
     fi
 
     log_info "$(ls objs|grep -E '*.so$')"
-    log_info "ngx_devel_kit info: $(ldd objs/ngx_devel_kit.so)"
-    log_info "lua-nginx-module info: $(ldd objs/lua-nginx-module.so)"
+    log_info "ngx_devel_kit info: $(ldd objs/ndk_http_module.so)"
+    log_info "lua-nginx-module info: $(ldd objs/ngx_http_lua_module.so)"
+
+    sudo cp objs/ndk_http_module.so ${workdir}/modules
+    sudo cp objs/ngx_http_lua_module.so ${workdir}/modules
+
+    cat > ${workdir}/modules-available/10-mod-http-ndk.conf <<-EOF
+load_module share/modules/ndk_http_module.so;
+EOF
+
+    cat > ${workdir}/modules-available/50-mod-http-lua.conf <<-EOF
+load_module share/modules/ngx_http_lua_module.so;
+EOF
 }
 
 # nginx rtmp, 实时流推送
@@ -286,7 +301,7 @@ download_rtmp() {
 build_flv() {
     cd ${workdir}
     url="https://codeload.github.com/winshining/nginx-http-flv-module/tar.gz/v1.2.9"
-    download "nginx-http-flv-module.tar.gz" "$url" curl 1
+    cd ${workdir} && download "nginx-http-flv-module.tar.gz" "$url" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
     fi
@@ -294,7 +309,6 @@ build_flv() {
     cd ${workdir}/nginx
     ./configure \
     --with-compat \
-    --with-pcre \
     --with-zlib=${workdir}/zlib \
     --with-pcre=${workdir}/pcre \
     --with-openssl=${workdir}/openssl \
@@ -312,7 +326,12 @@ build_flv() {
     fi
 
     log_info "$(ls objs|grep -E '*.so$')"
-    log_info "nginx-http-flv-module info: $(ldd objs/nginx-http-flv-module.so)"
+    log_info "nginx-http-flv-module info: $(ldd objs/ngx_http_flv_live_module.so)"
+
+    sudo cp objs/ngx_http_flv_live_module.so ${workdir}/modules
+    cat > ${workdir}/modules-available/50-mod-http-flv.conf <<-EOF
+load_module share/modules/ngx_http_flv_live_module.so;
+EOF
 }
 
 # other module
@@ -321,7 +340,7 @@ build() {
     # create nginx dir
     rm -rf ${installdir} && \
     mkdir -p ${installdir} && \
-    mkdir -p ${installdir}/thirdpart && \
+    mkdir -p ${installdir}/third && \
     mkdir -p ${installdir}/init.d && \
     mkdir -p ${installdir}/tmp/client && \
     mkdir -p ${installdir}/tmp/proxy && \
@@ -374,26 +393,11 @@ build() {
     # build and install
     cd ${workdir}/nginx
 
-    # proxy_connect
-    if [[ "$version" =~ 1.13.* || "$version" =~ 1.14.* ]]; then
-        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_1014.patch
-    elif [[ "$version" = "1.15.2"  ]]; then
-        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_1015.patch
-    elif [[ "$version" =~ 1.15.* || "$version" =~ 1.16.* ]]; then
-        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_101504.patch
-    else
-        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_1018.patch
-    fi
-
-    # nginx lua
-    sudo mv /tmp/luajit ${installdir}/thirdpart/
-    export LUAJIT_LIB="${installdir}/thirdpart/luajit/lib"
-    export LUAJIT_INC="${installdir}/thirdpart/luajit/include/luajit-2.1"
-
     ./configure \
     --user=www  \
     --group=www \
     --prefix=${installdir} \
+    --modules-path=${installdir}/share/modules \
     --with-poll_module \
     --with-threads \
     --with-file-aio \
@@ -417,22 +421,16 @@ build() {
     --with-stream \
     --with-stream_ssl_module \
     --with-stream_ssl_preread_module \
-    --with-pcre \
     --with-debug \
+    --with-compat \
     --with-zlib=${workdir}/zlib \
     --with-pcre=${workdir}/pcre \
     --with-openssl=${workdir}/openssl \
-    --add-module=${workdir}/ngx_http_proxy_connect_module \
-    --add-module=${workdir}/ngx_devel_kit \
-    --add-module=${workdir}/lua-nginx-module \
-    --add-module=${workdir}/nginx-http-flv-module \
     --http-client-body-temp-path=${installdir}/tmp/client \
     --http-proxy-temp-path=${installdir}/tmp/proxy \
     --http-fastcgi-temp-path=${installdir}/tmp/fcgi \
     --http-uwsgi-temp-path=${installdir}/tmp/uwsgi \
-    --http-scgi-temp-path=${installdir}/tmp/scgi \
-    --with-ld-opt="-Wl,-rpath,$LUAJIT_LIB"
-
+    --http-scgi-temp-path=${installdir}/tmp/scgi
     if [[ $? -ne 0 ]]; then
         log_error "configure fail"
         return ${failure}
@@ -444,15 +442,17 @@ build() {
         cpu=1
     fi
 
-    make -j ${cpu}
+    make -j ${cpu} > ${workdir}/log 2>&1
     if [[ $? -ne 0 ]]; then
         log_error "build fail"
+        tail -100 ${workdir}/log
         return ${failure}
     fi
 
-    sudo make install
+    sudo make install > ${workdir}/log 2>&1
     if [[ $? -ne 0 ]]; then
         log_error "install failed"
+        tail -100 ${workdir}/log
         return ${failure}
     fi
 
@@ -461,10 +461,15 @@ build() {
 }
 
 service() {
+    mkdir -p ${installdir}/share
+    mv ${workdir}/modules ${installdir}/share
+    mv ${workdir}/modules-available ${installdir}/share
+
     # conf template and add deafult conf file
     read -r -d '' conf <<- 'EOF'
 user  www;
 worker_processes 1;
+include $installdir/share/modules-available/*.conf;
 
 error_log  $installdir/logs/error.log  notice;
 pid        $installdir/logs/nginx.pid;
@@ -890,22 +895,15 @@ do_install(){
         init
      fi
 
-     download_nginx
+     download_nginx && download_openssl && download_zlib && download_pcre
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
 
-     download_openssl
-     if [[ $? -ne ${success} ]]; then
-        exit $?
-     fi
+     mkdir -p ${workdir}/modules
+     mkdir -p ${workdir}/modules-available
 
-     download_pcre
-     if [[ $? -ne ${success} ]]; then
-        exit $?
-     fi
-
-     download_zlib
+     build
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
@@ -921,13 +919,6 @@ do_install(){
      fi
 
      build_flv
-     if [[ $? -ne ${success} ]]; then
-        exit $?
-     fi
-
-     return
-
-     build
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
