@@ -1,0 +1,73 @@
+name: garble
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'garble version'
+        required: true
+        default: 'v0.6.0'
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: ['amd64', 'arm64']
+        go: ['1.17', '1.18']
+
+    steps:
+    - name: Use Go ${{matrix.go}}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{matrix.go}}
+
+    - name: Build On ${{matrix.arch}} ${{matrix.go}}
+      timeout-minutes: 5
+      run: |
+        GOOS="linux" \
+        GOARCH="${{matrix.arch}}" \
+        go install mvdan.cc/garble@"${{github.event.inputs.version}}"
+
+        gopath=$(go env GOPATH)
+        file="${gopath}/bin/garble"
+        if [[ ${{matrix.arch}} = "arm64" ]]; then
+          file="${gopath}/bin/linux_arm64/garble"
+        fi
+        cp ${file} ${{github.workspace}}/garble-linux-${{matrix.go}}-${{matrix.arch}}
+      shell: bash
+
+    - name: Cache files
+      id: restore-build
+      uses: actions/cache@v2
+      with:
+        path: ${{github.workspace}}/garble-linux-${{matrix.go}}-${{matrix.arch}}
+        key: garble-linux-${{matrix.go}}-${{matrix.arch}}
+
+  release:
+    needs: [linux]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/cache@v2
+      with:
+        path: ${{github.workspace}}/garble-linux-1.17-amd64
+        key: garble-linux-1.17-amd64
+    - uses: actions/cache@v2
+      with:
+        path: ${{github.workspace}}/garble-linux-1.17-arm64
+        key: garble-linux-1.17-arm64
+    - uses: actions/cache@v2
+      with:
+        path: ${{github.workspace}}/garble-linux-1.18-amd64
+        key: garble-linux-1.18-amd64
+    - uses: actions/cache@v2
+      with:
+        path: ${{github.workspace}}/garble-linux-1.18-arm64
+        key: garble-linux-1.18-arm64
+
+    - name: Upload
+      if: ${{ success() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: garble
+        path: ${{github.workspace}}/garble-linux-*
+        retention-days: 1
