@@ -220,7 +220,7 @@ def handle(data):
             'ttl': 28800,
             'value': keys
         }
-        url = 'https://jobs.tiechui1994.tk/api/mongo?key=ngrok'
+        url = 'https://jobs.quinn1994.tk/api/mongo?key=ngrok'
         r = requests.request("POST", url, json=body, verify=True)
         print('result:', str(r.content, 'utf-8'))
 
