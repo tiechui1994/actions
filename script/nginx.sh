@@ -442,13 +442,6 @@ build() {
         cpu=1
     fi
 
-#    make -j ${cpu} > ${workdir}/log 2>&1
-#    if [[ $? -ne 0 ]]; then
-#        log_error "build fail"
-#        tail -100 ${workdir}/log
-#        return ${failure}
-#    fi
-
     make -j ${cpu}
     if [[ $? -ne 0 ]]; then
         log_error "build fail"
@@ -793,6 +786,11 @@ package() {
     cd ${workdir}
     sudo rm -rf debian && mkdir -p debian/DEBIAN
 
+    arch="amd64"
+    if [[ ${NAME} =~ (.*)?arm64.deb$ ]]; then
+        arch="arm64"
+    fi
+
     # control
     cat > debian/DEBIAN/control <<- EOF
 Package: Nginx
@@ -801,7 +799,7 @@ Description: Nginx server deb package
 Section: utils
 Priority: standard
 Essential: no
-Architecture: amd64
+Architecture: ${arch}
 Depends:
 Maintainer: tiechui1994 <2904951429@qq.com>
 Provides: github
