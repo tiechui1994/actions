@@ -242,7 +242,7 @@ build_nginx_lua() {
     fi
 
     ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.20"
-    if [[ "$version" =~ 1.15.* || "$version" =~ 1.16.* ||  "$version" =~ 1.18.* ]]; then
+    if [[ "$version" =~ 1.15.* || "$version" =~ 1.16.* ||  "$version" =~ 1.18.* || "$version" =~ 1.20.* ]]; then
         ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.14"
     fi
     cd ${workdir} && download "lua-nginx-module.tar.gz" "$ngx_lua" curl 1
@@ -441,13 +441,6 @@ build() {
     if [[ ${openssl} > "1.1.0" ]]; then
         cpu=1
     fi
-
-#    make -j ${cpu} > ${workdir}/log 2>&1
-#    if [[ $? -ne 0 ]]; then
-#        log_error "build fail"
-#        tail -100 ${workdir}/log
-#        return ${failure}
-#    fi
 
     make -j ${cpu}
     if [[ $? -ne 0 ]]; then
@@ -793,6 +786,11 @@ package() {
     cd ${workdir}
     sudo rm -rf debian && mkdir -p debian/DEBIAN
 
+    arch="amd64"
+    if [[ ${NAME} =~ (.*)?arm64.deb$ ]]; then
+        arch="arm64"
+    fi
+
     # control
     cat > debian/DEBIAN/control <<- EOF
 Package: Nginx
@@ -801,7 +799,7 @@ Description: Nginx server deb package
 Section: utils
 Priority: standard
 Essential: no
-Architecture: amd64
+Architecture: ${arch}
 Depends:
 Maintainer: tiechui1994 <2904951429@qq.com>
 Provides: github
@@ -844,16 +842,25 @@ EOF
     cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
 
-service nginx stop
+service nginx status > /dev/null 2>&1
+if [[ $? -eq 0 ]]; then
+    service nginx stop
+fi
+
 EOF
 
     # postrm
     read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
-update-rc.d nginx remove
-rm -rf /etc/init.d/nginx
-rm -rf $installdir
+if [[ -f /etc/init.d/nginx ]]; then
+    update-rc.d nginx remove
+    rm -rf /etc/init.d/nginx
+fi
+
+if [[ -d $installdir ]]; then
+    rm -rf $installdir
+fi
 
 if [[ -n "$(cat /etc/group | grep -E '^www:')" ]]; then
     groupdel -f www

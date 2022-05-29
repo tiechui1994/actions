@@ -40,7 +40,7 @@ jobs:
   build_amd64:
     needs: [check]
     if: ${{ github.event.inputs.temporary != 'false' || needs.check.outputs.needbuild == 0 }}
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         os: [16.04, 18.04, 20.04]
@@ -79,7 +79,7 @@ jobs:
   build_arm64:
     needs: [check]
     if: ${{ github.event.inputs.temporary != 'false' || needs.check.outputs.needbuild == 0 }}
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         os: [16.04, 18.04, 20.04]
@@ -91,7 +91,7 @@ jobs:
       with:
         persist-credentials: false
 
-    - uses: uraimo/run-on-arch-action@v2
+    - uses: uraimo/run-on-arch-action@v2.2.0
       name: Run commands
       id: runcmd
       with:
@@ -173,7 +173,7 @@ jobs:
       if: ${{ github.event.inputs.temporary != 'false' }}
       uses: actions/upload-artifact@v2
       with:
-        name: nginx_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64.deb
+        name: nginx_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64
         path: ${{github.workspace}}/nginx_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64.deb
         retention-days: 1
 
@@ -181,6 +181,6 @@ jobs:
       if: ${{ github.event.inputs.temporary != 'false' }}
       uses: actions/upload-artifact@v2
       with:
-        name: nginx_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_arm64.deb
+        name: nginx_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_arm64
         path: ${{github.workspace}}/nginx_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_arm64.deb
         retention-days: 1
