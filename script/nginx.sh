@@ -442,10 +442,16 @@ build() {
         cpu=1
     fi
 
-    make -j ${cpu} > ${workdir}/log 2>&1
+#    make -j ${cpu} > ${workdir}/log 2>&1
+#    if [[ $? -ne 0 ]]; then
+#        log_error "build fail"
+#        tail -100 ${workdir}/log
+#        return ${failure}
+#    fi
+
+    make -j ${cpu}
     if [[ $? -ne 0 ]]; then
         log_error "build fail"
-        tail -100 ${workdir}/log
         return ${failure}
     fi
 
