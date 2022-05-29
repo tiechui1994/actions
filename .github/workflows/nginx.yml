@@ -92,7 +92,6 @@ jobs:
         persist-credentials: false
 
     - uses: uraimo/run-on-arch-action@v2
-      timeout-minutes: 30
       name: Run commands
       id: runcmd
       with:
