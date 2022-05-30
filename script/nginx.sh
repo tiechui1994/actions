@@ -242,7 +242,7 @@ build_nginx_lua() {
     fi
 
     ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.20"
-    if [[ "$version" =~ 1.15.* || "$version" =~ 1.16.* ||  "$version" =~ 1.18.* ]]; then
+    if [[ "$version" =~ 1.15.* || "$version" =~ 1.16.* ||  "$version" =~ 1.18.* || "$version" =~ 1.20.* ]]; then
         ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.14"
     fi
     cd ${workdir} && download "lua-nginx-module.tar.gz" "$ngx_lua" curl 1
