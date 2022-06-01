@@ -809,31 +809,42 @@ EOF
     read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
-# user and group
-if [[ -z "$(cat /etc/group | grep -E '^www:')" ]]; then
-    groupadd -r www
-fi
-if [[ -z "$(cat /etc/passwd | grep -E '^www:')" ]]; then
-    useradd -r www -g www
-fi
+case "$1" in
+    (configure)
+        # user and group
+        if [[ -z "$(cat /etc/group | grep -E '^www:')" ]]; then
+            groupadd -r www
+        fi
+        if [[ -z "$(cat /etc/passwd | grep -E '^www:')" ]]; then
+            useradd -r www -g www
+        fi
 
-# dir owner
-chown -R www:www $installdir
+        find /opt/local
 
-# link file
-ln -sf $installdir/init.d/nginx /etc/init.d/nginx
+        # dir owner
+        chown -R www:www $installdir
 
-# start up
-update-rc.d nginx defaults && \
-service nginx start
-if [[ $? -ne 0 ]]; then
-    echo "service start nginx failed"
-fi
+        # link file
+        ln -sf $installdir/init.d/nginx /etc/init.d/nginx
 
-# test pid
-if [[ $(pgrep nginx) ]]; then
-    echo "nginx install successfully !"
-fi
+        # start up
+        update-rc.d nginx defaults && \
+        service nginx start
+        if [[ $? -ne 0 ]]; then
+            echo "service start nginx failed"
+        fi
+
+        # test pid
+        if [[ $(pgrep nginx) ]]; then
+            echo "nginx install successfully !"
+        fi
+    ;;
+    (*)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 0
+    ;;
+esac
+
 EOF
 
     printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
@@ -842,10 +853,14 @@ EOF
     cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
 
-service nginx status > /dev/null 2>&1
-if [[ $? -eq 0 ]]; then
-    service nginx stop
-fi
+case "$1" in
+    (remove)
+        service nginx status > /dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
+            service nginx stop
+        fi
+    ;;
+esac
 
 EOF
 
@@ -853,21 +868,25 @@ EOF
     read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
-if [[ -f /etc/init.d/nginx ]]; then
-    update-rc.d nginx remove
-    rm -rf /etc/init.d/nginx
-fi
+case "$1" in
+    (remove)
+        if [[ -f /etc/init.d/nginx ]]; then
+            update-rc.d nginx remove
+            rm -rf /etc/init.d/nginx
+        fi
 
-if [[ -d $installdir ]]; then
-    rm -rf $installdir
-fi
+        if [[ -d $installdir ]]; then
+            rm -rf $installdir
+        fi
 
-if [[ -n "$(cat /etc/group | grep -E '^www:')" ]]; then
-    groupdel -f www
-fi
-if [[ -n "$(cat /etc/passwd | grep -E '^www:')" ]]; then
-    userdel -f -r www
-fi
+        if [[ -n "$(cat /etc/group | grep -E '^www:')" ]]; then
+            groupdel -f www
+        fi
+        if [[ -n "$(cat /etc/passwd | grep -E '^www:')" ]]; then
+            userdel -f www
+        fi
+    ;;
+esac
 
 EOF
     printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postrm
