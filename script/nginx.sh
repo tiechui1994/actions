@@ -842,16 +842,25 @@ EOF
     cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
 
-service nginx stop
+service nginx status > /dev/null 2>&1
+if [[ $? -eq 0 ]]; then
+    service nginx stop
+fi
+
 EOF
 
     # postrm
     read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
-update-rc.d nginx remove
-rm -rf /etc/init.d/nginx
-rm -rf $installdir
+if [[ -f /etc/init.d/nginx ]]; then
+    update-rc.d nginx remove
+    rm -rf /etc/init.d/nginx
+fi
+
+if [[ -d $installdir ]]; then
+    rm -rf $installdir
+fi
 
 if [[ -n "$(cat /etc/group | grep -E '^www:')" ]]; then
     groupdel -f www
