@@ -819,8 +819,6 @@ case "$1" in
             useradd -r www -g www
         fi
 
-        find /opt/local
-
         # dir owner
         chown -R www:www $installdir
 
