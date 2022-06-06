@@ -3,15 +3,22 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/tiechui1994/tool/util"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/tiechui1994/tool/log"
+	"github.com/tiechui1994/tool/util"
 )
 
 func init() {
-	util.SetLogPrefix()
+	util.LogRequest(func(i *http.Request) {
+		if i.URL.Host == "www.natfrp.com" || i.URL.Host == "openid.13a.com" {
+			log.Infoln("request: %v, cookie:%v", i.URL.Path, i.Cookies())
+		}
+	})
 }
 
 func main() {
