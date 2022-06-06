@@ -14,10 +14,8 @@ import (
 )
 
 func init() {
-	util.LogRequest(func(i *http.Request) {
-		if i.URL.Host == "www.natfrp.com" || i.URL.Host == "openid.13a.com" {
-			log.Infoln("request: %v, cookie:%v", i.URL.Path, i.Cookies())
-		}
+	util.LogRequest(func(request *http.Request) {
+		log.Infoln("%v - %v", request.Method, request.RequestURI)
 	})
 }
 
