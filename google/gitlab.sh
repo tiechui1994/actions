@@ -10,7 +10,7 @@ declare -r codename=(
 )
 
 wget --content-disposition \
-    https://packages.gitlab.com/gitlab/gitlab-ce/packages/ubuntu/${codename[ubuntu]}/${gitlab}/download.deb
+    https://packages.gitlab.com/gitlab/gitlab-ce/packages/ubuntu/${codename[$ubuntu]}/${gitlab}/download.deb
 
 cat > /etc/gitlab/gitlab.rb <<-'EOF'
 external_url 'http://gitlab.example.com'
@@ -18,6 +18,7 @@ external_url 'http://gitlab.example.com'
 # 初始化 root 账号密码和  shared_runners 注册密码
 gitlab_rails['initial_root_password'] = "1234567890"
 gitlab_rails['initial_shared_runners_registration_token'] = "1234567890"
+
 EOF
 
 gitlab-ctl reconfigure
