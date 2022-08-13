@@ -188,7 +188,10 @@ func (e *Email) Handle(configs []config) error {
 			fileds := response.MessageInfo().Attrs
 			_ = fileds["FLAGS"]
 			text := fileds["RFC822.TEXT"]
-			envelope := parseEnvelope(fileds["ENVELOPE"])
+			envelope, err := parseEnvelope(fileds["ENVELOPE"])
+			if err != nil {
+				continue
+			}
 			e.handleMessage(uid, envelope, text, conds)
 		}
 	}
@@ -213,15 +216,19 @@ type Envelope struct {
 	MessageId string
 }
 
-func parseEnvelope(field imap.Field) (envelope Envelope) {
+func parseEnvelope(field imap.Field) (envelope Envelope, err error) {
 	// date, subject, from, sender, reply-to, to, cc, bcc, in-reply-to, message-id
 	list := imap.AsList(field)
 
+	if len(list) < 10 {
+		return envelope, fmt.Errorf("invalid list")
+	}
+
 	// date: Tue, 06 Apr 2021 07:36:28 -0700
-	var err error
 	envelope.Date, err = parseMessageDateTime(imap.AsString(list[0]))
 	if err != nil {
 		fmt.Println("err", err)
+		return envelope, err
 	}
 
 	// subject
@@ -238,7 +245,7 @@ func parseEnvelope(field imap.Field) (envelope Envelope) {
 	// in-reply-to, message-id
 	envelope.InReplyTo = imap.AsString(list[8])
 	envelope.MessageId = imap.AsString(list[9])
-	return envelope
+	return envelope, nil
 }
 
 func parseAddrList(field imap.Field) (list []Addr, err error) {
