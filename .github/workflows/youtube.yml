@@ -65,15 +65,15 @@ jobs:
         name=$(ls|grep ${{github.event.inputs.name}})
         echo "ext: ${name##*.}"
         if [[ "${name##*.}" != "mp4" ]]; then
-          wget https://github.com/tiechui1994/actions/releases/download/ffmpeg_5.1/ffmpeg.tar.xz
-          tar xvf ffmpeg.tar.xz && sudo mv ffmpeg/ffmpeg /usr/local/bin/
+          wget --quiet  https://github.com/tiechui1994/actions/releases/download/ffmpeg_5.1/ffmpeg.tar.xz -O ffmpeg.tar.xz
+          tar xf ffmpeg.tar.xz && chmod a+x ffmpeg/ffmpeg
           name=$(ls|grep ${{github.event.inputs.name}})
-          ffmpeg -i "$name" -crf 0 -c:v libx264 "${{github.event.inputs.name}}.mp4"
+          ffmpeg/ffmpeg -i "$name" -crf 20 -c:v libx264 "${{github.event.inputs.name}}.mp4"
         fi
         ls -lh
         
     - name: Upload
       if: ${{ success() }}
-      run:
+      run: |
         make -C golang upload
         ALIDRIVE_TOKEN=${{secrets.ALIDRIVE_TOKEN}} golang/upload -upload -file "${{github.workspace}}/${{github.event.inputs.name}}.mp4"
