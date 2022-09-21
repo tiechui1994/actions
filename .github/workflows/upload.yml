@@ -38,4 +38,4 @@ jobs:
       if: ${{ success() }}
       run: |
         make -C golang upload && \
-        golang/upload -upload -file ${{github.event.inputs.name}}
+        ALIDRIVE_TOKEN=${{secrets.ALIDRIVE_TOKEN}} golang/upload -upload -file ${{github.event.inputs.name}}
