@@ -1,0 +1,79 @@
+name: youtube
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'vedio url'
+        required: true
+        default: ''
+      name:
+        description: 'vedio name'
+        required: true
+        default: ''
+      quality:
+        description: 'vedio quality'
+        required: false
+        default: 720
+        type: choice
+        options:
+          - 360
+          - 480
+          - 720
+          - 1080
+          - 1440
+          - 2160
+          - 4320
+      fps:
+        description: 'vedio fps'
+        required: false
+        default: 30
+        type: choice
+        options:
+          - 15
+          - 25
+          - 30
+          - 60
+
+jobs:
+  vedio:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        go: [ '1.17' ]
+
+    steps:
+    - name: Use Go ${{ matrix.go }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
+
+    - name: Downalod
+      run: |
+        make -C golang youtube && \
+        golang/youtube -name ${{github.workspace}}/${{github.event.inputs.name}} -url ${{github.event.inputs.url}} -quality ${{github.event.inputs.quality}} -fps ${{github.event.inputs.fps}}
+
+    - name: Convert
+      if: ${{ success() }}
+      run: |
+        cd ${{github.workspace}}
+        name=$(ls|grep ${{github.event.inputs.name}})
+        echo "ext: ${name##*.}"
+        if [[ "${name##*.}" != "mp4" ]]; then
+          wget https://github.com/tiechui1994/actions/releases/download/ffmpeg_5.1/ffmpeg.tar.xz
+          tar xvf ffmpeg.tar.xz && sudo mv ffmpeg/ffmpeg /usr/local/bin/
+          name=$(ls|grep ${{github.event.inputs.name}})
+          ffmpeg -i "$name" -crf 0 -c:v libx264 "${{github.event.inputs.name}}.mp4"
+        fi
+        ls -lh
+        
+    - name: Upload
+      if: ${{ success() }}
+      run:
+        make -C golang upload
+        ALIDRIVE_TOKEN=${{secrets.ALIDRIVE_TOKEN}} golang/upload -upload -file "${{github.workspace}}/${{github.event.inputs.name}}.mp4"

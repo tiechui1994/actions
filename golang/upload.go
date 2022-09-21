@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tiechui1994/tool/aliyun"
+	"github.com/tiechui1994/tool/aliyun/aliyundrive"
 	"github.com/tiechui1994/tool/util"
 )
 
@@ -67,8 +67,8 @@ func main() {
 	}
 }
 
-func handleDelete(token aliyun.Token, fileid string) {
-	err := aliyun.Delete([]aliyun.File{
+func handleDelete(token aliyundrive.Token, fileid string) {
+	err := aliyundrive.Delete([]aliyundrive.File{
 		{
 			DriveID: token.DriveID,
 			FileID:  fileid,
@@ -82,14 +82,14 @@ func handleDelete(token aliyun.Token, fileid string) {
 	fmt.Println("delete file success")
 }
 
-func handleUpload(token aliyun.Token, dir, filename string) {
-	files, err := aliyun.Files("root", token)
+func handleUpload(token aliyundrive.Token, dir, filename string) {
+	files, err := aliyundrive.Files("root", token)
 	if err != nil {
 		fmt.Println("Files:", err)
 		os.Exit(1)
 	}
 
-	var dirFile aliyun.File
+	var dirFile aliyundrive.File
 	var exist bool
 	for _, v := range files {
 		if v.Name == dir {
@@ -99,7 +99,7 @@ func handleUpload(token aliyun.Token, dir, filename string) {
 		}
 	}
 	if !exist {
-		upload, err := aliyun.CreateDirectory(dir, "root", token)
+		upload, err := aliyundrive.CreateDirectory(dir, "root", token)
 		if err != nil {
 			fmt.Println("CreateDirectory:", err)
 			return
@@ -107,13 +107,13 @@ func handleUpload(token aliyun.Token, dir, filename string) {
 		dirFile.FileID = upload.FileID
 	}
 
-	_, err = aliyun.UploadFile(filename, dirFile.FileID, token)
+	_, err = aliyundrive.UploadFile(filename, dirFile.FileID, token)
 	if err != nil {
 		fmt.Println("UploadFile:", err)
 		os.Exit(1)
 	}
 
-	_, err = aliyun.UploadFile(filename+".SHA1", dirFile.FileID, token)
+	_, err = aliyundrive.UploadFile(filename+".SHA1", dirFile.FileID, token)
 	if err != nil {
 		fmt.Println("UploadFile:", err, filename+".SHA1")
 	}
@@ -121,8 +121,8 @@ func handleUpload(token aliyun.Token, dir, filename string) {
 	fmt.Println("upload file sucess")
 }
 
-func Get() (token aliyun.Token, err error) {
-	u := "https://jobs.quinn1994.tk/api/aliyun?response_type=refresh_token&key=yunpan"
+func Get() (token aliyundrive.Token, err error) {
+	u := os.Getenv("ALIDRIVE_TOKEN")
 	retry := 0
 tryagin:
 	raw, err := util.GET(u, nil)
