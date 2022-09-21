@@ -33,7 +33,6 @@ func random(size int) string {
 }
 
 func GetUrl(site, youtube string) string {
-
 	values := make(url.Values)
 	values.Add("video", youtube)
 	values.Add("rand", random(15))
@@ -129,8 +128,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	vedios, _, err := GetVedios(GetUrl(SiteSaveTube, *u))
+	retry := 0
+	site := SiteSaveTube
+try:
+	vedios, _, err := GetVedios(GetUrl(site, *u))
 	if err != nil || len(vedios) == 0 {
+		if retry < 3 {
+			retry += 1
+			if site == SiteDownloader {
+				site = SiteSaveTube
+			} else {
+				site = SiteDownloader
+			}
+			time.Sleep(time.Second * 2)
+			goto try
+		}
 		fmt.Println("Get Vedios failed.", err)
 		os.Exit(1)
 	}
