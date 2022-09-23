@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -45,21 +46,64 @@ func GetUrl(site, youtube string) string {
 	}
 }
 
+type Quality int
+
+func (q *Quality) UnmarshalText(text []byte) error {
+	if len(text) > 0 && text[len(text)-1] == 'p' {
+		value := string(text[:len(text)-1])
+		v, err := strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		*q = Quality(v)
+	}
+
+	return nil
+}
+
 type Vedio struct {
 	Ext     string          `json:"ext"`
 	FPS     int             `json:"fps"`
 	Fid     int             `json:"fid"`
-	Quality string          `json:"quality"`
+	Quality Quality         `json:"quality"`
 	Url     string          `json:"url"`
 	Size    json.RawMessage `json:"size"`
+	size    int
 }
 
 type Audio struct {
-	Acodec string `json:"acodec"`
-	Abr    string `json:"abr"`
-	Asr    int    `json:"asr"`
-	Ext    string `json:"ext"`
-	Url    string `json:"url"`
+	Acodec string          `json:"acodec"`
+	Abr    string          `json:"abr"`
+	Asr    int             `json:"asr"`
+	Ext    string          `json:"ext"`
+	Url    string          `json:"url"`
+	Size   json.RawMessage `json:"size"`
+	size   int
+}
+
+func (a *Vedio) GetSize() int {
+	if a.size != 0 {
+		return a.size
+	}
+	if len(a.Size) > 0 {
+		json.Unmarshal(a.Size, &a.size)
+	} else {
+		a.size = -1
+	}
+	return a.size
+}
+
+func (a *Audio) GetSize() int {
+	if a.size != 0 {
+		return a.size
+	}
+	if len(a.Size) > 0 {
+		json.Unmarshal(a.Size, &a.size)
+	} else {
+		a.size = -1
+	}
+
+	return a.size
 }
 
 func GetVedios(url string) (vedio []Vedio, audio []Audio, err error) {
@@ -79,7 +123,7 @@ func GetVedios(url string) (vedio []Vedio, audio []Audio, err error) {
 
 	err = json.Unmarshal(raw, &resonse)
 	if err != nil {
-		fmt.Println(string(raw))
+		fmt.Println(err)
 		return
 	}
 
@@ -108,6 +152,16 @@ func GetVedios(url string) (vedio []Vedio, audio []Audio, err error) {
 	for i := range resonse.Data.A {
 		resonse.Data.A[i].Url = strings.Replace(u, "[[_index_]]", fmt.Sprintf("%v", i), 1)
 	}
+
+	sort.SliceIsSorted(resonse.Data.Av, func(i, j int) bool {
+		if resonse.Data.Av[i].Quality != resonse.Data.Av[j].Quality {
+			return resonse.Data.Av[i].Quality > resonse.Data.Av[j].Quality
+		}
+		if resonse.Data.Av[i].FPS != resonse.Data.Av[j].FPS {
+			return resonse.Data.Av[i].FPS > resonse.Data.Av[j].FPS
+		}
+		return resonse.Data.Av[i].Fid < resonse.Data.Av[j].Fid
+	})
 
 	return resonse.Data.Av, resonse.Data.A, nil
 }
@@ -152,12 +206,11 @@ try:
 		firstFind = -1
 	)
 	for idx, vedio := range vedios {
-		vquality, _ := strconv.ParseInt(vedio.Quality[:len(vedio.Quality)-1], 10, 64)
-		if int(vquality) == *quality && vedio.FPS >= *fps {
+		if int(vedio.Quality) == *quality && vedio.FPS >= *fps {
 			index = idx
 			break
 		}
-		if int(vquality) == *quality && firstFind == -1 {
+		if int(vedio.Quality) == *quality && firstFind == -1 {
 			firstFind = idx
 		}
 	}
@@ -192,8 +245,17 @@ try:
 		for range timer.C {
 			info, _ := writer.Stat()
 			current := float64(info.Size())
-			fmt.Printf("%ds current size: %vMiB .... speed: %0.3fMiB/s \n", int(time.Now().Sub(start).Seconds()),
-				int(current/(1024*1024)), (current-last)/(10.0*1024*1024))
+
+			if vedio.GetSize() > 0 {
+				fmt.Printf("%ds download: %0.3f%% current size: %vMiB .... speed: %0.3fMiB/s \n",
+					int(time.Now().Sub(start).Seconds()), current*100.0/float64(vedio.GetSize()),
+					int(current/(1024*1024)), (current-last)/(10.0*1024*1024))
+			} else {
+				fmt.Printf("%ds current size: %vMiB .... speed: %0.3fMiB/s \n",
+					int(time.Now().Sub(start).Seconds()),
+					int(current/(1024*1024)), (current-last)/(10.0*1024*1024))
+			}
+
 			last = current
 		}
 	}()
