@@ -100,7 +100,7 @@ func GetVedios(url string) (vedio []Vedio, audio []Audio, err error) {
 	}
 
 	for i := range resonse.Data.A {
-		if strings.Contains(resonse.Data.Av[i].Url, "[[_index_]]") {
+		if strings.Contains(resonse.Data.A[i].Url, "[[_index_]]") {
 			u = resonse.Data.A[i].Url
 			break
 		}
@@ -192,7 +192,7 @@ try:
 		for range timer.C {
 			info, _ := writer.Stat()
 			current := float64(info.Size())
-			fmt.Printf("%0.3fs current size: %vMiB .... speed: %0.3fMiB/s \n", time.Now().Sub(start).Seconds(),
+			fmt.Printf("%ds current size: %vMiB .... speed: %0.3fMiB/s \n", int(time.Now().Sub(start).Seconds()),
 				int(current/(1024*1024)), (current-last)/(10.0*1024*1024))
 			last = current
 		}
