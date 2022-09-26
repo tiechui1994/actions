@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# change
 cat > $HOME/.vscode-remote/data/Machine/settings.json <<-'EOF'
 {
         "go.toolsManagement.checkForUpdates": "local",
@@ -24,9 +25,9 @@ cat > $HOME/.vscode-remote/data/Machine/settings.json <<-'EOF'
         "editor.fontWeight": "normal",
         "editor.cursorStyle": "underline",
         "terminal.integrated.cursorStyle": "underline",
-        "terminal.integrated.cursorWidth": 1.1,
-        "terminal.integrated.fontSize": 16,
-        "terminal.integrated.gpuAcceleration": "off",
+        "terminal.integrated.cursorWidth": 1.2,
+        "terminal.integrated.fontSize": 17,
+        "terminal.integrated.gpuAcceleration": "on",
         "terminal.integrated.ignoreProcessNames": [
                 "bash",
                 "zsh"
@@ -36,7 +37,40 @@ cat > $HOME/.vscode-remote/data/Machine/settings.json <<-'EOF'
                 "nano",
                 "tmux"
         ],
-        "terminal.integrated.fontFamily": "'Courier New', monospace",
-        "terminal.integrated.lineHeight": 1.1
+        "terminal.integrated.fontFamily": "'Courier New'",
+        "terminal.integrated.lineHeight": 1.2,
+        "terminal.integrated.copyOnSelection": true,
+        "terminal.integrated.cursorBlinking": true,
+        "terminal.integrated.fontWeight": "550",
+        "terminal.integrated.scrollback": 10000
 }
+EOF
+
+# change bashrc
+read -r -d '' txt <<-'EOF'
+__bash_prompt() {
+    local gitbranch='`\
+        if [ "$(git config --get codespaces-theme.hide-status 2>/dev/null)" != 1 ]; then \
+            export BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null); \
+            if [ "${BRANCH}" != "" ]; then \
+                echo -n "\[\033[0;36m\](\[\033[1;31m\]${BRANCH}" \
+                && echo -n "\[\033[0;36m\]) "; \
+            fi; \
+        fi`'
+    local lightblue='\[\033[1;34m\]'
+    local removecolor='\[\033[0m\]'
+    PS1="${lightblue}\w ${gitbranch}${removecolor}\$ "
+    unset -f __bash_prompt
+}
+__bash_prompt
+EOF
+
+lines=($(grep -E '^__bash_prompt' ~/.bashrc -o -n | cut -d ':' -f1))
+begin=$((${lines[0]}-1))
+end=$((${lines[1]}+1))
+
+cat > /tmp/xxx <<-EOF
+$(sed -n "1, $begin p" ~/.bashrc)
+${txt}
+$(sed -n "$end, $ p" ~/.bashrc)
 EOF
