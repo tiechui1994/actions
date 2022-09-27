@@ -69,8 +69,10 @@ lines=($(grep -E '^__bash_prompt' ~/.bashrc -o -n | cut -d ':' -f1))
 begin=$((${lines[0]}-1))
 end=$((${lines[1]}+1))
 
-cat > /tmp/xxx <<-EOF
+cat > /tmp/bashrc <<-EOF
 $(sed -n "1, $begin p" ~/.bashrc)
 ${txt}
 $(sed -n "$end, $ p" ~/.bashrc)
 EOF
+
+mv /tmp/bashrc ~/.bashrc && source ~/.bashrc
