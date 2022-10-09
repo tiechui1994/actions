@@ -241,15 +241,20 @@ package() {
     cd ${workdir}
     sudo rm -rf debian && mkdir -p debian/DEBIAN
 
+    arch="amd64"
+    if [[ ${NAME} =~ (.*)?arm64.deb$ ]]; then
+        arch="arm64"
+    fi
+
     # control
-cat > debian/DEBIAN/control <<- EOF
+    cat > debian/DEBIAN/control <<- EOF
 Package: Redis
 Version: ${version}
 Description: Redis server deb package
 Section: utils
 Priority: standard
 Essential: no
-Architecture: amd64
+Architecture: ${arch}
 Maintainer: tiechui1994 <2904951429@qq.com>
 Provides: github
 
@@ -276,7 +281,7 @@ EOF
 
     printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
 
-cat > debian/DEBIAN/prerm <<- 'EOF'
+    cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
 
 service redis stop
@@ -303,7 +308,6 @@ EOF
     # dir
     mkdir -p debian/${installdir}
     sudo cp -r ${installdir}/* debian/${installdir}
-
 
     # deb
     sudo dpkg-deb --build debian
