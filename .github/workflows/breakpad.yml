@@ -1,10 +1,10 @@
-name: breaktap
+name: breakpad
 on:
   push:
     branches: master
 
 jobs:
-  windows:
+  breakpad:
     runs-on: windows-latest
 
     steps:
@@ -24,26 +24,17 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Set up msys2
-        uses: msys2/setup-msys2@v2
-        with:
-          update: true
-          msystem: mingw64
-          install: >-
-            autotools
-            make
-          location: D:\
-
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
 
       - name: Build Code
         run: |
-          echo "##[add-path]D:\autotools;"
+          pacman --noconfirm -S autoconf-wrapper libtool automake make
+          pip3 install six
           git clone https://github.com/DaemonEngine/breakpad.git
           cd breakpad
           git clone https://github.com/google/googletest.git src/testing
           git clone https://github.com/google/protobuf.git src/third_party/protobuf/protobuf
           git clone https://chromium.googlesource.com/external/gyp src/tools/gyp
           autoreconf -fvi
-          .\configure && make
+          ./configure && make
