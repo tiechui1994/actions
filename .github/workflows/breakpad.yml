@@ -4,7 +4,7 @@ on:
     branches: master
 
 jobs:
-  breakpad:
+  breakpad_windows:
     runs-on: windows-latest
 
     steps:
@@ -42,3 +42,18 @@ jobs:
           git clone https://chromium.googlesource.com/external/gyp src/tools/gyp
           autoreconf -fvi
           ./configure && make
+
+  breakpad_mac:
+    runs-on: macos-latest
+
+    steps:
+      - name: Setup checkout
+        uses: actions/checkout@v2
+
+      - name: Build
+        run: |
+          sh script/breakpad_mac.sh
+        shell: sh
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
