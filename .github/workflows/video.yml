@@ -1,4 +1,4 @@
-name: vedio
+name: video
 on:
   workflow_dispatch:
     inputs:
@@ -12,7 +12,7 @@ on:
         default: 10
 
 jobs:
-  vedio:
+  video:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
