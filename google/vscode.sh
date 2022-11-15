@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
 # change
-cat > $HOME/.vscode-remote/data/Machine/settings.json <<-'EOF'
+file=${HOME}/.vscode-remote/data/Machine/settings.json
+if [[ -d $HOME/.vscode-server ]]; then
+  file=${HOME}/.vscode-server/data/Machine/settings.json
+fi
+
+cat > ${file} <<-'EOF'
 {
         "go.toolsManagement.checkForUpdates": "local",
         "go.useLanguageServer": true,
