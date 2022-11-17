@@ -1,30 +1,14 @@
 #!/usr/bin/env bash
 
-# change
-file=${HOME}/.vscode-remote/data/Machine/settings.json
-
+file=/workspace/.vscode-remote/data/Machine/settings.json
 cat > ${file} <<-'EOF'
 {
+    "gitpod.openInStable.neverPrompt": true,
+    "redhat.telemetry.enabled": true,
 
     "workbench.colorTheme": "Visual Studio Dark",
     "workbench.startupEditor": "none",
 
-    "lldb.executable": "/usr/bin/lldb",
-
-    "python.pythonPath": "/opt/python/latest/bin/python",
-    "python.linting.enabled": true,
-    "python.linting.pylintEnabled": "true",
-    "python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
-    "python.formatting.blackPath": "/usr/local/py-utils/bin/black",
-    "python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
-    "python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
-    "python.linting.flake8Path": "python.linting.flake8Path",
-    "python.linting.mypyPath": "/usr/local/py-utils/bin/mypy",
-    "python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
-    "python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
-    "python.linting.pylintPath": "/usr/local/py-utils/bin/pylint",
-
-    "go.gopath": "/go"
     "go.toolsManagement.checkForUpdates": "local",
     "go.useLanguageServer": true,
 
@@ -56,7 +40,7 @@ cat > ${file} <<-'EOF'
 EOF
 
 # change bashrc
-read -r -d '' txt <<-'EOF'
+cat >> ${HOME}/.bashrc <<-'EOF'
 __bash_prompt() {
     local gitbranch='`\
         if [ "$(git config --get codespaces-theme.hide-status 2>/dev/null)" != 1 ]; then \
@@ -74,14 +58,4 @@ __bash_prompt() {
 __bash_prompt
 EOF
 
-lines=($(grep -E '^__bash_prompt' ~/.bashrc -o -n | cut -d ':' -f1))
-begin=$((${lines[0]}-1))
-end=$((${lines[1]}+1))
-
-cat > /tmp/bashrc <<-EOF
-$(sed -n "1, $begin p" ~/.bashrc)
-${txt}
-$(sed -n "$end, $ p" ~/.bashrc)
-EOF
-
-mv /tmp/bashrc ~/.bashrc && source ~/.bashrc
+source ~/.bashrc
