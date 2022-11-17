@@ -1,13 +1,22 @@
-#!/bin/bash
+#!/usr/bin/bash -I
+
+log() {
+  echo "$@" >> /tmp/gitpod.log
+}
 
 TMPDIR=$(mktemp -d)
 
 CURRENT=$PWD
 cd $TMPDIR
+for script in ~/.dotfiles/gitpod/*; do
+  log "exec $script"
+  bash "$script"
+done
+
 files=(
   .github
   .gitignore
-  .dotfiles
+  gitpod
   golang
   google
   postfix
@@ -15,15 +24,11 @@ files=(
   README.md
   bootstrap.sh
 )
-
-for script in ~/.dotfiles/.dotfiles/*; do
-  echo "exec: $script"
-  bash "$script"
-done
-
 for i in ${files[@]}; do
-  rm -rf ~/.dotfiles/$i
-  rm -rf ~/$i
+  sudo rm -rf ~/.dotfiles/$i
+  log "del: ~/.dotfiles/$i ans: $?"
+  sudo rm -rf ~/$i
+  log "del: ~/$i ans: $?"
 done
 cd $CURRENT
 
