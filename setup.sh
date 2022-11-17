@@ -1,4 +1,4 @@
-#!/usr/bin/bash -I
+#!/usr/bin/env bash
 
 log() {
   echo "$@" >> /tmp/gitpod.log
@@ -8,7 +8,9 @@ TMPDIR=$(mktemp -d)
 
 CURRENT=$PWD
 cd $TMPDIR
-for script in ~/.dotfiles/gitpod/*; do
+
+HOME=/home/gitpod
+for script in ${HOME}/.dotfiles/gitpod/*; do
   log "exec $script"
   bash "$script"
 done
@@ -22,13 +24,13 @@ files=(
   postfix
   script
   README.md
-  bootstrap.sh
+  setup.sh
 )
 for i in ${files[@]}; do
-  sudo rm -rf ~/.dotfiles/$i
-  log "del: ~/.dotfiles/$i ans: $?"
-  sudo rm -rf ~/$i
-  log "del: ~/$i ans: $?"
+  sudo rm -rf ${HOME}/.dotfiles/$i
+  log "del: ${HOME}/.dotfiles/$i ans: $?"
+  sudo rm -rf ${HOME}/$i
+  log "del: ${HOME}/$i ans: $?"
 done
 cd $CURRENT
 
