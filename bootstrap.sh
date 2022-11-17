@@ -13,7 +13,7 @@ files=(
   postfix
   script
   README.md
-  setup.sh
+  bootstrap.sh
 )
 
 for script in ~/.dotfiles/.dotfiles/*; do
@@ -21,10 +21,10 @@ for script in ~/.dotfiles/.dotfiles/*; do
   bash "$script"
 done
 
-for i in ${files[@]}; then
+for i in ${files[@]}; do
   rm -rf ~/.dotfiles/$i
   rm -rf ~/$i
-fi
+done
 cd $CURRENT
 
 rm -rf $TMPDIR
