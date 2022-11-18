@@ -374,7 +374,7 @@ EOF
 case "$1" in
     (configure)
         # link file
-        ln -sf $installdir/init.d/named /etc/init.d/named
+        ln -sf @installdir/init.d/named /etc/init.d/named
 
         # test pid
         if [[ $(pgrep named) ]]; then
