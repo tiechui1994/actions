@@ -37,7 +37,7 @@ init() {
     export DEBIAN_FRONTEND=noninteractive
     export TZ=Asia/Shanghai
     apt-get install -y build-essential g++ sudo curl make gcc file tar patch openssl tzdata \
-      libtool automake autoconf 
+      libtool automake autoconf
 }
 
 download() {
@@ -181,7 +181,9 @@ build_libuv() {
 
 
 build() {
-    rm -rf ${installdir} && mkdir -p ${installdir}/third
+    rm -rf ${installdir} && \
+    mkdir -p ${installdir}/third && \
+    mkdir -p ${installdir}/data
     sudo mv /tmp/libuv ${installdir}/third
 
     cd ${workdir}/bind
@@ -214,6 +216,7 @@ build() {
     fi
 
     log_info "build bind9 success"
+    log_info "named info:$(ldd ${installdir}/sbin/named)"
 }
 
 service() {
@@ -321,8 +324,8 @@ NAME=named
 test -x ${DAEMON} || exit 0
 
 # Try to extract named pidfile
-directory=$(cat h.conf |grep -E '^\s+[a-z]+.*'|awk '{ if ($1 ~ /^\s*directory/) { gsub(/[";]/, "", $2); print $2 }')
-pidfile=$(cat h.conf |grep -E '^\s+[a-z]+.*'|awk '{ if ($1 ~ /^\s*pid-file/) { gsub(/[";]/, "", $2); print $2 }')
+directory=$(cat $CONF | grep -E '^\s+[a-z]+.*' | awk '{ if ($1 ~ /^\s*directory/) { gsub(/[";]/, "", $2); print $2; }}')
+pidfile=$(cat $CONF | grep -E '^\s+[a-z]+.*' | awk '{ if ($1 ~ /^\s*pid-file/) { gsub(/[";]/, "", $2); print $2; }}')
 if [[ -n ${directory} && -n ${pidfile} ]]; then
   PID="${directory}/${pidfile}"
 fi
@@ -339,7 +342,7 @@ do_start()
     #   0 if daemon has been started
     #   1 if daemon was already running
     #   2 if daemon could not be started
-    start-stop-daemon --start --pidfile ${PID} --make-pidfile --exec ${DAEMON} -- \
+    start-stop-daemon --start --background --pidfile ${PID} --make-pidfile --exec ${DAEMON} -- \
         -f -c ${CONF} 2>/dev/null \
         || return 2
 }
@@ -401,7 +404,8 @@ case "$1" in
         status_of_proc -p ${PID} "${DAEMON}" "${NAME}" && exit 0 || exit $?
         ;;
     *)
-        log_failure_msg "Please use start or stop as first argument"
+        echo "Usage: ${NAME} {start|stop|restart|status}" >&2
+        exit 3
         ;;
 esac
 EOF
