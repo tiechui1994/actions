@@ -323,12 +323,12 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/true
 ExecReload=/bin/true
-WorkingDirectory=$installdir/etc
+WorkingDirectory=@installdir/etc
 
 [Install]
 WantedBy=multi-user.target
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/systemd/openvpn.service
+    printf "%s" "${conf//'@installdir'/$installdir}" > ${installdir}/systemd/openvpn.service
 
 
     read -d '' -r conf <<-'EOF'
@@ -345,8 +345,8 @@ Documentation=https://community.openvpn.net/openvpn/wiki/HOWTO
 [Service]
 Type=simple
 PrivateTmp=true
-WorkingDirectory=$installdir/etc
-ExecStart=$installdir/sbin/openvpn --daemon ovpn-%i --status /run/openvpn/%i.status 10 --cd $installdir/etc --config $installdir/etc/%i.conf --writepid /run/openvpn/%i.pid
+WorkingDirectory=@installdir/etc
+ExecStart=@installdir/sbin/openvpn --daemon ovpn-%i --status /run/openvpn/%i.status 10 --cd @installdir/etc --config @installdir/etc/%i.conf --writepid /run/openvpn/%i.pid
 PIDFile=/run/openvpn/%i.pid
 KillMode=process
 ExecReload=/bin/kill -HUP $MAINPID
@@ -362,7 +362,7 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/systemd/openvpn@.service
+    printf "%s" "${conf//'@installdir'/$installdir}" > ${installdir}/systemd/openvpn@.service
 
 
     read -d '' -r conf <<-'EOF'
@@ -376,8 +376,8 @@ Documentation=https://community.openvpn.net/openvpn/wiki/HOWTO
 [Service]
 Type=simple
 PrivateTmp=true
-WorkingDirectory=$installdir/etc/client
-ExecStart=$installdir/sbin/openvpn --suppress-timestamps --nobind --config %i.conf
+WorkingDirectory=@installdir/etc/client
+ExecStart=@installdir/sbin/openvpn --suppress-timestamps --nobind --config %i.conf
 CapabilityBoundingSet=CAP_IPC_LOCK CAP_NET_ADMIN CAP_NET_RAW CAP_SETGID CAP_SETUID CAP_SYS_CHROOT CAP_DAC_OVERRIDE
 LimitNPROC=10
 DeviceAllow=/dev/null rw
@@ -389,7 +389,7 @@ KillMode=process
 [Install]
 WantedBy=multi-user.target
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/systemd/openvpn-client@.service
+    printf "%s" "${conf//'@installdir'/$installdir}" > ${installdir}/systemd/openvpn-client@.service
 
 
     read -d '' -r conf <<-'EOF'
@@ -403,8 +403,8 @@ Documentation=https://community.openvpn.net/openvpn/wiki/HOWTO
 [Service]
 Type=simple
 PrivateTmp=true
-WorkingDirectory=$installdir/etc/server
-ExecStart=$installdir/sbin/openvpn --status %t/openvpn-server/status-%i.log --status-version 2 --suppress-timestamps --config %i.conf
+WorkingDirectory=@installdir/etc/server
+ExecStart=@installdir/sbin/openvpn --status %t/openvpn-server/status-%i.log --status-version 2 --suppress-timestamps --config %i.conf
 CapabilityBoundingSet=CAP_IPC_LOCK CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW CAP_SETGID CAP_SETUID CAP_SYS_CHROOT CAP_DAC_OVERRIDE CAP_AUDIT_WRITE
 LimitNPROC=10
 DeviceAllow=/dev/null rw
@@ -418,7 +418,7 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/systemd/openvpn-server@.service
+    printf "%s" "${conf//'@installdir'/$installdir}" > ${installdir}/systemd/openvpn-server@.service
 }
 
 package() {
@@ -445,10 +445,10 @@ EOF
 #!/bin/bash
 
 # copy file
-cp $installdir/systemd/openvpn.service /lib/systemd/system
-cp $installdir/systemd/openvpn@.service /lib/systemd/system
-cp $installdir/systemd/openvpn-client@.service /lib/systemd/system
-cp $installdir/systemd/openvpn-server@.service /lib/systemd/system
+cp @installdir/systemd/openvpn.service /lib/systemd/system
+cp @installdir/systemd/openvpn@.service /lib/systemd/system
+cp @installdir/systemd/openvpn-client@.service /lib/systemd/system
+cp @installdir/systemd/openvpn-server@.service /lib/systemd/system
 
 # start up
 systemctl daemon-reload
@@ -457,7 +457,7 @@ if [[ $? -ne 0 ]]; then
 fi
 EOF
 
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postinst
 
     # postrm
     cat > debian/DEBIAN/postrm <<- EOF

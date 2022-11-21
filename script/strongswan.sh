@@ -198,8 +198,8 @@ Description=strongSwan IPsec IKEv1/IKEv2 daemon using ipsec.conf
 After=network-online.target
 
 [Service]
-ExecStart=$installdir/sbin/ipsec start --nofork --conf $installdir/etc/ipsec.conf
-ExecReload=$installdir/sbin/ipsec reload
+ExecStart=@installdir/sbin/ipsec start --nofork --conf @installdir/etc/ipsec.conf
+ExecReload=@installdir/sbin/ipsec reload
 StandardOutput=syslog
 Restart=on-abnormal
 
@@ -208,7 +208,7 @@ WantedBy=multi-user.target
 
 EOF
 
-    printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/systemd/strongswan.service
+    printf "%s" "${conf//'@installdir'/$installdir}" > ${installdir}/systemd/strongswan.service
 }
 
 package() {
@@ -235,17 +235,17 @@ EOF
 #!/bin/bash
 
 # lib
-echo "$installdir/lib/ipsec" > /etc/ld.so.conf.d/strongswan.conf
+echo "@installdir/lib/ipsec" > /etc/ld.so.conf.d/strongswan.conf
 ldconfig
 
 # profile
 cat > /etc/profile.d/strongswan.sh <<-'PROFILE'
-export SWANHOME=$installdir
+export SWANHOME=@installdir
 export PATH=$PATH:$SWANHOME/bin:$SWANHOME/sbin
 PROFILE
 
 # copy file
-cp $installdir/systemd/strongswan.service /etc/systemd/system/strongswan.service
+cp @installdir/systemd/strongswan.service /etc/systemd/system/strongswan.service
 
 # start
 systemctl daemon-reload && \
@@ -255,11 +255,11 @@ if [[ $? -ne 0 ]]; then
 fi
 
 # test pid
-if [[ $(pgrep $installdir/lib/ipsec/starter) ]]; then
+if [[ $(pgrep @installdir/lib/ipsec/starter) ]]; then
     echo "strongswan install successfully !"
 fi
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postinst
 
     # prerm
     cat > debian/DEBIAN/prerm <<- 'EOF'
@@ -275,10 +275,10 @@ EOF
 rm -rf /etc/systemd/system/strongswan.service
 rm -rf /etc/ld.so.conf.d/strongswan.conf
 rm -rf /etc/profile.d/strongswan.sh
-rm -rf $installdir
+rm -rf @installdir
 ldconfig
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postrm
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postrm
 
     # chmod
     sudo chmod a+x debian/DEBIAN/postinst

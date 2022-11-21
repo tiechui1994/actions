@@ -177,8 +177,8 @@ download_mongodb() {
     mv ${workdir}/mongodb/* ${installdir}
 
     mkdir -p ${installdir}/lib
-    cp -Lr "$workdir/x64/lib/libcrypto.so.1.1" "$installdir/lib"
-    cp -Lr "$workdir/x64/lib/libssl.so.1.1" "$installdir/lib"
+    cp -Lr ${workdir}/x64/lib/libcrypto.so.1.1 ${installdir}/lib
+    cp -Lr ${workdir}/x64/lib/libssl.so.1.1 ${installdir}/lib
 
     log_info "build mongodb success"
     log_info "mongo info: $(ldd ${installdir}/bin/mongo)"
@@ -198,7 +198,7 @@ service() {
 
 # Where and how to store data.
 storage:
-  dbPath: $installdir/data
+  dbPath: @installdir/data
   directoryPerDB: true
   journal:
     enabled: true
@@ -210,7 +210,7 @@ storage:
 systemLog:
   destination: file
   logAppend: true
-  path: $installdir/logs/mongodb.log
+  path: @installdir/logs/mongodb.log
 
 # network interfaces
 net:
@@ -223,7 +223,7 @@ net:
 processManagement:
   timeZoneInfo: /usr/share/zoneinfo
   fork: true
-  pidFilePath: $installdir/logs/mongodb.pid
+  pidFilePath: @installdir/logs/mongodb.pid
 
 #security:
 
@@ -239,7 +239,7 @@ processManagement:
 
 #snmp:
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/conf/mongodb.cnf
+    printf "%s" "${conf//'@installdir'/$installdir}" > ${installdir}/conf/mongodb.cnf
 
 
     read -r -d '' conf <<-'EOF'
@@ -256,14 +256,14 @@ EOF
 ### END INIT INFO
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-DAEMON=$installdir/bin/mongod
+DAEMON=@installdir/bin/mongod
 DESC=database
 
 # Default defaults.  Can be overridden by the /etc/default/$NAME
 NAME=mongodb
-CONF=$installdir/conf/mongodb.conf
-RUNDIR=$installdir/data
-PIDFILE=$installdir/logs/${NAME}.pid
+CONF=@installdir/conf/mongodb.conf
+RUNDIR=@installdir/data
+PIDFILE=@installdir/logs/${NAME}.pid
 ENABLE_MONGODB=yes
 
 # Handle NUMA access to CPUs (SERVER-3574)
@@ -452,7 +452,7 @@ esac
 
 exit 0
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/init.d/mongodb
+    printf "%s" "${conf//'@installdir'/$installdir}" > ${installdir}/init.d/mongodb
     sudo chmod a+x  ${installdir}/init.d/mongodb
 }
 
@@ -488,17 +488,17 @@ if [[ -z "$(cat /etc/passwd | grep -E '^mongodb:')" ]]; then
 fi
 
 # dir owner and privileges
-chown -R mongodb:mongodb $installdir
+chown -R mongodb:mongodb @installdir
 
 # link file
-ln -sf $installdir/bin/mongo /usr/local/bin/mongo
-ln -sf $installdir/init.d/mongodb /etc/init.d/mongodb
+ln -sf @installdir/bin/mongo /usr/local/bin/mongo
+ln -sf @installdir/init.d/mongodb /etc/init.d/mongodb
 
 # lib load
 ldconfig
 
 # clear logs and data
-rm -rf $installdir/logs/* && rm -rf $installdir/data/*
+rm -rf @installdir/logs/* && rm -rf @installdir/data/*
 
 # start mongodb service
 update-rc.d mongodb defaults && \
@@ -508,7 +508,7 @@ if [[ $? -ne 0 ]]; then
     exit
 fi
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postinst
 
     cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
@@ -524,7 +524,7 @@ update-rc.d mongodb remove
 rm -rf /etc/ld.so.conf.d/mongodb.conf
 rm -rf /usr/local/bin/mongo
 rm -rf /etc/init.d/mongodb
-rm -rf $installdir
+rm -rf @installdir
 
 if [[ -n "$(cat /etc/group | grep -E '^mongodb:')" ]]; then
     groupdel -f mongodb
@@ -536,7 +536,7 @@ fi
 ldconfig
 
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postrm
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postrm
 
     # chmod
     sudo chmod a+x debian/DEBIAN/postinst

@@ -258,7 +258,7 @@ if [[ $? -ne 0 ]]; then
 fi
 EOF
 
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postinst
 
     # prerm
     cat > debian/DEBIAN/prerm <<- 'EOF'
@@ -317,7 +317,7 @@ After=network.target auditd.service
 
 [Service]
 Type=forking
-ExecStart=$installdir/sbin/mosquitto -c $installdir/conf/mosquitto.conf
+ExecStart=@installdir/sbin/mosquitto -c @installdir/conf/mosquitto.conf
 ExecStop=/bin/kill -s QUIT $MAINPID
 Restart=on-failure
 RestartSec=5
@@ -329,7 +329,7 @@ WantedBy=multi-user.target
 
 EOF
 
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/etc/systemd/system/mosquitto.service
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/etc/systemd/system/mosquitto.service
 
 
     # deb
