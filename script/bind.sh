@@ -36,7 +36,8 @@ init() {
     apt-get update
     export DEBIAN_FRONTEND=noninteractive
     export TZ=Asia/Shanghai
-    apt-get install -y build-essential g++ sudo curl make gcc file tar patch openssl tzdata
+    apt-get install -y build-essential g++ sudo curl make gcc file tar patch openssl tzdata \
+      libtool automake autoconf 
 }
 
 download() {
@@ -532,7 +533,7 @@ do_install(){
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
-     
+
      download_bind && download_openssl && download_zlib
      if [[ $? -ne ${success} ]]; then
         exit $?

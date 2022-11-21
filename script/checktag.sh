@@ -36,11 +36,11 @@ check() {
     message=$(echo ${result} | jq .message)
     log_info "message: ${message}"
     if [[ ${message} = '"Not Found"' ]]; then
-        echo "::set-output name=needbuild::${success}"
+        echo "needbuild=${success}" >> $GITHUB_OUTPUT
         return
     fi
 
-    echo "::set-output name=needbuild::${failure}"
+    echo "needbuild=${failure}" >> $GITHUB_OUTPUT
 }
 
 check
