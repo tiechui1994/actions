@@ -189,11 +189,11 @@ service() {
 ### END INIT INFO
 
 REDISPORT=6379
-EXEC=$installdir/bin/redis-server
-CLIEXEC=$installdir/bin/redis-cli
+EXEC=@installdir/bin/redis-server
+CLIEXEC=@installdir/bin/redis-cli
 
-PIDFILE=$installdir/logs/redis_${REDISPORT}.pid
-CONF=$installdir/conf/redis.conf
+PIDFILE=@installdir/logs/redis_${REDISPORT}.pid
+CONF=@installdir/conf/redis.conf
 
 . /lib/lsb/init-functions
 
@@ -234,7 +234,7 @@ case "$1" in
 esac
 EOF
 
-    printf "%s" "${startup//'$installdir'/$installdir}" > ${installdir}/conf/redis.server
+    printf "%s" "${startup//'@installdir'/$installdir}" > ${installdir}/conf/redis.server
 }
 
 package() {
@@ -265,10 +265,10 @@ EOF
 #!/bin/bash
 
 # link file
-chmod a+x $installdir/conf/redis.server
-ln -sf $installdir/conf/redis.server /etc/init.d/redis
-ln -sf $installdir/bin/redis-cli /usr/local/bin/redis-cli
-ln -sf $installdir/bin/redis-server /usr/local/bin/redis-server
+chmod a+x @installdir/conf/redis.server
+ln -sf @installdir/conf/redis.server /etc/init.d/redis
+ln -sf @installdir/bin/redis-cli /usr/local/bin/redis-cli
+ln -sf @installdir/bin/redis-server /usr/local/bin/redis-server
 
 # start redis service
 update-rc.d redis defaults && \
@@ -279,7 +279,7 @@ if [[ $? -ne 0 ]]; then
 fi
 EOF
 
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postinst
 
     cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
