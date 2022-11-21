@@ -127,7 +127,7 @@ download() {
 download_bind() {
     sudo apt-get update && \
     sudo apt-get install build-essential \
-        zlib1g-dev openssl libssl-dev libuv1.dev libnghttp2-dev -y
+        zlib1g-dev openssl libssl-dev libnghttp2-dev -y
 
     url=" https://downloads.isc.org/isc/bind9/$version/bind-$version.tar.xz"
     cd ${workdir} && download "bind.tar.xz" "$url" curl 1
@@ -150,12 +150,44 @@ download_zlib() {
     cd ${workdir} && download "zlib.tar.gz" "$url" curl 1
 }
 
+download_libuv() {
+    url="https://codeload.github.com/libuv/libuv/tar.gz/refs/tags/v1.42.0"
+    cd ${workdir} && download "libuv.tar.gz" "$url" curl 1
+}
+
+build_libuv() {
+    cd ${workdir}/libuv
+
+    ./autogen.sh
+    if [[ $? -ne 0 ]]; then
+        log_error "autogen libuv fail"
+        return ${failure}
+    fi
+
+    ./configure \
+    --prefix=/tmp/libuv
+    if [[ $? -ne 0 ]]; then
+        log_error "configure libuv fail"
+        return ${failure}
+    fi
+
+    make && make install
+    if [[ $? -ne 0 ]]; then
+        log_error "build libuv fail"
+        return ${failure}
+    fi
+}
+
 
 build() {
-    rm -rf ${installdir} && mkdir -p ${installdir}
+    rm -rf ${installdir} && mkdir -p ${installdir}/third
+    sudo mv /tmp/libuv ${installdir}/third
 
     cd ${workdir}/bind
 
+    LIBUV=${installdir}/third/libuv
+    LIBUV_CFLAGS="-I $LIBUV/include" \
+    LIBUV_LIBS="-L$LIBUV/lib -luv -lrt -lpthread -lnsl -ldl -Wl,-rpath,$LIBUV/lib" \
     ./configure \
     --prefix=${installdir} \
     --disable-linux-caps \
@@ -186,7 +218,6 @@ build() {
 service() {
     # named.conf
     read -r -d '' conf <<-'EOF'
-
 options {
         version "@version";
 
@@ -224,11 +255,6 @@ options {
 
         allow-query { any; };
         allow-recursion { any; };
-};
-
-zone "." {
-  type hint;
-  file "data/named.root";
 };
 
 logging {
@@ -419,6 +445,13 @@ case "$1" in
         # link file
         ln -sf @installdir/init.d/named /etc/init.d/named
 
+        # start up
+        update-rc.d named defaults && \
+        service named start
+        if [[ $? -ne 0 ]]; then
+            echo "service start named failed"
+        fi
+
         # test pid
         if [[ $(pgrep named) ]]; then
             echo "named install successfully !"
@@ -440,7 +473,10 @@ EOF
 
 case "$1" in
     (remove)
-        service named stop
+        service named status > /dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
+            service named stop
+        fi
     ;;
 esac
 
@@ -492,6 +528,11 @@ do_install(){
         init
      fi
 
+     download_libuv && build_libuv
+     if [[ $? -ne ${success} ]]; then
+        exit $?
+     fi
+     
      download_bind && download_openssl && download_zlib
      if [[ $? -ne ${success} ]]; then
         exit $?
