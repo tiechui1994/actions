@@ -186,13 +186,6 @@ build() {
 service() {
     # named.conf
     read -r -d '' conf <<-'EOF'
-/*
- * C-style comments are OK
- */
-
-// So are C++-style comments
-
-#So are shell - style comments
 
 options {
         version "@version";
@@ -293,42 +286,92 @@ EOF
 # Description:       named service daemon
 ### END INIT INFO
 
-EXEC=@installdir/sbin/named
-PIDFILE=@installdir/data/named.pid
+DAEMON=@installdir/sbin/named
+PID=@installdir/data/named.pid
 CONF=@installdir/etc/named.conf
+NAME=named
 
+test -x ${DAEMON} || exit 0
+
+# Try to extract named pidfile
+directory=$(cat h.conf |grep -E '^\s+[a-z]+.*'|awk '{ if ($1 ~ /^\s*directory/) { gsub(/[";]/, "", $2); print $2 }')
+pidfile=$(cat h.conf |grep -E '^\s+[a-z]+.*'|awk '{ if ($1 ~ /^\s*pid-file/) { gsub(/[";]/, "", $2); print $2 }')
+if [[ -n ${directory} && -n ${pidfile} ]]; then
+  PID="${directory}/${pidfile}"
+fi
+
+. /lib/init/vars.sh
 . /lib/lsb/init-functions
+
+#
+# Function that starts the daemon/service
+#
+do_start()
+{
+    # Return
+    #   0 if daemon has been started
+    #   1 if daemon was already running
+    #   2 if daemon could not be started
+    start-stop-daemon --start --pidfile ${PID} --make-pidfile --exec ${DAEMON} -- \
+        -f -c ${CONF} 2>/dev/null \
+        || return 2
+}
+
+#
+# Function that stops the daemon/service
+#
+do_stop()
+{
+    # Return
+    #   0 if daemon has been stopped
+    #   1 if daemon was already stopped
+    #   2 if daemon could not be stopped
+    #   other if a failure occurred
+    start-stop-daemon --stop --retry=TERM/30/KILL/5 --pidfile ${PID} --name ${NAME}
+    RETVAL="$?"
+
+    sleep 1
+    return "${RETVAL}"
+}
 
 case "$1" in
     start)
-        if [[ -f ${PIDFILE} ]]
-        then
-                log_failure_msg "${PIDFILE} exists, process is already running or crashed"
-        else
-                log_begin_msg "Starting Named server..."
-                $EXEC -f -c ${CONF}
-        fi
+        log_daemon_msg "Starting ${NAME}"
+        do_start
+        case "$?" in
+            0|1) log_end_msg 0 ;;
+            2) log_end_msg 1 ;;
+        esac
         ;;
     stop)
-        if [[ ! -f ${PIDFILE} ]]
-        then
-                log_failure_msg "${PIDFILE} does not exist, process is not running"
-        else
-                PID=$(cat ${PIDFILE})
-                log_begin_msg "Stopping ..."
+        log_daemon_msg "Stopping ${NAME}"
+        do_stop
+        case "$?" in
+            0|1) log_end_msg 0 ;;
+            2) log_end_msg 1 ;;
+        esac
+        ;;
+    restart)
+        log_daemon_msg "Restarting ${NAME}"
 
-                /usr/bin/kill -9 ${PID}
-                if [[ -e ${PIDFILE} ]]; then
-                    rm -rf ${PIDFILE}
-                fi
-
-                while [[ -x /proc/${PID} ]]
-                do
-                    log_begin_msg "Waiting for Redis to shutdown ..."
-                    sleep 1
-                done
-                log_success_msg "Redis stopped"
-        fi
+        do_stop
+        case "$?" in
+            0|1)
+                do_start
+                case "$?" in
+                    0) log_end_msg 0 ;;
+                    1) log_end_msg 1 ;; # Old process is still running
+                    *) log_end_msg 1 ;; # Failed to start
+                esac
+                ;;
+            *)
+                # Failed to stop
+                log_end_msg 1
+                ;;
+        esac
+        ;;
+    status)
+        status_of_proc -p ${PID} "${DAEMON}" "${NAME}" && exit 0 || exit $?
         ;;
     *)
         log_failure_msg "Please use start or stop as first argument"
