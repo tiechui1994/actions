@@ -773,8 +773,6 @@ case "$1" in
         exit 3
         ;;
 esac
-
-:
 EOF
 
     printf "%s" "${startup//'@installdir'/$installdir}" > /tmp/nginx
