@@ -220,10 +220,10 @@ config() {
 [mysqld]
     port=3306
     user=mysql
-    pid-file=$installdir/logs/mysql.pid
-    basedir=$installdir/mysql  # 安装目录
-    datadir=$installdir/data   # 数据目录
-    tmpdir=$installdir/tmp     # 临时目录
+    pid-file=@installdir/logs/mysql.pid
+    basedir=@installdir/mysql  # 安装目录
+    datadir=@installdir/data   # 数据目录
+    tmpdir=@installdir/tmp     # 临时目录
 
     default_storage_engine=InnoDB
     innodb_file_per_table=ON
@@ -233,17 +233,17 @@ config() {
     wait_timeout=28800
     interactive_timeout=28800
 
-    log_error=$installdir/logs/mysql.err
+    log_error=@installdir/logs/mysql.err
 
     server-id=2
-    log_bin=$installdir/logs/binlog
+    log_bin=@installdir/logs/binlog
 
     general_log=1
-    general_log_file=$installdir/logs/general_log
+    general_log_file=@installdir/logs/general_log
 
     slow_query_log=ON
     long_query_time=5
-    slow_query_log_file=$installdir/logs/query_log
+    slow_query_log_file=@installdir/logs/query_log
     log_queries_not_using_indexes=ON
 
     bulk_insert_buffer_size=64M
@@ -257,7 +257,7 @@ config() {
 EOF
 
     # create config file my.cnf
-    printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/conf/my.cnf
+    printf "%s" "${conf//'@installdir'/$installdir}" > ${installdir}/conf/my.cnf
 }
 
 service() {
@@ -293,12 +293,12 @@ lock_file_path="$lockdir/mysql"
 # Set some defaults
 mysqld_pid_file_path=
 if test -z "$basedir"; then
-  basedir="$BASEDIR"
-  bindir="$BINDIR"
-  sbindir="$SBINDIR"
-  libexecdir="$LIBEXECDIR"
+  basedir="@BASEDIR"
+  bindir="@BINDIR"
+  sbindir="@SBINDIR"
+  libexecdir="@LIBEXECDIR"
   if test -z "$datadir"; then
-    datadir="$DATADIR"
+    datadir="@DATADIR"
   fi
 else
   bindir="$basedir/bin"
@@ -591,11 +591,11 @@ esac
 
 exit 0
 EOF
-    conf=${conf//'$BASEDIR'/"$installdir/mysql"}
-    conf=${conf//'$BINDIR'/"$installdir/mysql/bin"}
-    conf=${conf//'$SBINDIR'/"$installdir/mysql/bin"}
-    conf=${conf//'$LIBEXECDIR'/"$installdir/mysql/bin"}
-    conf=${conf//'$DATADIR'/"$installdir/data"}
+    conf=${conf//'@BASEDIR'/"$installdir/mysql"}
+    conf=${conf//'@BINDIR'/"$installdir/mysql/bin"}
+    conf=${conf//'@SBINDIR'/"$installdir/mysql/bin"}
+    conf=${conf//'@LIBEXECDIR'/"$installdir/mysql/bin"}
+    conf=${conf//'@DATADIR'/"$installdir/data"}
 
     # service script
     mkdir -p ${installdir}/init.d
@@ -635,40 +635,40 @@ if [[ -z "$(cat /etc/passwd | grep -E '^mysql:')" ]]; then
 fi
 
 # dir owner and privileges
-chown -R mysql:mysql $installdir
+chown -R mysql:mysql @installdir
 
 # link file
 mkdir -p /usr/local/share/man/man1
 mkdir -p /usr/local/share/man/man8
-ln -sf $installdir/mysql/man/man1/* /usr/local/share/man/man1
-ln -sf $installdir/mysql/man/man8/* /usr/local/share/man/man8
-ln -sf $installdir/init.d/mysqld /etc/init.d/mysqld
+ln -sf @installdir/mysql/man/man1/* /usr/local/share/man/man1
+ln -sf @installdir/mysql/man/man8/* /usr/local/share/man/man8
+ln -sf @installdir/init.d/mysqld /etc/init.d/mysqld
 
-ln -sf $installdir/mysql/bin/mysql /usr/local/bin/mysql
-ln -sf $installdir/mysql/bin/mysqldump /usr/local/bin/mysqldump
-ln -sf $installdir/mysql/bin/mysqlbinlog /usr/local/bin/mysqlbinlog
+ln -sf @installdir/mysql/bin/mysql /usr/local/bin/mysql
+ln -sf @installdir/mysql/bin/mysqldump /usr/local/bin/mysqldump
+ln -sf @installdir/mysql/bin/mysqlbinlog /usr/local/bin/mysqlbinlog
 
 # clear logs and data
-rm -rf $installdir/logs/* && rm -rf $installdir/data/*
+rm -rf @installdir/logs/* && rm -rf @installdir/data/*
 
 # init database
-$installdir/mysql/bin/mysqld \
+@installdir/mysql/bin/mysqld \
 --initialize \
 --user=mysql \
---basedir=$installdir/mysql \
---datadir=$installdir/data
+--basedir=@installdir/mysql \
+--datadir=@installdir/data
 if [[ $? -ne 0 ]]; then
     echo "mysqld initialize failed"
     exit
 fi
 
 # check logs/mysql.err.
-error=$(grep -E -i -o '\[error\].*' "$installdir/logs/mysql.err")
+error=$(grep -E -i -o '\[error\].*' "@installdir/logs/mysql.err")
 if [[ -n ${error} ]]; then
     echo "mysql database init failed"
     echo "error message:"
     echo "$error"
-    echo "the detail message in file $installdir/logs/mysql.err"
+    echo "the detail message in file @installdir/logs/mysql.err"
     exit
 fi
 
@@ -681,7 +681,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 # check password
-password="$(grep 'temporary password' "$installdir/logs/mysql.err"|cut -d ' ' -f11)"
+password="$(grep 'temporary password' "@installdir/logs/mysql.err"|cut -d ' ' -f11)"
 echo "current password is: $password"
 echo "please use follow command and sql login and update your password:"
 echo "mysql -u root --password='$password'"
@@ -691,7 +691,7 @@ echo "FLUSH PRIVILEGES;"
 echo "mysql install successfully"
 EOF
 
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postinst
 
     cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
@@ -710,7 +710,7 @@ rm -rf /usr/local/bin/mysql
 rm -rf /usr/local/bin/mysqldump
 rm -rf /usr/local/bin/mysqlbinlog
 
-rm -rf $installdir
+rm -rf @installdir
 
 if [[ -n "$(cat /etc/group | grep -E '^mysql:')" ]]; then
     groupdel -f mysql
@@ -720,7 +720,7 @@ if [[ -n "$(cat /etc/passwd | grep -E '^mysql:')" ]]; then
 fi
 
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postrm
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postrm
 
     # chmod
     sudo chmod a+x debian/DEBIAN/postinst

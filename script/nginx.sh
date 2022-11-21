@@ -468,10 +468,10 @@ service() {
     read -r -d '' conf <<- 'EOF'
 user  www;
 worker_processes 1;
-include $installdir/share/modules-available/*.conf;
+include @installdir/share/modules-available/*.conf;
 
-error_log  $installdir/logs/error.log  notice;
-pid        $installdir/logs/nginx.pid;
+error_log  @installdir/logs/error.log  notice;
+pid        @installdir/logs/nginx.pid;
 
 events {
     worker_connections  1024;
@@ -484,7 +484,7 @@ http {
                         '$status $body_bytes_sent "$http_referer" '
                         '"$http_user_agent" "$http_x_forwarded_for"';
 
-    access_log   $installdir/logs/access.log  main;
+    access_log   @installdir/logs/access.log  main;
     sendfile     on;
     tcp_nopush   on;
     keepalive_timeout  65;
@@ -561,7 +561,7 @@ http {
     include conf.d/*.conf;
 }
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > /tmp/nginx.conf
+    printf "%s" "${conf//'@installdir'/$installdir}" > /tmp/nginx.conf
     sudo mv /tmp/nginx.conf ${installdir}/conf/nginx.conf
 
     if [[ ! -d ${installdir}/conf/conf.d ]]; then
@@ -581,9 +581,9 @@ EOF
 # Description:       starts nginx using start-stop-daemon
 ### END INIT INFO
 
-DAEMON=$installdir/sbin/nginx
-CONF=$installdir/conf/nginx.conf
-PID=$installdir/logs/nginx.pid
+DAEMON=@installdir/sbin/nginx
+CONF=@installdir/conf/nginx.conf
+PID=@installdir/logs/nginx.pid
 NAME=nginx
 DESC=nginx
 
@@ -777,7 +777,7 @@ esac
 :
 EOF
 
-    printf "%s" "${startup//'$installdir'/$installdir}" > /tmp/nginx
+    printf "%s" "${startup//'@installdir'/$installdir}" > /tmp/nginx
     chmod a+x /tmp/nginx
     sudo mv /tmp/nginx ${installdir}/init.d/nginx
 }
@@ -820,10 +820,10 @@ case "$1" in
         fi
 
         # dir owner
-        chown -R www:www $installdir
+        chown -R www:www @installdir
 
         # link file
-        ln -sf $installdir/init.d/nginx /etc/init.d/nginx
+        ln -sf @installdir/init.d/nginx /etc/init.d/nginx
 
         # start up
         update-rc.d nginx defaults && \
@@ -845,7 +845,7 @@ esac
 
 EOF
 
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postinst
 
     # prerm
     cat > debian/DEBIAN/prerm <<- 'EOF'
@@ -873,8 +873,8 @@ case "$1" in
             rm -rf /etc/init.d/nginx
         fi
 
-        if [[ -d $installdir ]]; then
-            rm -rf $installdir
+        if [[ -d @installdir ]]; then
+            rm -rf @installdir
         fi
 
         if [[ -n "$(cat /etc/group | grep -E '^www:')" ]]; then
@@ -887,7 +887,7 @@ case "$1" in
 esac
 
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postrm
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postrm
 
     # chmod
     sudo chmod a+x debian/DEBIAN/postinst

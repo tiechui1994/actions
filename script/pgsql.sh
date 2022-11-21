@@ -199,9 +199,9 @@ build() {
 
     # service script
     log_info "build pgsql success"
-    for i in $(ls "$installdir/bin");
+    for i in $(ls ${installdir}/bin);
     do
-        log_info "$installdir/bin/$i:"$(ldd "$installdir/bin/$i")
+        log_info ${installdir}/bin/${i} $(ldd "${installdir}/bin/${i}")
         log_info
     done
 }
@@ -216,7 +216,7 @@ Description=PostgreSQL database server
 [Service]
 Type=simple
 User=postgres
-ExecStart=$installdir/bin/postgres -D $installdir/data
+ExecStart=@installdir/bin/postgres -D @installdir/data
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=mixed
 KillSignal=SIGINT
@@ -225,7 +225,7 @@ TimeoutSec=0
 [Install]
 WantedBy=multi-user.target
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > ${installdir}/conf/pgsql.service
+    printf "%s" "${conf//'@installdir'/$installdir}" > ${installdir}/conf/pgsql.service
 }
 
 package() {
@@ -251,12 +251,12 @@ EOF
     read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
-if [[ -d $installdir ]]; then
-    rm -rf $installdir
+if [[ -d @installdir ]]; then
+    rm -rf @installdir
 fi
 EOF
 
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/preinst
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/preinst
 
     # postinst
     read -r -d '' conf <<- 'EOF'
@@ -271,18 +271,18 @@ if [[ -z "$(cat /etc/passwd | grep -E '^postgres:')" ]]; then
 fi
 
 # data
-rm -rf $installdir/data && mkdir -p $installdir/data
-chown -R postgres:postgres $installdir
+rm -rf @installdir/data && mkdir -p @installdir/data
+chown -R postgres:postgres @installdir
 
 # init db
-sudo -u postgres $installdir/bin/initdb --pgdata=$installdir/data \
+sudo -u postgres @installdir/bin/initdb --pgdata=@installdir/data \
      --encoding=UTF8 \
      --locale=en_US.UTF-8 \
      --username=postgres \
      --pwprompt
 
 # start pgsql service
-cp $installdir/conf/pgsql.service /etc/systemd/system
+cp @installdir/conf/pgsql.service /etc/systemd/system
 systemctl daemon-reload && systemctl start pgsql.service
 if [[ $? -ne 0 ]]; then
     echo "pgsql service start failed, please check and trg again..."
@@ -290,7 +290,7 @@ if [[ $? -ne 0 ]]; then
 fi
 EOF
 
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postinst
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postinst
 
     cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
@@ -303,7 +303,7 @@ EOF
     read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
-rm -rf $installdir
+rm -rf @installdir
 
 if [[ -n "$(cat /etc/group | grep -E '^postgres:')" ]]; then
     groupdel -f postgres
@@ -312,7 +312,7 @@ if [[ -n "$(cat /etc/passwd | grep -E '^postgres:')" ]]; then
     userdel -f -r postgres
 fi
 EOF
-    printf "%s" "${conf//'$installdir'/$installdir}" > debian/DEBIAN/postrm
+    printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postrm
 
     # chmod
     sudo chmod a+x debian/DEBIAN/preinst
