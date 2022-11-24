@@ -30,7 +30,7 @@ jobs:
     steps:
       - name: Checkout
         timeout-minutes: 1
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           persist-credentials: false
       - name: Check tag
@@ -48,12 +48,12 @@ jobs:
     steps:
       - name: Checkout
         timeout-minutes: 1
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           persist-credentials: false
 
       - name: Setup
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
         with:
           install: true
 
@@ -71,7 +71,7 @@ jobs:
 
       - name: Cache files
         id: restore-build
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ./redis_${{github.event.inputs.version}}_ubuntu_${{matrix.os}}_amd64.deb
           key: ${{github.sha}}-${{matrix.os}}-amd64
@@ -87,7 +87,7 @@ jobs:
     steps:
       - name: Checkout
         timeout-minutes: 1
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           persist-credentials: false
 
@@ -107,7 +107,7 @@ jobs:
 
       - name: Cache files
         id: restore-build
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ./redis_${{github.event.inputs.version}}_ubuntu_${{matrix.os}}_arm64.deb
           key: ${{github.sha}}-${{matrix.os}}-arm64
@@ -121,31 +121,31 @@ jobs:
     steps:
       - name: Checkout
         timeout-minutes: 1
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           persist-credentials: false
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ./redis_${{github.event.inputs.version}}_ubuntu_16.04_amd64.deb
           key: ${{github.sha}}-16.04-amd64
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ./redis_${{github.event.inputs.version}}_ubuntu_18.04_amd64.deb
           key: ${{github.sha}}-18.04-amd64
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ./redis_${{github.event.inputs.version}}_ubuntu_20.04_amd64.deb
           key: ${{github.sha}}-20.04-amd64
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ./redis_${{github.event.inputs.version}}_ubuntu_16.04_arm64.deb
           key: ${{github.sha}}-16.04-arm64
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ./redis_${{github.event.inputs.version}}_ubuntu_18.04_arm64.deb
           key: ${{github.sha}}-18.04-arm64
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ./redis_${{github.event.inputs.version}}_ubuntu_20.04_arm64.deb
           key: ${{github.sha}}-20.04-arm64
