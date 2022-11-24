@@ -16,7 +16,7 @@ jobs:
     steps:
     - name: Checkout
       timeout-minutes: 1
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         persist-credentials: false
     - name: Check tag
@@ -30,17 +30,17 @@ jobs:
     strategy:
       matrix:
         arch: ['amd64', 'arm64']
-        go: ['1.13', '1.15', '1.16']
+        go: ['1.17']
 
     steps:
     - name: Checkout
       timeout-minutes: 1
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         persist-credentials: false
 
     - name: Use Go ${{matrix.go}}
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{matrix.go}}
 
@@ -70,7 +70,7 @@ jobs:
 
     - name: Cache files
       id: restore-build
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/dlv-${{matrix.go}}-${{matrix.arch}}
         key: ${{github.sha}}-${{matrix.go}}-${{matrix.arch}}
@@ -84,31 +84,31 @@ jobs:
     steps:
     - name: Checkout
       timeout-minutes: 1
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         persist-credentials: false
 
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/dlv-1.13-amd64
         key: ${{github.sha}}-1.13-amd64
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/dlv-1.13-arm64
         key: ${{github.sha}}-1.13-arm64
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/dlv-1.15-amd64
         key: ${{github.sha}}-1.15-amd64
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/dlv-1.15-arm64
         key: ${{github.sha}}-1.15-arm64
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/dlv-1.16-amd64
         key: ${{github.sha}}-1.16-amd64
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/dlv-1.16-arm64
         key: ${{github.sha}}-1.16-arm64
