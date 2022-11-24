@@ -3,20 +3,28 @@ on:
   workflow_dispatch:
     inputs:
       url:
-        description: 'download url'
+        description: 'ts download url'
         required: true
         default: ''
       parallel:
         description: 'parallel count'
         required: false
         default: 10
+      name:
+        description: 'name'
+        required: false
+        default: 'video.mpg'
+      target:
+        description: 'name'
+        required: false
+        default: 'videos'
 
 jobs:
   video:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.14' ]
+        go: [ '1.17' ]
 
     steps:
     - name: Use Go ${{ matrix.go }}
@@ -26,25 +34,18 @@ jobs:
 
     - name: Checkout
       timeout-minutes: 1
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         persist-credentials: false
 
-    - name: Downalod
+    - name: Downalod and Upload
       run: |
-        make -C golang vedio && \
-        golang/vedio -name ${{github.workspace}}/vedio.mpg -url ${{github.event.inputs.url}} -batch ${{github.event.inputs.parallel}}
+        name=${{github.workspace}}/${{github.event.inputs.name}}
+        make -C golang vedio
+        golang/vedio -name ${name} -url ${{github.event.inputs.url}} -batch ${{github.event.inputs.parallel}}
+        arr=($(du -mh $name))
+        echo "${arr[1]} size: ${arr[0]}B"
+        make -C golang upload
+        export ALIDRIVE_TOKEN=${{secrets.ALIDRIVE_TOKEN}}
+        golang/upload -upload -file ${name} -dir ${{github.event.inputs.target}}
 
-    - name: Compress
-      run: |
-        cd ${{github.workspace}}
-        declare -i size=$(du vedio.mpg|grep -o -E '^[0-9]+')
-        echo "vedio.mpg size: ${size} KB"
-        
-    - name: Upload
-      if: ${{ success() }}
-      uses: actions/upload-artifact@v2
-      with:
-        name: vedio
-        path: ${{github.workspace}}/vedio.mpg
-        retention-days: 1

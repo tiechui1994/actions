@@ -113,12 +113,7 @@ func handleUpload(token aliyundrive.Token, dir, filename string) {
 		os.Exit(1)
 	}
 
-	_, err = aliyundrive.UploadFile(filename+".SHA1", dirFile.FileID, token)
-	if err != nil {
-		fmt.Println("UploadFile:", err, filename+".SHA1")
-	}
-
-	fmt.Println("upload file sucess")
+	fmt.Println("upload file success")
 }
 
 func Get() (token aliyundrive.Token, err error) {
