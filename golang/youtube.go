@@ -61,7 +61,7 @@ func (q *Quality) UnmarshalText(text []byte) error {
 	return nil
 }
 
-type Vedio struct {
+type Video struct {
 	Ext     string          `json:"ext"`
 	FPS     int             `json:"fps"`
 	Fid     int             `json:"fid"`
@@ -81,7 +81,7 @@ type Audio struct {
 	size   int
 }
 
-func (a *Vedio) GetSize() int {
+func (a *Video) GetSize() int {
 	if a.size != 0 {
 		return a.size
 	}
@@ -106,64 +106,64 @@ func (a *Audio) GetSize() int {
 	return a.size
 }
 
-func GetVedios(url string) (vedio []Vedio, audio []Audio, err error) {
-	raw, err := util.GET(url, map[string]string{})
+func GetVideos(url string) (video []Video, audio []Audio, err error) {
+	raw, err := util.GET(url, map[string]string{}, 1)
 	if err != nil {
 		return
 	}
 
-	var resonse struct {
+	var response struct {
 		Data struct {
 			Title string  `json:"title"`
-			Av    []Vedio `json:"av"`
+			Av    []Video `json:"av"`
 			A     []Audio `json:"a"`
 		}
 		Status string `json:"status"`
 	}
 
-	err = json.Unmarshal(raw, &resonse)
+	err = json.Unmarshal(raw, &response)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	if resonse.Status != "success" {
+	if response.Status != "success" {
 		err = errors.New(string(raw))
 		return
 	}
 
 	var u string
-	for i := range resonse.Data.Av {
-		if strings.Contains(resonse.Data.Av[i].Url, "[[_index_]]") {
-			u = resonse.Data.Av[i].Url
+	for i := range response.Data.Av {
+		if strings.Contains(response.Data.Av[i].Url, "[[_index_]]") {
+			u = response.Data.Av[i].Url
 			break
 		}
 	}
-	for i := range resonse.Data.Av {
-		resonse.Data.Av[i].Url = strings.Replace(u, "[[_index_]]", fmt.Sprintf("%v", i), 1)
+	for i := range response.Data.Av {
+		response.Data.Av[i].Url = strings.Replace(u, "[[_index_]]", fmt.Sprintf("%v", i), 1)
 	}
 
-	for i := range resonse.Data.A {
-		if strings.Contains(resonse.Data.A[i].Url, "[[_index_]]") {
-			u = resonse.Data.A[i].Url
+	for i := range response.Data.A {
+		if strings.Contains(response.Data.A[i].Url, "[[_index_]]") {
+			u = response.Data.A[i].Url
 			break
 		}
 	}
-	for i := range resonse.Data.A {
-		resonse.Data.A[i].Url = strings.Replace(u, "[[_index_]]", fmt.Sprintf("%v", i), 1)
+	for i := range response.Data.A {
+		response.Data.A[i].Url = strings.Replace(u, "[[_index_]]", fmt.Sprintf("%v", i), 1)
 	}
 
-	sort.SliceIsSorted(resonse.Data.Av, func(i, j int) bool {
-		if resonse.Data.Av[i].Quality != resonse.Data.Av[j].Quality {
-			return resonse.Data.Av[i].Quality > resonse.Data.Av[j].Quality
+	sort.SliceIsSorted(response.Data.Av, func(i, j int) bool {
+		if response.Data.Av[i].Quality != response.Data.Av[j].Quality {
+			return response.Data.Av[i].Quality > response.Data.Av[j].Quality
 		}
-		if resonse.Data.Av[i].FPS != resonse.Data.Av[j].FPS {
-			return resonse.Data.Av[i].FPS > resonse.Data.Av[j].FPS
+		if response.Data.Av[i].FPS != response.Data.Av[j].FPS {
+			return response.Data.Av[i].FPS > response.Data.Av[j].FPS
 		}
-		return resonse.Data.Av[i].Fid < resonse.Data.Av[j].Fid
+		return response.Data.Av[i].Fid < response.Data.Av[j].Fid
 	})
 
-	return resonse.Data.Av, resonse.Data.A, nil
+	return response.Data.Av, response.Data.A, nil
 }
 
 func main() {
@@ -185,8 +185,8 @@ func main() {
 	retry := 0
 	site := SiteSaveTube
 try:
-	vedios, _, err := GetVedios(GetUrl(site, *u))
-	if err != nil || len(vedios) == 0 {
+	videos, _, err := GetVideos(GetUrl(site, *u))
+	if err != nil || len(videos) == 0 {
 		if retry < 3 {
 			retry += 1
 			if site == SiteDownloader {
@@ -205,35 +205,35 @@ try:
 		index     = -1
 		firstFind = -1
 	)
-	for idx, vedio := range vedios {
-		if int(vedio.Quality) == *quality && vedio.FPS >= *fps {
+	for idx, video := range videos {
+		if int(video.Quality) == *quality && video.FPS >= *fps {
 			index = idx
 			break
 		}
-		if int(vedio.Quality) == *quality && firstFind == -1 {
+		if int(video.Quality) == *quality && firstFind == -1 {
 			firstFind = idx
 		}
 	}
 
-	var vedio Vedio
+	var video Video
 	if index != -1 {
-		vedio = vedios[index]
+		video = videos[index]
 	} else if firstFind != -1 {
-		vedio = vedios[firstFind]
+		video = videos[firstFind]
 	} else {
-		vedio = vedios[0]
+		video = videos[0]
 	}
 
-	filepath := fmt.Sprintf("%v.%v", *name, vedio.Ext)
+	filepath := fmt.Sprintf("%v.%v", *name, video.Ext)
 
 	fmt.Printf("chouice quality: %vP, FPS: %v\n", *quality, *fps)
-	fmt.Printf("really quality: %vP, FPS: %v\n", vedio.Quality, vedio.FPS)
+	fmt.Printf("really quality: %vP, FPS: %v\n", video.Quality, video.FPS)
 	fmt.Printf("filepath: %v\n", filepath)
-	fmt.Printf("url: %v\n", vedio.Url)
+	fmt.Printf("url: %v\n", video.Url)
 
-	reader, err := util.File(vedio.Url, "GET", nil, nil)
+	reader, err := util.File(video.Url, "GET", nil, nil)
 	if err != nil {
-		fmt.Println("Get Vedios failed.", err)
+		fmt.Println("Get Videos failed.", err)
 		os.Exit(1)
 	}
 
@@ -246,9 +246,9 @@ try:
 			info, _ := writer.Stat()
 			current := float64(info.Size())
 
-			if vedio.GetSize() > 0 {
+			if video.GetSize() > 0 {
 				fmt.Printf("%ds download: %0.3f%% current size: %vMiB .... speed: %0.3fMiB/s \n",
-					int(time.Now().Sub(start).Seconds()), current*100.0/float64(vedio.GetSize()),
+					int(time.Now().Sub(start).Seconds()), current*100.0/float64(video.GetSize()),
 					int(current/(1024*1024)), (current-last)/(10.0*1024*1024))
 			} else {
 				fmt.Printf("%ds current size: %vMiB .... speed: %0.3fMiB/s \n",

@@ -67,8 +67,9 @@ const (
 func Download(u string, batch int, fd io.Writer) error {
 	lastIndex := strings.LastIndex(u, "/")
 	endpoint := u[:lastIndex]
-	raw, err := util.GET(u, nil)
+	raw, err := util.GET(u, nil, 4)
 	if err != nil {
+		fmt.Println("url:", u, "err:", err)
 		return err
 	}
 
@@ -109,14 +110,7 @@ func Download(u string, batch int, fd io.Writer) error {
 	}
 
 	download := func(u string) (data []byte, err error) {
-		retry := 0
-	try:
-		raw, err := util.GET(u, nil)
-		if err != nil && retry < 3 {
-			fmt.Println("url:", u, "err:", err, "retry again")
-			retry += 1
-			goto try
-		}
+		raw, err := util.GET(u, nil, 3)
 		if err != nil {
 			fmt.Println("url:", u, "err:", err)
 			return data, err
