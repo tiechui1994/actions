@@ -40,12 +40,13 @@ jobs:
 
     - name: Downalod and Upload
       run: |
-        name=${{github.workspace}}/${{github.event.inputs.name}}
         make -C golang vedio
-        golang/vedio -name ${name} -url ${{github.event.inputs.url}} -batch ${{github.event.inputs.parallel}}
-        arr=($(du -mh $name))
+        golang/vedio -name $NAME -url ${{github.event.inputs.url}} -batch ${{github.event.inputs.parallel}}
+        arr=($(du -mh $NAME))
         echo "${arr[1]} size: ${arr[0]}B"
         make -C golang upload
-        export ALIDRIVE_TOKEN=${{secrets.ALIDRIVE_TOKEN}}
-        golang/upload -upload -file ${name} -dir ${{github.event.inputs.target}}
+        golang/upload -upload -file $NAME -dir ${{github.event.inputs.target}}
+      env:
+        NAME: ${{github.workspace}}/${{github.event.inputs.name}}
+        ALIDRIVE_TOKEN: ${{secrets.ALIDRIVE_TOKEN}}
 
