@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/tiechui1994/tool/aliyun/aliyundrive"
 	"github.com/tiechui1994/tool/util"
@@ -142,17 +141,7 @@ func handleUpload(token aliyundrive.Token, dir, filename string) {
 
 func Get() (token aliyundrive.Token, err error) {
 	u := os.Getenv("ALIDRIVE_TOKEN")
-	retry := 0
-try:
-	raw, err := util.GET(u, nil)
-	if val, ok := err.(util.CodeError); ok && retry < 5 {
-		retry += 1
-		if int(val) == 504 {
-			retry -= 1
-			time.Sleep(time.Second)
-		}
-		goto try
-	}
+	raw, err := util.GET(u, nil, 5)
 	if err != nil {
 		return token, err
 	}
