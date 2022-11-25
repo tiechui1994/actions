@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"os"
-	"path/filepath"
-
 	"github.com/tiechui1994/tool/aliyun/aliyundrive"
 	"github.com/tiechui1994/tool/util"
+	"os"
+	"path/filepath"
+	"time"
 )
 
 /*
@@ -119,11 +119,15 @@ func handleUpload(token aliyundrive.Token, dir, filename string) {
 func Get() (token aliyundrive.Token, err error) {
 	u := os.Getenv("ALIDRIVE_TOKEN")
 	retry := 0
-tryagin:
+try:
 	raw, err := util.GET(u, nil)
-	if _, ok := err.(util.CodeError); ok && retry < 4 {
+	if val, ok := err.(util.CodeError); ok && retry < 5 {
 		retry += 1
-		goto tryagin
+		if int(val) == 504 {
+			retry -= 1
+			time.Sleep(time.Second)
+		}
+		goto try
 	}
 	if err != nil {
 		return token, err
