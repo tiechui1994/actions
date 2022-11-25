@@ -1,14 +1,19 @@
 package main
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/tiechui1994/tool/aliyun/aliyundrive"
-	"github.com/tiechui1994/tool/util"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"github.com/tiechui1994/tool/aliyun/aliyundrive"
+	"github.com/tiechui1994/tool/util"
 )
 
 /*
@@ -105,6 +110,25 @@ func handleUpload(token aliyundrive.Token, dir, filename string) {
 			return
 		}
 		dirFile.FileID = upload.FileID
+	} else {
+		files, err := aliyundrive.Files(dirFile.FileID, token)
+		if err != nil {
+			fmt.Println("Files:", err)
+			os.Exit(1)
+		}
+
+		reader, _ := os.Open(filename)
+		sha := sha1.New()
+		_, err = io.CopyBuffer(sha, reader, make([]byte, 8192))
+		if err == nil {
+			hash := strings.ToLower(hex.EncodeToString(sha.Sum(nil)))
+			for _, file := range files {
+				if strings.ToLower(file.Hash) == hash {
+					fmt.Println("file has exist")
+					return
+				}
+			}
+		}
 	}
 
 	_, err = aliyundrive.UploadFile(filename, dirFile.FileID, token)
