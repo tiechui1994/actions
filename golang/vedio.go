@@ -52,7 +52,15 @@ func main() {
 // ============================================ API ============================================
 
 const (
-	EXTINF = "EXTINF"
+	EXTM3U         = "#EXTM3U"
+	VERSION        = "#EXT-X-VERSION"
+	SEQUENCE       = "#EXT-X-MEDIA-SEQUENCE"
+	CACHE          = "#EXT-X-ALLOW-CACHE"
+	KEY            = "#EXT-X-KEY"
+	TARGETDURATION = "#EXT-X-TARGETDURATION"
+	EXTINF         = "#EXTINF"
+	EXTSTREAMINF   = "#EXT-X-STREAM-INF"
+	ENDLIST        = "#EXT-X-ENDLIST"
 )
 
 // https://cctvalih5ca.v.myalicdn.com/live/cctv2_2/index.m3u8
@@ -72,7 +80,7 @@ func Download(u string, batch int, fd io.Writer) error {
 			continue
 		}
 
-		if token[0] == '#' && strings.HasPrefix(token[1:], EXTINF) {
+		if strings.HasPrefix(token, EXTINF) {
 			u := strings.TrimSpace(tokens[idx+1])
 			if strings.HasPrefix(u, "http") {
 				urls = append(urls, u)
@@ -84,6 +92,19 @@ func Download(u string, batch int, fd io.Writer) error {
 				urls = append(urls, endpoint+"/"+u)
 				idx += 1
 			}
+		} else if strings.HasPrefix(token, EXTSTREAMINF) {
+			u := strings.TrimSpace(tokens[idx+1])
+			if strings.HasPrefix(u, "http") {
+				idx += 1
+			} else if strings.HasPrefix(u, "/") {
+				u = endpoint + u
+				idx += 1
+			} else {
+				u = endpoint + "/" + u
+				idx += 1
+			}
+
+			return Download(u, batch, fd)
 		}
 	}
 
