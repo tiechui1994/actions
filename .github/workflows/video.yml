@@ -18,6 +18,10 @@ on:
         description: 'name'
         required: false
         default: 'videos'
+      delay:
+        description: 'delay second'
+        required: false
+        default: 0
 
 jobs:
   video:
@@ -41,10 +45,11 @@ jobs:
     - name: Downalod and Upload
       run: |
         make -C golang vedio
+        make -C golang upload
+        sleep ${{github.event.inputs.delay}}
         golang/vedio -name $NAME -url ${{github.event.inputs.url}} -batch ${{github.event.inputs.parallel}}
         arr=($(du -mh $NAME))
         echo "${arr[1]} size: ${arr[0]}B"
-        make -C golang upload
         golang/upload -upload -file $NAME -dir ${{github.event.inputs.target}}
       env:
         NAME: ${{github.workspace}}/${{github.event.inputs.name}}
