@@ -3,15 +3,15 @@ on:
   workflow_dispatch:
     inputs:
       url:
-        description: 'vedio url'
+        description: 'video url'
         required: true
         default: ''
       name:
-        description: 'vedio name'
+        description: 'video name'
         required: true
         default: ''
       quality:
-        description: 'vedio quality'
+        description: 'video quality'
         required: false
         default: 720
         type: choice
@@ -24,7 +24,7 @@ on:
           - 2160
           - 4320
       fps:
-        description: 'vedio fps'
+        description: 'video fps'
         required: false
         default: 30
         type: choice
@@ -36,16 +36,15 @@ on:
 
 jobs:
   vedio:
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        go: [ '1.17' ]
+    runs-on: ubuntu-latest
+    env:
+      go: '1.17'
 
     steps:
-    - name: Use Go ${{ matrix.go }}
+    - name: Use Go ${{ env.go }}
       uses: actions/setup-go@v3
       with:
-        go-version: ${{ matrix.go }}
+        go-version: ${{ env.go }}
 
     - name: Checkout
       timeout-minutes: 1

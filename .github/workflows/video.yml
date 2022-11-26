@@ -26,15 +26,14 @@ on:
 jobs:
   video:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go: [ '1.17' ]
+    env:
+      go: '1.17'
 
     steps:
-    - name: Use Go ${{ matrix.go }}
+    - name: Use Go ${{ env.go }}
       uses: actions/setup-go@v3
       with:
-        go-version: ${{ matrix.go }}
+        go-version: ${{ env.go }}
 
     - name: Checkout
       timeout-minutes: 1

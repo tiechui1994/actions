@@ -1,12 +1,20 @@
 name: email
 on:
   schedule:
-  - cron: '*/30 * * * *'
+    - cron: '*/30 * * * *'
 
 jobs:
   email:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    env:
+      go: '1.17'
+
     steps:
+    - name: Use Go ${{ env.go }}
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.go }}
+
     - name: Checkout
       timeout-minutes: 1
       uses: actions/checkout@v3
@@ -18,3 +26,4 @@ jobs:
       run: |
         make -C golang email && \
         golang/email -u ${{secrets.EMAIL_USERNAME}} -p ${{secrets.EMAIL_PASSWORD}}
+      shell: bash

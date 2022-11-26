@@ -30,7 +30,7 @@ jobs:
     strategy:
       matrix:
         arch: ['amd64', 'arm64']
-        go: ['1.17']
+        go: ['1.17', '1.18']
 
     steps:
     - name: Checkout
