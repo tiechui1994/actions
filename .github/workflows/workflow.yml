@@ -7,16 +7,15 @@ on:
 
 jobs:
   workflow:
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        go: [ '1.17' ]
+    runs-on: ubuntu-latest
+    env:
+      go: '1.17'
 
     steps:
-    - name: Use Go ${{ matrix.go }}
+    - name: Use Go ${{ env.go }}
       uses: actions/setup-go@v3
       with:
-        go-version: ${{ matrix.go }}
+        go-version: ${{ env.go }}
 
     - name: Checkout
       timeout-minutes: 1
