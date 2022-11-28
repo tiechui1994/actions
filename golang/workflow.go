@@ -75,7 +75,7 @@ func Runs(repo string, page, pagesize int, token string) (list []RunInfo, err er
 		"authorization": "token " + token,
 	}
 
-	raw, err := util.GET(u, header)
+	raw, err := util.GET(u, util.WithHeader(header))
 	if err != nil {
 		return list, err
 	}
@@ -111,6 +111,6 @@ func DeleteRun(repo string, runid int, token string) error {
 		"authorization": "token " + token,
 	}
 
-	_, err := util.DELETE(u, header)
+	_, err := util.DELETE(u, util.WithHeader(header))
 	return err
 }

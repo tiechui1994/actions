@@ -13,10 +13,8 @@ import (
 	"github.com/tiechui1994/tool/util"
 )
 
-func init() {
-	util.LogRequest(func(request *http.Request) {
-		log.Infoln("%v - %v", request.Method, request.RequestURI)
-	})
+func logRequest(request *http.Request) {
+	log.Infoln("%v - %v", request.Method, request.RequestURI)
 }
 
 func main() {
@@ -67,7 +65,7 @@ const (
 func Download(u string, batch int, fd io.Writer) error {
 	lastIndex := strings.LastIndex(u, "/")
 	endpoint := u[:lastIndex]
-	raw, err := util.GET(u, nil, 4)
+	raw, err := util.GET(u, util.WithRetry(4), util.WithBeforeRequest(logRequest))
 	if err != nil {
 		fmt.Println("url:", u, "err:", err)
 		return err
@@ -110,7 +108,7 @@ func Download(u string, batch int, fd io.Writer) error {
 	}
 
 	download := func(u string) (data []byte, err error) {
-		raw, err := util.GET(u, nil, 3)
+		raw, err := util.GET(u, util.WithRetry(3), util.WithBeforeRequest(logRequest))
 		if err != nil {
 			fmt.Println("url:", u, "err:", err)
 			return data, err

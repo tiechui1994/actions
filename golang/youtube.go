@@ -107,7 +107,7 @@ func (a *Audio) GetSize() int {
 }
 
 func GetVideos(url string) (video []Video, audio []Audio, err error) {
-	raw, err := util.GET(url, map[string]string{}, 1)
+	raw, err := util.GET(url, util.WithRetry(1))
 	if err != nil {
 		return
 	}
@@ -231,7 +231,7 @@ try:
 	fmt.Printf("filepath: %v\n", filepath)
 	fmt.Printf("url: %v\n", video.Url)
 
-	reader, err := util.File(video.Url, "GET", nil, nil)
+	reader, err := util.File(video.Url, "GET", util.WithRetry(1))
 	if err != nil {
 		fmt.Println("Get Videos failed.", err)
 		os.Exit(1)
