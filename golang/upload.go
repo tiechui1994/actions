@@ -141,7 +141,7 @@ func handleUpload(token aliyundrive.Token, dir, filename string) {
 
 func Get() (token aliyundrive.Token, err error) {
 	u := os.Getenv("ALIDRIVE_TOKEN")
-	raw, err := util.GET(u, nil, 5)
+	raw, err := util.GET(u, util.WithRetry(5))
 	if err != nil {
 		return token, err
 	}
