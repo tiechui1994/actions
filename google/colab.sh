@@ -175,12 +175,12 @@ EOF
 
 colab_frp_upload() {
     value="ssh root@frp1.freefrp.net -p 20022"
-    data='{"ttl":28800, "value":"@value"}'
+    data='{"ttl":28800,"value":"@value"}'
     curl --request POST -sL \
          --url 'https://api.quinn.eu.org/api/mongo?key=frpc'\
-         --data ${data//'@value'/$value}
+         --data "${data//'@value'/$value}" > /dev/null
 
-    echo "ssh: $value"
+    echo "ssh: [ $value ]"
 }
 
 colab_start_service() {
