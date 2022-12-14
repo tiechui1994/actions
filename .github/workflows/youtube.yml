@@ -54,25 +54,36 @@ jobs:
 
     - name: Downalod
       run: |
-        make -C golang youtube && \
-        golang/youtube -name ${{github.workspace}}/${{github.event.inputs.name}} -url ${{github.event.inputs.url}} -quality ${{github.event.inputs.quality}} -fps ${{github.event.inputs.fps}}
+        make -C golang youtube
+        golang/youtube -name $NAME -url $URL -quality $QUALITY -fps $FPS
+      env:
+        NAME: ${{github.workspace}}/${{github.event.inputs.name}}
+        URL: ${{github.event.inputs.url}}
+        QUALITY: ${{github.event.inputs.quality}}
+        FPS: ${{github.event.inputs.fps}}
 
     - name: Convert
       if: ${{ success() }}
       run: |
         cd ${{github.workspace}}
-        name=$(ls|grep ${{github.event.inputs.name}})
+        name=$(ls|grep $NAME)
         echo "ext: ${name##*.}"
         if [[ "${name##*.}" != "mp4" ]]; then
           wget --quiet  https://github.com/tiechui1994/actions/releases/download/ffmpeg_5.1/ffmpeg.tar.xz -O ffmpeg.tar.xz
           tar xf ffmpeg.tar.xz && chmod a+x ffmpeg/ffmpeg
-          name=$(ls|grep ${{github.event.inputs.name}})
-          ffmpeg/ffmpeg -i "$name" -crf 20 -c:v libx264 "${{github.event.inputs.name}}.mp4"
+          name=$(ls|grep $NAME)
+          ffmpeg/ffmpeg -i "$name" -crf 20 -c:v libx264 "${NAME}.mp4"
         fi
         ls -lh
+      env:
+        NAME: ${{github.event.inputs.name}}
         
     - name: Upload
       if: ${{ success() }}
       run: |
         make -C golang upload
-        ALIDRIVE_TOKEN=${{secrets.ALIDRIVE_TOKEN}} golang/upload -upload -file "${{github.workspace}}/${{github.event.inputs.name}}.mp4"
+        golang/upload -upload -file "${NAME}.mp4"
+      env:
+        ALIDRIVE_TOKEN: ${{secrets.ALIDRIVE_TOKEN}}
+        NAME: ${{github.workspace}}/${{github.event.inputs.name}}
+
