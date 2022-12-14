@@ -25,6 +25,8 @@ jobs:
 
     - name: Workflow Clean
       run: |
-        make -C golang workflow && \
-        golang/workflow -r tiechui1994/serverless -t ${{secrets.GIT_TOKEN}} && \
+        make -C golang workflow
+        golang/workflow -r tiechui1994/serverless -t ${{secrets.GIT_TOKEN}}
         golang/workflow -r tiechui1994/actions -t ${{secrets.GIT_TOKEN}}
+      shell: bash
+

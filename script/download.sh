@@ -127,4 +127,3 @@ download ${name} ${url} curl
 if [[ $? -ne ${success} ]]; then
    exit $?
 fi
-sha1 ${name}
