@@ -30,7 +30,7 @@ jobs:
     strategy:
       matrix:
         arch: ['amd64', 'arm64']
-        go: ['1.17', '1.18']
+        go: ['1.16', '1.17', '1.18']
 
     steps:
     - name: Checkout
@@ -90,28 +90,28 @@ jobs:
 
     - uses: actions/cache@v3
       with:
-        path: ${{github.workspace}}/dlv-1.13-amd64
-        key: ${{github.sha}}-1.13-amd64
-    - uses: actions/cache@v3
-      with:
-        path: ${{github.workspace}}/dlv-1.13-arm64
-        key: ${{github.sha}}-1.13-arm64
-    - uses: actions/cache@v3
-      with:
-        path: ${{github.workspace}}/dlv-1.15-amd64
-        key: ${{github.sha}}-1.15-amd64
-    - uses: actions/cache@v3
-      with:
-        path: ${{github.workspace}}/dlv-1.15-arm64
-        key: ${{github.sha}}-1.15-arm64
-    - uses: actions/cache@v3
-      with:
         path: ${{github.workspace}}/dlv-1.16-amd64
         key: ${{github.sha}}-1.16-amd64
     - uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/dlv-1.16-arm64
         key: ${{github.sha}}-1.16-arm64
+    - uses: actions/cache@v3
+      with:
+        path: ${{github.workspace}}/dlv-1.17-amd64
+        key: ${{github.sha}}-1.17-amd64
+    - uses: actions/cache@v3
+      with:
+        path: ${{github.workspace}}/dlv-1.17-arm64
+        key: ${{github.sha}}-1.17-arm64
+    - uses: actions/cache@v3
+      with:
+        path: ${{github.workspace}}/dlv-1.18-amd64
+        key: ${{github.sha}}-1.18-amd64
+    - uses: actions/cache@v3
+      with:
+        path: ${{github.workspace}}/dlv-1.18-arm64
+        key: ${{github.sha}}-1.18-arm64
 
     - name: Files
       id: files
