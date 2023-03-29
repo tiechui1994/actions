@@ -97,7 +97,7 @@ again:
 		ServerName: "imap.qq.com",
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("imap DialTLS error: %w", err)
 	}
 
 	_, err = e.client.Login(e.Username, e.Password)
@@ -108,7 +108,7 @@ again:
 	}
 
 	if err != nil {
-		return err
+		return fmt.Errorf("imap Login error: %w", err)
 	}
 
 	return nil
@@ -153,14 +153,14 @@ func (e *Email) Handle(configs []config) error {
 
 	_, err := imap.Wait(e.client.Select("INBOX", false))
 	if err != nil {
-		return err
+		return fmt.Errorf("imap Wait INBOX mail error: %w", err)
 	}
 
 	before := "BEFORE " + end.Format("02-Jan-2006")
 	since := "SINCE " + start.Format("02-Jan-2006")
 	cmd, err := imap.Wait(e.client.UIDSearch(before, since))
 	if err != nil {
-		return err
+		return fmt.Errorf("imap Wait Range Date mail error: %w", err)
 	}
 
 	uids := make([]uint32, 0, 100)
@@ -178,7 +178,7 @@ func (e *Email) Handle(configs []config) error {
 		cmd, err = imap.Wait(e.client.UIDFetch(set, "FLAGS", "ENVELOPE", "RFC822.TEXT"))
 		if err != nil {
 			fmt.Println(err)
-			return err
+			return fmt.Errorf("imap Wait uid=%d mail error: %w", uid, err)
 		}
 
 		for cmd.InProgress() {
@@ -228,7 +228,7 @@ func parseEnvelope(field imap.Field) (envelope Envelope, err error) {
 	envelope.Date, err = parseMessageDateTime(imap.AsString(list[0]))
 	if err != nil {
 		fmt.Println("err", err)
-		return envelope, err
+		return envelope, fmt.Errorf("parse mail date error: %w", err)
 	}
 
 	// subject
@@ -486,7 +486,7 @@ func (e *Email) move(uid uint32, envelop Envelope, cond condition) {
 func (e *Email) reply(uid uint32, envelop Envelope, cond condition, body imap.Field) {
 	_, html, err := parseText(uid, body)
 	if err != nil {
-		fmt.Println("parseText", err)
+		fmt.Println("parseText error:", err)
 		return
 	}
 
@@ -525,7 +525,7 @@ func (e *Email) reply(uid uint32, envelop Envelope, cond condition, body imap.Fi
 	tpl.Execute(&buf, data)
 	err = s.Send(from, to, subject, strings.ReplaceAll(buf.String(), "$text", data.Origin))
 	if err != nil {
-		fmt.Println("Send", err)
+		fmt.Println("Send email error:", err)
 	}
 }
 
@@ -672,5 +672,9 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	e.Handle(configs)
+	err = e.Handle(configs)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
