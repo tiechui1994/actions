@@ -177,8 +177,8 @@ func (e *Email) Handle(configs []config) error {
 		set.AddNum(uid)
 		cmd, err = imap.Wait(e.client.UIDFetch(set, "FLAGS", "ENVELOPE", "RFC822.TEXT"))
 		if err != nil {
-			fmt.Println(err)
-			return fmt.Errorf("imap Wait uid=%d mail error: %w", uid, err)
+			fmt.Printf("imap Wait uid=%d mail error: %w \n", uid, err)
+			continue
 		}
 
 		for cmd.InProgress() {
@@ -225,6 +225,7 @@ func parseEnvelope(field imap.Field) (envelope Envelope, err error) {
 	}
 
 	// date: Tue, 06 Apr 2021 07:36:28 -0700
+	// date: 14 Apr 2022 17:38:32 -0400
 	envelope.Date, err = parseMessageDateTime(imap.AsString(list[0]))
 	if err != nil {
 		fmt.Println("err", err)
@@ -419,6 +420,7 @@ var envelopeDateTimeLayouts = [...]string{
 	"Mon, 02 Jan 2006 15:04:05 -0700", // popular, try it first
 	"Mon, 02 Jan 2006 15:04:05 MST",
 	"Mon, 2 Jan 2006 15:04:05 -0700",
+	"02 Jan 2006 15:04:05 -0700", // new date
 }
 
 var commentRE = regexp.MustCompile(`[ \t]+\(.*\)$`)
