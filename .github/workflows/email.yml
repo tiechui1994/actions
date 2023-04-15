@@ -22,7 +22,7 @@ jobs:
         persist-credentials: false
 
     - name: Delete emails
-      timeout-minutes: 10
+      timeout-minutes: 30
       run: |
         make -C golang email && \
         golang/email -u ${{secrets.EMAIL_USERNAME}} -p ${{secrets.EMAIL_PASSWORD}}
