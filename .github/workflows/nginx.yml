@@ -129,7 +129,7 @@ jobs:
       with:
         path: ./nginx_${{github.event.inputs.version}}_ubuntu_16.04_amd64.deb
         key: ${{github.sha}}-16.04-amd64
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       with:
         path: ./nginx_${{github.event.inputs.version}}_ubuntu_18.04_amd64.deb
         key: ${{github.sha}}-18.04-amd64
