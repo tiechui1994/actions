@@ -1,0 +1,102 @@
+name: nginx
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'nginx version'
+        required: true
+        default: ''
+      install:
+        description: 'nginx install dir'
+        required: false
+        default: '/opt/local/nginx'
+      temporary:
+        description: 'temporary build system version'
+        required: false
+        default: ''
+        type: choice
+        options:
+        - 'false'
+        - '16.04'
+        - '18.04'
+        - '20.04'
+
+jobs:
+  build_amd64:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [16.04, 18.04, 20.04]
+
+    steps:
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v3
+      with:
+        persist-credentials: false
+
+    - name: Setup
+      uses: docker/setup-buildx-action@v2
+      with:
+        install: true
+
+    - name: Build with ubuntu_${{matrix.os}}
+      id: build
+      timeout-minutes: 20
+      run: |
+        docker run -v ${PWD}:/app --workdir /app --platform "linux/amd64" ubuntu:${{matrix.os}} \
+          bash /app/script/nginx_update.sh \
+              ${{github.event.inputs.version}} \
+              ${{github.event.inputs.install}} \
+              1 \
+              nginx_${{github.event.inputs.version}}_ubuntu_${{matrix.os}}_amd64.deb
+      shell: bash
+
+    - name: Cache files
+      id: restore-build
+      uses: actions/cache@v3
+      with:
+        path: ./nginx_${{github.event.inputs.version}}_ubuntu_${{matrix.os}}_amd64.deb
+        key: ${{github.sha}}-${{matrix.os}}-amd64
+
+
+  release:
+    needs: [build_amd64]
+    runs-on: ubuntu-latest
+    outputs:
+      count: ${{ steps.files.outputs.count }}
+
+    steps:
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v3
+      with:
+        persist-credentials: false
+
+    - uses: actions/cache@v3
+      with:
+        path: ./nginx_${{github.event.inputs.version}}_ubuntu_16.04_amd64.deb
+        key: ${{github.sha}}-16.04-amd64
+    - uses: actions/cache@v3
+      with:
+        path: ./nginx_${{github.event.inputs.version}}_ubuntu_18.04_amd64.deb
+        key: ${{github.sha}}-18.04-amd64
+    - uses: actions/cache@v3
+      with:
+        path: ./nginx_${{github.event.inputs.version}}_ubuntu_20.04_amd64.deb
+        key: ${{github.sha}}-20.04-amd64
+
+    - name: Files
+      id: files
+      run: |
+        echo ${PWD}
+        echo "count=$(ls|grep nginx_${{github.event.inputs.version}}|wc -l)" >>  $GITHUB_OUTPUT
+        ls -Al .
+
+    - name: Upload amd64 temporary
+      uses: actions/upload-artifact@v2
+      with:
+        name: nginx_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64
+        path: ${{github.workspace}}/nginx_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64.deb
+        retention-days: 1
+
