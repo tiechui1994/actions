@@ -147,7 +147,8 @@ download_openssl() {
 download_pcre() {
     url="https://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz"
     url="https://nchc.dl.sourceforge.net/project/pcre/pcre/8.44/pcre-8.44.tar.gz"
-    cd ${workdir} && download "pcre.tar.gz" "$url" curl 1
+    url="https://udomain.dl.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.bz2"
+    cd ${workdir} && download "pcre.tar.bz2" "$url" curl 1
 }
 
 download_zlib() {
@@ -158,8 +159,8 @@ download_zlib() {
 
 # https proxy
 # doc: https://github.com/chobits/ngx_http_proxy_connect_module
-build_proxy_connect() {
-    url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.2"
+download_proxy_connect() {
+    url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.4"
     cd ${workdir} && download "ngx_http_proxy_connect_module.tar.gz" "$url" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
@@ -176,34 +177,19 @@ build_proxy_connect() {
     elif [[ "$version" =~ 1.15.* || "$version" =~ 1.16.* ]]; then
         log_info "patch proxy_connect_rewrite_101504"
         patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_101504.patch
-    else
+    elif [[ "$version" =~ 1.17.* || "$version" =~ 1.18.* ]]; then
         log_info "patch proxy_connect_rewrite_1018"
         patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_1018.patch
+    elif [[ "$version" =~ 1.19.* || "$version" = 1.21.0 ]]; then
+        log_info "patch proxy_connect_rewrite_1018"
+        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_1018.patch
+    elif [[ "$version" =~ 1.21.1 || "$version" =~ 1.22.* ]]; then
+        log_info "patch proxy_connect_rewrite_102101"
+        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_102101.patch
+    else
+        log_info "patch proxy_connect_rewrite_102101"
+        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_102101.patch
     fi
-
-    ./configure \
-    --with-compat \
-    --with-zlib=${workdir}/zlib \
-    --with-pcre=${workdir}/pcre \
-    --with-openssl=${workdir}/openssl \
-    --add-dynamic-module=${workdir}/ngx_http_proxy_connect_module
-    if [[ $? -ne 0 ]]; then
-        log_error "configure fail"
-        return ${failure}
-    fi
-
-    make modules
-    if [[ $? -ne 0 ]]; then
-        log_error "build fail"
-        return ${failure}
-    fi
-
-    log_info "ngx_http_proxy_connect_module info: $(ldd objs/ngx_http_proxy_connect_module.so)"
-    sudo cp objs/ngx_http_proxy_connect_module.so ${workdir}/modules
-
-    cat > ${workdir}/modules-available/50-mod-http-proxy-connect.conf <<-EOF
-load_module share/modules/ngx_http_proxy_connect_module.so;
-EOF
 }
 
 build_luajit() {
@@ -294,44 +280,14 @@ EOF
 # nginx rtmp, 实时流推送
 download_rtmp() {
     url="https://codeload.github.com/arut/nginx-rtmp-module/tar.gz/v1.2.2"
-    download "nginx-rtmp-module.tar.gz" "$url" curl 1
+    cd ${workdir} && download "nginx-rtmp-module.tar.gz" "$url" curl 1
 }
 
 # nginx flv, http flv 格式实时流, 该模块是在 nginx-rtmp-module 基础上修改的.
-build_flv() {
+download_flv() {
     cd ${workdir}
     url="https://codeload.github.com/winshining/nginx-http-flv-module/tar.gz/v1.2.9"
     cd ${workdir} && download "nginx-http-flv-module.tar.gz" "$url" curl 1
-    if [[ $? -ne ${success} ]]; then
-        return $?
-    fi
-
-    cd ${workdir}/nginx
-    ./configure \
-    --with-compat \
-    --with-zlib=${workdir}/zlib \
-    --with-pcre=${workdir}/pcre \
-    --with-openssl=${workdir}/openssl \
-    --add-dynamic-module=${workdir}/nginx-http-flv-module
-    if [[ $? -ne 0 ]]; then
-        log_error "configure flv fail"
-        return ${failure}
-    fi
-
-    make modules > ${workdir}/log 2>&1
-    if [[ $? -ne 0 ]]; then
-        log_error "build flv fail"
-        tail -100 ${workdir}/log
-        return ${failure}
-    fi
-
-    log_info "$(ls objs|grep -E '*.so$')"
-    log_info "nginx-http-flv-module info: $(ldd objs/ngx_http_flv_live_module.so)"
-
-    sudo cp objs/ngx_http_flv_live_module.so ${workdir}/modules
-    cat > ${workdir}/modules-available/50-mod-http-flv.conf <<-EOF
-load_module share/modules/ngx_http_flv_live_module.so;
-EOF
 }
 
 # other module
@@ -426,6 +382,8 @@ build() {
     --with-zlib=${workdir}/zlib \
     --with-pcre=${workdir}/pcre \
     --with-openssl=${workdir}/openssl \
+    --add-module=${workdir}/ngx_http_proxy_connect_module \
+    --add-module=${workdir}/nginx-http-flv-module \
     --http-client-body-temp-path=${installdir}/tmp/client \
     --http-proxy-temp-path=${installdir}/tmp/proxy \
     --http-fastcgi-temp-path=${installdir}/tmp/fcgi \
@@ -491,6 +449,11 @@ http {
     gzip  on;
 
     #
+    # other server config
+    #
+    include conf.d/*.conf;
+
+    #
     # HTTP server
     #
     server {
@@ -554,11 +517,6 @@ http {
     #        index  index.html index.htm;
     #    }
     #}
-
-    #
-    # other server config
-    #
-    include conf.d/*.conf;
 }
 EOF
     printf "%s" "${conf//'@installdir'/$installdir}" > /tmp/nginx.conf
@@ -693,19 +651,19 @@ do_upgrade() {
 
 case "$1" in
     start)
-        [ "${VERBOSE}" != no ] && log_daemon_msg "Starting ${DESC}" "${NAME}"
+        log_daemon_msg "Starting ${DESC}" "${NAME}"
         do_start
         case "$?" in
-            0|1) [ "${VERBOSE}" != no ] && log_end_msg 0 ;;
-            2) [ "${VERBOSE}" != no ] && log_end_msg 1 ;;
+            0|1) log_end_msg 0 ;;
+            2)   log_end_msg 1 ;;
         esac
         ;;
     stop)
-        [ "${VERBOSE}" != no ] && log_daemon_msg "Stopping ${DESC}" "${NAME}"
+        log_daemon_msg "Stopping ${DESC}" "${NAME}"
         do_stop
         case "$?" in
-            0|1) [ "${VERBOSE}" != no ] && log_end_msg 0 ;;
-            2) [ "${VERBOSE}" != no ] && log_end_msg 1 ;;
+            0|1) log_end_msg 0 ;;
+            2)   log_end_msg 1 ;;
         esac
         ;;
     restart)
@@ -923,7 +881,7 @@ do_install(){
         init
      fi
 
-     download_nginx && download_openssl && download_zlib && download_pcre
+     download_nginx && download_openssl && download_zlib && download_pcre && download_proxy_connect && download_flv
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
@@ -936,17 +894,7 @@ do_install(){
         exit $?
      fi
 
-     build_proxy_connect
-     if [[ $? -ne ${success} ]]; then
-        exit $?
-     fi
-
      build_nginx_lua
-     if [[ $? -ne ${success} ]]; then
-        exit $?
-     fi
-
-     build_flv
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
