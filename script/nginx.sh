@@ -5,7 +5,7 @@ INSTALL=$2
 INIT=$3
 NAME=$4
 
-declare -r version=${VERSION:=1.15.8}
+declare -r version=${VERSION:=1.18.0}
 declare -r workdir=$(pwd)
 declare -r installdir=${INSTALL:=/opt/local/nginx}
 
@@ -192,121 +192,66 @@ download_proxy_connect() {
     fi
 }
 
+# nginx lua
+# doc: https://github.com/openresty/lua-nginx-module#installation
 build_luajit() {
+    luajit="https://codeload.github.com/openresty/luajit2/tar.gz/refs/tags/v2.1-20230410"
+    cd ${workdir} && download "luajit.tar.gz" "$luajit" curl 1
+    if [[ $? -ne ${success} ]]; then
+        return $?
+    fi
+
     cd ${workdir}/luajit && make
     if [[ $? -ne 0 ]]; then
         log_error "make luajit fail"
         return ${failure}
     fi
 
-    sudo make install PREFIX=/tmp/luajit
+    make install PREFIX=/tmp/luajit
     if [[ $? -ne 0 ]]; then
         log_error "make install luajit fail"
         rm -rf /tmp/luajit
         return ${failure}
     fi
-}
 
-# nginx lua
-# doc: https://github.com/openresty/lua-nginx-module#installation
-build_nginx_lua() {
-    luajit="https://codeload.github.com/openresty/luajit2/tar.gz/refs/tags/v2.1-20211210"
-    cd ${workdir} && download "luajit.tar.gz" "$luajit" curl 1
-    if [[ $? -ne ${success} ]]; then
-        return $?
-    fi
-
-    build_luajit
-    if [[ $? -ne ${success} ]]; then
-        return $?
-    fi
-
-    ngx_devel_kit="https://codeload.github.com/vision5/ngx_devel_kit/tar.gz/v0.3.1"
+    # lua_ndk
+    ngx_devel_kit="https://codeload.github.com/vision5/ngx_devel_kit/tar.gz/v0.3.2"
     cd ${workdir} && download "ngx_devel_kit.tar.gz" "$ngx_devel_kit" curl 1
     if [[ $? -ne ${success} ]]; then
         return ${failure}
     fi
 
-    ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.20"
+    # lua
+    ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.24"
     if [[ "$version" =~ 1.15.* || "$version" =~ 1.16.* ||  "$version" =~ 1.18.* || "$version" =~ 1.20.* ]]; then
-        ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.23"
+        ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.24"
     fi
     cd ${workdir} && download "lua-nginx-module.tar.gz" "$ngx_lua" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
     fi
+}
 
-    # ngx_stream_lua_module
-    ngx_stream="https://codeload.github.com/openresty/stream-lua-nginx-module/tar.gz/v0.0.11"
-    cd ${workdir} && download "stream-lua-nginx-module.tar.gz" "$ngx_stream" curl 1
-    if [[ $? -ne ${success} ]]; then
-        return $?
-    fi
-
+build_lua_depend() {
     # lua-resty-lrucache
-    ngx_lrucache="https://codeload.github.com/openresty/lua-resty-lrucache/tar.gz/v0.12"
+    ngx_lrucache="https://codeload.github.com/openresty/lua-resty-lrucache/tar.gz/v0.13"
     cd ${workdir} && download "lua-resty-lrucache.tar.gz" "$ngx_lrucache" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
     fi
 
     # lua-resty-core, depend ngx_stream_lua_module, lua-resty-lrucache, ngx_http_lua_module
-    ngx_luacore="https://codeload.github.com/openresty/lua-resty-core/tar.gz/v0.1.25"
+    ngx_luacore="https://codeload.github.com/openresty/lua-resty-core/tar.gz/v0.1.26"
     cd ${workdir} && download "lua-resty-core.tar.gz" "$ngx_luacore" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
     fi
 
-    cd ${workdir}/nginx
-    sudo mv /tmp/luajit ${installdir}/third/
-    export LUAJIT_LIB="${installdir}/third/luajit/lib"
-    export LUAJIT_INC="${installdir}/third/luajit/include/luajit-2.1"
+    cd ${workdir}/lua-resty-core
+    sudo make install PREFIX=${installdir} LUA_INCLUDE_DIR=${installdir}/third/luajit/include/luajit-2.1 LUA_LIB_DIR=${installdir}/third/luajit/lib/lua
 
-    ./configure \
-    --with-compat \
-    --with-zlib=${workdir}/zlib \
-    --with-pcre=${workdir}/pcre \
-    --with-openssl=${workdir}/openssl \
-    --add-dynamic-module=${workdir}/ngx_devel_kit \
-    --add-dynamic-module=${workdir}/lua-nginx-module \
-    --add-dynamic-module=${workdir}/stream-lua-nginx-module \
-    --add-dynamic-module=${workdir}/lua-resty-lrucache \
-    --add-dynamic-module=${workdir}/lua-resty-core \
-    --with-ld-opt="-lpcre -Wl,-rpath,$LUAJIT_LIB"
-    if [[ $? -ne 0 ]]; then
-        log_error "configure lua fail"
-        return ${failure}
-    fi
-
-    make modules 1> ${workdir}/log 2>&1
-    if [[ $? -ne 0 ]]; then
-        log_error "build lua fail"
-        tail -100 ${workdir}/log
-        return ${failure}
-    fi
-
-    log_info "$(ls objs|grep -E '*.so$')"
-    log_info "ngx_devel_kit info: $(ldd objs/ndk_http_module.so)"
-    log_info "lua-nginx-module info: $(ldd objs/ngx_http_lua_module.so)"
-    log_info "ngx_stream_lua_module info: $(ldd objs/ngx_stream_lua_module.so)"
-    log_info "lua-resty-core info: $(ldd objs/lua-resty-core.so)"
-    log_info "lua-resty-lrucache info: $(ldd objs/lua-resty-lrucache.so)"
-
-
-    sudo cp objs/ndk_http_module.so ${workdir}/modules
-    sudo cp objs/ngx_http_lua_module.so ${workdir}/modules
-    sudo cp objs/ngx_stream_lua_module.so ${workdir}/modules
-    sudo cp objs/lua-resty-core.so ${workdir}/modules
-    sudo cp objs/lua-resty-lrucache.so ${workdir}/modules
-
-    cat > ${workdir}/modules-available/50-mod-http-lua.conf <<-EOF
-load_module share/modules/ndk_http_module.so;
-load_module share/modules/ngx_http_lua_module.so;
-
-load_module share/modules/lua-resty-lrucache.so;
-load_module share/modules/ngx_stream_lua_module.so;
-load_module share/modules/lua-resty-core.so;
-EOF
+    cd ${workdir}/lua-resty-lrucache
+    sudo make install PREFIX=${installdir} LUA_INCLUDE_DIR=${installdir}/third/luajit/include/luajit-2.1 LUA_LIB_DIR=${installdir}/third/luajit/lib/lua
 }
 
 # nginx rtmp, 实时流推送
@@ -409,7 +354,16 @@ build() {
     #
     ##
     # build and install
+    build_luajit
+    if [[ $? -ne ${success} ]]; then
+        exit $?
+    fi 
+
     cd ${workdir}/nginx
+
+    mv /tmp/luajit ${installdir}/third/
+    export LUAJIT_LIB="${installdir}/third/luajit/lib"
+    export LUAJIT_INC="${installdir}/third/luajit/include/luajit-2.1"
 
     ./configure \
     --user=www  \
@@ -445,6 +399,9 @@ build() {
     --with-pcre=${workdir}/pcre \
     --with-openssl=${workdir}/openssl \
     --add-module=${workdir}/ngx_http_proxy_connect_module \
+    --add-module=${workdir}/ngx_devel_kit \
+    --add-module=${workdir}/lua-nginx-module \
+    --with-ld-opt="-lpcre -Wl,-rpath,$LUAJIT_LIB" \
     --http-client-body-temp-path=${installdir}/tmp/client \
     --http-proxy-temp-path=${installdir}/tmp/proxy \
     --http-fastcgi-temp-path=${installdir}/tmp/fcgi \
@@ -497,6 +454,8 @@ events {
 }
 
 http {
+    lua_package_path "@installdir/third/luajit/lib/lua/?.lua;;";
+
     include       mime.types;
     default_type  application/octet-stream;
     log_format    main  '$remote_addr - $remote_user [$time_local] "$request" '
@@ -956,12 +915,12 @@ do_install(){
         exit $?
      fi
 
-     build_flv
+     build_lua_depend
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
 
-     build_nginx_lua
+     build_flv
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
