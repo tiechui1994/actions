@@ -160,7 +160,7 @@ download_zlib() {
 # https proxy
 # doc: https://github.com/chobits/ngx_http_proxy_connect_module
 download_proxy_connect() {
-    url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.4"
+    url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.3"
     cd ${workdir} && download "ngx_http_proxy_connect_module.tar.gz" "$url" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
@@ -284,10 +284,40 @@ download_rtmp() {
 }
 
 # nginx flv, http flv 格式实时流, 该模块是在 nginx-rtmp-module 基础上修改的.
-download_flv() {
+build_flv() {
     cd ${workdir}
     url="https://codeload.github.com/winshining/nginx-http-flv-module/tar.gz/v1.2.9"
     cd ${workdir} && download "nginx-http-flv-module.tar.gz" "$url" curl 1
+    if [[ $? -ne ${success} ]]; then
+        return $?
+    fi
+
+    cd ${workdir}/nginx
+    ./configure \
+    --with-compat \
+    --with-zlib=${workdir}/zlib \
+    --with-pcre=${workdir}/pcre \
+    --with-openssl=${workdir}/openssl \
+    --add-dynamic-module=${workdir}/nginx-http-flv-module
+    if [[ $? -ne 0 ]]; then
+        log_error "configure flv fail"
+        return ${failure}
+    fi
+
+    make modules > ${workdir}/log 2>&1
+    if [[ $? -ne 0 ]]; then
+        log_error "build flv fail"
+        tail -100 ${workdir}/log
+        return ${failure}
+    fi
+
+    log_info "$(ls objs|grep -E '*.so$')"
+    log_info "nginx-http-flv-module info: $(ldd objs/ngx_http_flv_live_module.so)"
+
+    sudo cp objs/ngx_http_flv_live_module.so ${workdir}/modules
+    cat > ${workdir}/modules-available/50-mod-http-flv.conf <<-EOF
+load_module share/modules/ngx_http_flv_live_module.so;
+EOF
 }
 
 # other module
@@ -383,7 +413,6 @@ build() {
     --with-pcre=${workdir}/pcre \
     --with-openssl=${workdir}/openssl \
     --add-module=${workdir}/ngx_http_proxy_connect_module \
-    --add-module=${workdir}/nginx-http-flv-module \
     --http-client-body-temp-path=${installdir}/tmp/client \
     --http-proxy-temp-path=${installdir}/tmp/proxy \
     --http-fastcgi-temp-path=${installdir}/tmp/fcgi \
@@ -881,7 +910,7 @@ do_install(){
         init
      fi
 
-     download_nginx && download_openssl && download_zlib && download_pcre && download_proxy_connect && download_flv
+     download_nginx && download_openssl && download_zlib && download_pcre && download_proxy_connect
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
@@ -890,6 +919,11 @@ do_install(){
      mkdir -p ${workdir}/modules-available
 
      build
+     if [[ $? -ne ${success} ]]; then
+        exit $?
+     fi
+
+     build_flv
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
