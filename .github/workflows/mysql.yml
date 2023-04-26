@@ -40,7 +40,7 @@ jobs:
   build:
     needs: [check]
     if: ${{ github.event.inputs.temporary != 'false' || needs.check.outputs.needbuild == 0 }}
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         platform: [linux/amd64]
@@ -79,7 +79,7 @@ jobs:
 
   release:
     needs: [build]
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     outputs:
       count: ${{ steps.files.outputs.count }}
 
@@ -124,7 +124,7 @@ jobs:
 
     - name: Upload temporary
       if: ${{ github.event.inputs.temporary != 'false' }}
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: mysql_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64.deb
         path: ${{github.workspace}}/mysql_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64.deb

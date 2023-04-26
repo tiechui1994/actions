@@ -160,7 +160,7 @@ download_zlib() {
 # https proxy
 # doc: https://github.com/chobits/ngx_http_proxy_connect_module
 download_proxy_connect() {
-    url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.3"
+    url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.4"
     cd ${workdir} && download "ngx_http_proxy_connect_module.tar.gz" "$url" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
@@ -229,9 +229,30 @@ build_nginx_lua() {
 
     ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.20"
     if [[ "$version" =~ 1.15.* || "$version" =~ 1.16.* ||  "$version" =~ 1.18.* || "$version" =~ 1.20.* ]]; then
-        ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.14"
+        ngx_lua="https://codeload.github.com/openresty/lua-nginx-module/tar.gz/v0.10.23"
     fi
     cd ${workdir} && download "lua-nginx-module.tar.gz" "$ngx_lua" curl 1
+    if [[ $? -ne ${success} ]]; then
+        return $?
+    fi
+
+    # ngx_stream_lua_module
+    ngx_stream="https://codeload.github.com/openresty/stream-lua-nginx-module/tar.gz/v0.0.11"
+    cd ${workdir} && download "stream-lua-nginx-module.tar.gz" "$ngx_stream" curl 1
+    if [[ $? -ne ${success} ]]; then
+        return $?
+    fi
+
+    # lua-resty-lrucache
+    ngx_lrucache="https://codeload.github.com/openresty/lua-resty-lrucache/tar.gz/v0.12"
+    cd ${workdir} && download "lua-resty-lrucache.tar.gz" "$ngx_lrucache" curl 1
+    if [[ $? -ne ${success} ]]; then
+        return $?
+    fi
+
+    # lua-resty-core, depend ngx_stream_lua_module, lua-resty-lrucache, ngx_http_lua_module
+    ngx_luacore="https://codeload.github.com/openresty/lua-resty-core/tar.gz/v0.1.25"
+    cd ${workdir} && download "lua-resty-core.tar.gz" "$ngx_luacore" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
     fi
@@ -248,6 +269,9 @@ build_nginx_lua() {
     --with-openssl=${workdir}/openssl \
     --add-dynamic-module=${workdir}/ngx_devel_kit \
     --add-dynamic-module=${workdir}/lua-nginx-module \
+    --add-dynamic-module=${workdir}/stream-lua-nginx-module \
+    --add-dynamic-module=${workdir}/lua-resty-lrucache \
+    --add-dynamic-module=${workdir}/lua-resty-core \
     --with-ld-opt="-lpcre -Wl,-rpath,$LUAJIT_LIB"
     if [[ $? -ne 0 ]]; then
         log_error "configure lua fail"
@@ -264,16 +288,24 @@ build_nginx_lua() {
     log_info "$(ls objs|grep -E '*.so$')"
     log_info "ngx_devel_kit info: $(ldd objs/ndk_http_module.so)"
     log_info "lua-nginx-module info: $(ldd objs/ngx_http_lua_module.so)"
+    log_info "ngx_stream_lua_module info: $(ldd objs/ngx_stream_lua_module.so)"
+    log_info "lua-resty-core info: $(ldd objs/lua-resty-core.so)"
+    log_info "lua-resty-lrucache info: $(ldd objs/lua-resty-lrucache.so)"
+
 
     sudo cp objs/ndk_http_module.so ${workdir}/modules
     sudo cp objs/ngx_http_lua_module.so ${workdir}/modules
-
-    cat > ${workdir}/modules-available/10-mod-http-ndk.conf <<-EOF
-load_module share/modules/ndk_http_module.so;
-EOF
+    sudo cp objs/ngx_stream_lua_module.so ${workdir}/modules
+    sudo cp objs/lua-resty-core.so ${workdir}/modules
+    sudo cp objs/lua-resty-lrucache.so ${workdir}/modules
 
     cat > ${workdir}/modules-available/50-mod-http-lua.conf <<-EOF
+load_module share/modules/ndk_http_module.so;
 load_module share/modules/ngx_http_lua_module.so;
+
+load_module share/modules/lua-resty-lrucache.so;
+load_module share/modules/ngx_stream_lua_module.so;
+load_module share/modules/lua-resty-core.so;
 EOF
 }
 
@@ -859,6 +891,7 @@ case "$1" in
         fi
 
         if [[ -d @installdir ]]; then
+            rm -rf /etc/init.d/nginx
             rm -rf @installdir
         fi
 
