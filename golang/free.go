@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -36,6 +37,8 @@ func gitTodayDiffer(dir string) (files []differ, err error) {
 	if err != nil {
 		return files, err
 	}
+
+	log.Println("git log:", strings.TrimSpace(string(out)))
 
 	var (
 		start, end string
@@ -75,6 +78,8 @@ func gitTodayDiffer(dir string) (files []differ, err error) {
 		}
 	}
 
+	log.Println("git diff:", start, end, files)
+
 	return files, nil
 }
 
@@ -102,7 +107,6 @@ func FetchLatestFile(git, branch string) (result []string, err error) {
 
 	rgroup := regexp.MustCompile(`^proxy-groups:`)
 	rproxy := regexp.MustCompile(`^proxies:`)
-	rrules := regexp.MustCompile(`^rules:`)
 	for _, file := range files {
 		if file.OP == "D" {
 			continue
@@ -113,7 +117,9 @@ func FetchLatestFile(git, branch string) (result []string, err error) {
 			continue
 		}
 
-		if rproxy.Match(data) && rgroup.Match(data) && rrules.Match(data) {
+		log.Printf("file: %v, match:%v", filepath.Join(dir, file.File),
+			rproxy.Match(data) && rgroup.Match(data))
+		if rproxy.Match(data) && rgroup.Match(data) {
 			result = append(result, file.File)
 		}
 	}
@@ -143,6 +149,11 @@ func PullGitFiles(git, branch string, key string) (err error) {
 	}
 
 	log.Println( "key:", key, "urls:", urls)
+
+	if len(urls) == 0 {
+		return nil
+	}
+
 	key = time.Now().In(time.UTC).Format("20060102") + "_" + key
 	return UploadCache(key, urls)
 }
@@ -186,7 +197,7 @@ var (
 
 func init() {
 	log.SetFlags(log.Ldate|log.Lshortfile|log.Ltime)
-	log.SetPrefix(" [free] ")
+	log.SetPrefix("[free] ")
 }
 
 func main() {
@@ -196,8 +207,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	raw, err := base64.StdEncoding.DecodeString(*freeConfig)
+	if err != nil {
+		log.Printf("config is invalid")
+		os.Exit(1)
+	}
+
 	var configs []Config
-	err := json.Unmarshal([]byte(*freeConfig), &configs)
+	err = json.Unmarshal(raw, &configs)
 	if err != nil {
 		log.Printf("Unmarshal failed: %v", err)
 		os.Exit(2)

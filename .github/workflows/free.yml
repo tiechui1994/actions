@@ -1,10 +1,10 @@
-name: email
+name: free
 on:
   push:
     branches: master
 
 jobs:
-  email:
+  free:
     runs-on: ubuntu-latest
     env:
       go: '1.17'
