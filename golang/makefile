@@ -16,9 +16,12 @@ vedio:clean verify
 youtube:clean verify
 	go build $(LDFLAGS) -o youtube youtube.go $(UTIL)
 
+free:clean verify
+	go build $(LDFLAGS) -o free free.go $(UTIL)
+
 verify:
 	go mod verify
 	go mod tidy
 
 clean:
-	rm -rf upload workflow sign email vedio youtube
+	rm -rf upload workflow sign email vedio youtube free
