@@ -105,8 +105,8 @@ func FetchLatestFile(git, branch string) (result []string, err error) {
 		return result, err
 	}
 
-	rgroup := regexp.MustCompile(`^proxy-groups:`)
-	rproxy := regexp.MustCompile(`^proxies:`)
+	rgroup := regexp.MustCompile(`proxy-groups:`)
+	rproxy := regexp.MustCompile(`proxies:`)
 	for _, file := range files {
 		if file.OP == "D" {
 			continue
@@ -117,7 +117,7 @@ func FetchLatestFile(git, branch string) (result []string, err error) {
 			continue
 		}
 
-		log.Printf("file: %v, match:%v", filepath.Join(dir, file.File),
+		log.Printf("file: %v, match: %v", file.File,
 			rproxy.Match(data) && rgroup.Match(data))
 		if rproxy.Match(data) && rgroup.Match(data) {
 			result = append(result, file.File)
@@ -137,18 +137,17 @@ func PullGitFiles(git, branch string, key string) (err error) {
 	var urls []string
 	if strings.HasPrefix(git, "https://github.com") {
 		for _, file := range files {
-			urls = append(urls, filepath.Join(
-				strings.Replace(endpoint, "github.com", "raw.githubusercontent.com", 1),
-				branch, file))
+			urls = append(urls, strings.ReplaceAll(endpoint, "github.com", "raw.githubusercontent.com")+"/"+
+				filepath.Join(branch, file))
 		}
 	} else if strings.HasPrefix(git, "https://agit.ai") {
 		for _, file := range files {
-			urls = append(urls, filepath.Join(endpoint,
-				"raw/branch", branch, file))
+			urls = append(urls, endpoint+"/"+
+				filepath.Join("raw/branch", branch, file))
 		}
 	}
 
-	log.Println( "key:", key, "urls:", urls)
+	log.Println("key:", key, "urls:", urls)
 
 	if len(urls) == 0 {
 		return nil
@@ -196,7 +195,7 @@ var (
 )
 
 func init() {
-	log.SetFlags(log.Ldate|log.Lshortfile|log.Ltime)
+	log.SetFlags(log.Ldate | log.Lshortfile | log.Ltime)
 	log.SetPrefix("[free] ")
 }
 
