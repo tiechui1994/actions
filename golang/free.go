@@ -1,11 +1,11 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/tiechui1994/tool/util"
 	"io/ioutil"
 	"log"
 	"os"
@@ -14,6 +14,11 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/tiechui1994/tool/speech"
+	"github.com/tiechui1994/tool/util"
+	"google.golang.org/api/option"
+	"google.golang.org/api/youtube/v3"
 )
 
 // 大飞分享 oss.v2rayse.com
@@ -22,6 +27,34 @@ import (
 // 小贤哥 oss.v2rayse.com
 // 玉兔分享 oss.v2rayse.com + proxy
 // NodeFree nodefree.org
+
+func FetchVideo(apiKey, channelID string) (desc, videoID string, err error) {
+	service, err := youtube.NewService(context.Background(), option.WithAPIKey(apiKey))
+	if err != nil {
+		return desc, videoID, err
+	}
+
+	list, err := service.Search.List([]string{"snippet"}).
+		ChannelId(channelID).
+		MaxResults(5).
+		Order("date").Do()
+	if err != nil {
+		return desc, videoID, err
+	}
+
+	now := time.Now().In(time.UTC).Format("2006-01-02")
+	if len(list.Items) == 0 && strings.HasPrefix(list.Items[0].Snippet.PublishedAt, now) {
+		videos, err := service.Videos.List([]string{"snippet"}).
+			Id(list.Items[0].Id.VideoId).Do()
+		if err != nil {
+			return desc, videoID, err
+		}
+
+		return videos.Items[0].Snippet.Description, list.Items[0].Id.VideoId, nil
+	}
+
+	return desc, videoID, fmt.Errorf("today: %v no youtube video", now)
+}
 
 type differ struct {
 	File string
@@ -157,6 +190,104 @@ func PullGitFiles(git, branch string, key string) (err error) {
 	return UploadCache(key, urls)
 }
 
+func PullFormatFiles(format string, key string) (err error) {
+	date := time.Now().In(time.UTC)
+	y, m, d := date.Date()
+
+	url := format
+	url = strings.ReplaceAll(url, "${Y}", fmt.Sprintf("%04d", y))
+	url = strings.ReplaceAll(url, "${M}", fmt.Sprintf("%02d", m))
+	url = strings.ReplaceAll(url, "${D}", fmt.Sprintf("%02d", d))
+
+	var urls []string
+	rgroup := regexp.MustCompile(`proxy-groups:`)
+	rproxy := regexp.MustCompile(`proxies:`)
+	raw, err := util.GET(url, util.WithRetry(3))
+	if err != nil {
+		return err
+	}
+	if rproxy.Match(raw) && rgroup.Match(raw) {
+		urls = append(urls, url)
+	}
+
+	log.Println("key:", key, "urls:", urls)
+	if len(urls) == 0 {
+		return nil
+	}
+
+	key = time.Now().In(time.UTC).Format("20060102") + "_" + key
+	return UploadCache(key, urls)
+}
+
+func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZou *regexp.Regexp, key string) (err error) {
+	desc, videoID, err := FetchVideo(apiKey, channelID)
+	if err != nil {
+		return err
+	}
+
+	uRLs := rURL.FindAllStringSubmatch(desc, 1)
+	if len(uRLs) == 0 || len(uRLs[0]) < 1 {
+		return fmt.Errorf("invalid url")
+	}
+	url := uRLs[0][1]
+
+	// get youtube mp3 file
+	u := fmt.Sprintf("https://web.quinn.eu.org/youtube?url=%v",
+		fmt.Sprintf("https://www.youtube.com?v=%v", videoID))
+	raw, err := util.GET(u, util.WithRetry(3))
+	if err != nil {
+		return err
+	}
+	var videoFile struct {
+		Audio []struct {
+			URL    string `json:"url"`
+			Acodec string `json:"acodec"`
+		} `json:"a"`
+	}
+	err = json.Unmarshal(raw, &videoFile)
+	if err != nil {
+		return err
+	}
+
+	// get password
+	raw, err = util.GET(videoFile.Audio[0].URL, util.WithRetry(3))
+	if err != nil {
+		return err
+	}
+
+	tmp, _ := os.MkdirTemp("", "music")
+	_ = ioutil.WriteFile(tmp, raw, 0666)
+
+	password, err := speech.SpeechToText(tmp)
+	if err != nil {
+		return err
+	}
+	passwords := rPwd.FindAllStringSubmatch(password, 1)
+	if len(passwords) == 0 || len(passwords[0]) < 1 {
+		return fmt.Errorf("invalid password")
+	}
+	pwd := passwords[0][1]
+
+	// get lanzou file
+	u = fmt.Sprintf("https://web.quinn.eu.org/lanzou?url=%v&pwd=%v",
+		url, pwd)
+	raw, err = util.GET(u, util.WithRetry(3))
+	if err != nil {
+		return err
+	}
+	// TODO: 解析蓝奏云, 获取链接
+
+	var urls []string
+	log.Println("key:", key, "urls:", urls)
+
+	if len(urls) == 0 {
+		return nil
+	}
+
+	key = time.Now().In(time.UTC).Format("20060102") + "_" + key
+	return UploadCache(key, urls)
+}
+
 func UploadCache(k string, v interface{}) error {
 	try := false
 again:
@@ -188,6 +319,12 @@ type Config struct {
 	Type string            `json:"type"`
 	Meta map[string]string `json:"meta"`
 }
+
+const (
+	TypeGit     = "git"
+	TypeYouTube = "youtube"
+	TypeFormat  = "format"
+)
 
 var (
 	freeConfig = flag.String("config", "", "config content")
@@ -221,12 +358,19 @@ func main() {
 
 	for _, config := range configs {
 		switch config.Type {
-		case "git":
+		case TypeGit:
 			log.Printf("type=%q name=%s url=%s branch=%s", config.Type, config.Name,
 				config.Meta["url"], config.Meta["branch"])
 			err = PullGitFiles(config.Meta["url"], config.Meta["branch"], config.Name)
 			if err != nil {
 				log.Printf("PullGitFiles url=%q failed; %v", config.Meta["url"], err)
+			}
+		case TypeFormat:
+			log.Printf("type=%q name=%s url=%s", config.Type, config.Name,
+				config.Meta["url"])
+			err = PullFormatFiles(config.Meta["url"], config.Name)
+			if err != nil {
+				log.Printf("PullFormatFiles url=%q failed; %v", config.Meta["url"], err)
 			}
 		default:
 			log.Println("not support")
