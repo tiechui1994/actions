@@ -228,14 +228,14 @@ config() {
     default_storage_engine=InnoDB
     innodb_file_per_table=ON
     innodb_flush_log_at_trx_commit=1
-    binlog_sync=1
+
     innodb_lock_wait_timeout=60
     wait_timeout=28800
     interactive_timeout=28800
 
     log_error=@installdir/logs/mysql.err
 
-    server-id=2
+    sync_binlog=1
     log_bin=@installdir/logs/binlog
 
     general_log=1
@@ -626,69 +626,74 @@ EOF
     read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
-# user and group
-if [[ -z "$(cat /etc/group | grep -E '^mysql:')" ]]; then
-    groupadd -r mysql
-fi
-if [[ -z "$(cat /etc/passwd | grep -E '^mysql:')" ]]; then
-    useradd -r mysql -g mysql
-fi
+case "$1" in
+    (configure)
+        # user and group
+        if [[ -z "$(cat /etc/group | grep -E '^mysql:')" ]]; then
+            groupadd -r mysql
+        fi
+        if [[ -z "$(cat /etc/passwd | grep -E '^mysql:')" ]]; then
+            useradd -r mysql -g mysql
+        fi
 
-# dir owner and privileges
-chown -R mysql:mysql @installdir
+        # dir owner and privileges
+        chown -R mysql:mysql @installdir
 
-# link file
-mkdir -p /usr/local/share/man/man1
-mkdir -p /usr/local/share/man/man8
-ln -sf @installdir/mysql/man/man1/* /usr/local/share/man/man1
-ln -sf @installdir/mysql/man/man8/* /usr/local/share/man/man8
-ln -sf @installdir/init.d/mysqld /etc/init.d/mysqld
+        # link file
+        ln -sf @installdir/mysql/bin/mysql /usr/local/bin/mysql
+        ln -sf @installdir/mysql/bin/mysqldump /usr/local/bin/mysqldump
+        ln -sf @installdir/mysql/bin/mysqlbinlog /usr/local/bin/mysqlbinlog
 
-ln -sf @installdir/mysql/bin/mysql /usr/local/bin/mysql
-ln -sf @installdir/mysql/bin/mysqldump /usr/local/bin/mysqldump
-ln -sf @installdir/mysql/bin/mysqlbinlog /usr/local/bin/mysqlbinlog
+        ln -sf @installdir/init.d/mysqld /etc/init.d/mysqld
 
-# clear logs and data
-rm -rf @installdir/logs/* && rm -rf @installdir/data/*
+        # clear logs and data
+        rm -rf @installdir/logs/* && rm -rf @installdir/data/*
 
-# init database
-@installdir/mysql/bin/mysqld \
---initialize \
---user=mysql \
---basedir=@installdir/mysql \
---datadir=@installdir/data
-if [[ $? -ne 0 ]]; then
-    echo "mysqld initialize failed"
-    exit
-fi
+        # init database
+        @installdir/mysql/bin/mysqld \
+        --initialize \
+        --user=mysql \
+        --basedir=@installdir/mysql \
+        --datadir=@installdir/data
+        if [[ $? -ne 0 ]]; then
+            echo "mysqld initialize failed"
+            exit
+        fi
 
-# check logs/mysql.err.
-error=$(grep -E -i -o '\[error\].*' "@installdir/logs/mysql.err")
-if [[ -n ${error} ]]; then
-    echo "mysql database init failed"
-    echo "error message:"
-    echo "$error"
-    echo "the detail message in file @installdir/logs/mysql.err"
-    exit
-fi
+        # check logs/mysql.err.
+        error=$(grep -E -i -o '\[error\].*' "@installdir/logs/mysql.err")
+        if [[ -n ${error} ]]; then
+            echo "mysql database init failed"
+            echo "error message:"
+            echo "$error"
+            echo "the detail message in file @installdir/logs/mysql.err"
+            exit
+        fi
 
-# start mysqld service
-update-rc.d mysqld defaults && \
-service mysqld start
-if [[ $? -ne 0 ]]; then
-    echo "mysqld service start failed, please check and trg again..."
-    exit
-fi
+        # start mysqld service
+        update-rc.d mysqld defaults && \
+        service mysqld start
+        if [[ $? -ne 0 ]]; then
+            echo "mysqld service start failed, please check and trg again..."
+            exit
+        fi
 
-# check password
-password="$(grep 'temporary password' "@installdir/logs/mysql.err"|cut -d ' ' -f11)"
-echo "current password is: $password"
-echo "please use follow command and sql login and update your password:"
-echo "mysql -u root --password='$password'"
-echo "SET PASSWORD = PASSWORD('your new password');"
-echo "ALTER user 'root'@'localhost' PASSWORD EXPIRE NEVER;"
-echo "FLUSH PRIVILEGES;"
-echo "mysql install successfully"
+        # check password
+        password="$(grep 'temporary password' "@installdir/logs/mysql.err"|cut -d ' ' -f11)"
+        echo "current password is: $password"
+        echo "please use follow command and sql login and update your password:"
+        echo "mysql -u root --password='$password'"
+        echo "SET PASSWORD = PASSWORD('your new password');"
+        echo "ALTER user 'root'@'localhost' PASSWORD EXPIRE NEVER;"
+        echo "FLUSH PRIVILEGES;"
+        echo "mysql install successfully"
+    ;;
+    (*)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 0
+    ;;
+esac
+
 EOF
 
     printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postinst
@@ -696,7 +701,15 @@ EOF
     cat > debian/DEBIAN/prerm <<- 'EOF'
 #!/bin/bash
 
-service mysqld stop
+case "$1" in
+    (remove)
+        service mysqld status > /dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
+            service mysqld stop
+        fi
+    ;;
+esac
+
 EOF
 
 
@@ -704,20 +717,30 @@ EOF
     read -r -d '' conf <<- 'EOF'
 #!/bin/bash
 
-update-rc.d mysqld remove
-rm -rf /etc/init.d/mysqld
-rm -rf /usr/local/bin/mysql
-rm -rf /usr/local/bin/mysqldump
-rm -rf /usr/local/bin/mysqlbinlog
+case "$1" in
+    (remove)
+        if [[ -f /etc/init.d/mysqld ]]; then
+            update-rc.d mysqld remove
+            rm -rf /etc/init.d/mysqld
+        fi
 
-rm -rf @installdir
+        if [[ -d @installdir ]]; then
+            rm -rf /etc/init.d/mysqld
+            rm -rf @installdir
+        fi
 
-if [[ -n "$(cat /etc/group | grep -E '^mysql:')" ]]; then
-    groupdel -f mysql
-fi
-if [[ -n "$(cat /etc/passwd | grep -E '^mysql:')" ]]; then
-    userdel -f -r mysql
-fi
+        rm -rf /usr/local/bin/mysql
+        rm -rf /usr/local/bin/mysqldump
+        rm -rf /usr/local/bin/mysqlbinlog
+
+        if [[ -n "$(cat /etc/group | grep -E '^mysql:')" ]]; then
+            groupdel -f mysql
+        fi
+        if [[ -n "$(cat /etc/passwd | grep -E '^mysql:')" ]]; then
+            userdel -f mysql
+        fi
+    ;;
+esac
 
 EOF
     printf "%s" "${conf//'@installdir'/$installdir}" > debian/DEBIAN/postrm
