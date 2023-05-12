@@ -20,6 +20,7 @@ on:
         - '16.04'
         - '18.04'
         - '20.04'
+        - '22.04'
 
 jobs:
   check:
@@ -44,7 +45,7 @@ jobs:
     strategy:
       matrix:
         platform: [linux/amd64]
-        os: [16.04, 18.04, 20.04]
+        os: [16.04, 18.04, 20.04, 22.04]
 
     steps:
     - name: Checkout
@@ -102,6 +103,11 @@ jobs:
       with:
         path: ./mysql_${{github.event.inputs.version}}_ubuntu_20.04_amd64.deb
         key: ${{github.sha}}-20.04
+    - uses: actions/cache@v3
+      with:
+        path: ./mysql_${{github.event.inputs.version}}_ubuntu_22.04_amd64.deb
+        key: ${{github.sha}}-22.04
+
 
     - name: Files
       id: files
@@ -111,7 +117,7 @@ jobs:
         ls -Al .
 
     - name: Release
-      if: ${{ success() && steps.files.outputs.count == 3 && github.event.inputs.temporary == 'false' }}
+      if: ${{ success() && steps.files.outputs.count == 4 && github.event.inputs.temporary == 'false' }}
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GIT_TOKEN }}
