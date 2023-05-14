@@ -401,7 +401,7 @@ func main() {
 				config.Meta["url"])
 			err = PullFormatFiles(config.Meta["url"], config.Name)
 			if err != nil {
-				log.Printf("PullFormatFiles url=%q failed; %v", config.Meta["url"], err)
+				log.Printf("PullFormatFiles url=%q failed: %v", config.Meta["url"], err)
 			}
 		case TypeYouTube:
 			log.Printf("type=%q name=%s", config.Type, config.Name)
