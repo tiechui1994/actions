@@ -43,7 +43,7 @@ func FetchVideo(apiKey, channelID string) (desc, videoID string, err error) {
 	}
 
 	now := time.Now().In(time.UTC).Format("2006-01-02")
-	if len(list.Items) == 0 && strings.HasPrefix(list.Items[0].Snippet.PublishedAt, now) {
+	if len(list.Items) > 0 && strings.HasPrefix(list.Items[0].Snippet.PublishedAt, now) {
 		videos, err := service.Videos.List([]string{"snippet"}).
 			Id(list.Items[0].Id.VideoId).Do()
 		if err != nil {
@@ -180,13 +180,12 @@ func PullGitFiles(git, branch string, key string) (err error) {
 		}
 	}
 
+	key = time.Now().In(time.UTC).Format("20060102") + "_" + key
 	log.Println("key:", key, "urls:", urls)
-
 	if len(urls) == 0 {
 		return nil
 	}
 
-	key = time.Now().In(time.UTC).Format("20060102") + "_" + key
 	return UploadCache(key, urls)
 }
 
@@ -210,16 +209,16 @@ func PullFormatFiles(format string, key string) (err error) {
 		urls = append(urls, url)
 	}
 
+	key = time.Now().In(time.UTC).Format("20060102") + "_" + key
 	log.Println("key:", key, "urls:", urls)
 	if len(urls) == 0 {
 		return nil
 	}
 
-	key = time.Now().In(time.UTC).Format("20060102") + "_" + key
 	return UploadCache(key, urls)
 }
 
-func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZou *regexp.Regexp, key string) (err error) {
+func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZouContent *regexp.Regexp, key string) (err error) {
 	desc, videoID, err := FetchVideo(apiKey, channelID)
 	if err != nil {
 		return err
@@ -231,14 +230,17 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZou *regexp.Rege
 	}
 	url := uRLs[0][1]
 
-	// get youtube mp3 file
+	log.Printf("lanzou cloud url: %v", url)
+
+	// get youtube mp3 file url
 	u := fmt.Sprintf("https://web.quinn.eu.org/youtube?url=%v",
-		fmt.Sprintf("https://www.youtube.com?v=%v", videoID))
+		fmt.Sprintf("https://www.youtube.com/watch?v=%v", videoID))
 	raw, err := util.GET(u, util.WithRetry(3))
 	if err != nil {
-		return err
+		return fmt.Errorf("get youtube mp3 file url: %w", err)
 	}
 	var videoFile struct {
+		Error string `json:"error"`
 		Audio []struct {
 			URL    string `json:"url"`
 			Acodec string `json:"acodec"`
@@ -248,44 +250,73 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZou *regexp.Rege
 	if err != nil {
 		return err
 	}
+	if len(videoFile.Error) != 0 {
+		return fmt.Errorf("download mp3 file failed: %v", videoFile.Error)
+	}
 
-	// get password
+	log.Printf("from %q get audio url %v", u, videoFile.Audio[0].URL)
+
+	// download mp3 file
 	raw, err = util.GET(videoFile.Audio[0].URL, util.WithRetry(3))
 	if err != nil {
-		return err
+		return fmt.Errorf("download youtube speech failed: %w", err)
 	}
 
 	tmp, _ := os.MkdirTemp("", "music")
-	_ = ioutil.WriteFile(tmp, raw, 0666)
-
-	password, err := speech.SpeechToText(tmp)
+	mp3File := filepath.Join(tmp, "youtube.mp3")
+	err = ioutil.WriteFile(mp3File, raw, 0666)
 	if err != nil {
-		return err
+		return fmt.Errorf("write youtube speech failed: %w", err)
 	}
+
+	log.Printf("mp3 file save in: %v.", mp3File)
+
+	password, err := speech.SpeechToText(mp3File)
+	if err != nil {
+		return fmt.Errorf("speech to text failed: %w", err)
+	}
+
 	passwords := rPwd.FindAllStringSubmatch(password, 1)
 	if len(passwords) == 0 || len(passwords[0]) < 1 {
 		return fmt.Errorf("invalid password")
 	}
 	pwd := passwords[0][1]
+	log.Printf("lan zou cloud file password: %v.", pwd)
 
 	// get lanzou file
-	u = fmt.Sprintf("https://web.quinn.eu.org/lanzou?url=%v&pwd=%v",
-		url, pwd)
-	raw, err = util.GET(u, util.WithRetry(3))
+	files, err := speech.FetchLanZouInfo(url, pwd)
 	if err != nil {
-		return err
-	}
-	// TODO: 解析蓝奏云, 获取链接
-
-	var urls []string
-	log.Println("key:", key, "urls:", urls)
-
-	if len(urls) == 0 {
-		return nil
+		return fmt.Errorf("get lanzou cloud url failed: %w", err)
 	}
 
-	key = time.Now().In(time.UTC).Format("20060102") + "_" + key
-	return UploadCache(key, urls)
+	for _, file := range files {
+		if file.Icon == "txt" && rLanZouName.MatchString(file.Name) {
+			log.Printf("lanzou file: %v, url: %v, %v", file.Name, file.Share, file.Download)
+			err = speech.LanZouRealURL(&file)
+			if err != nil {
+				log.Printf("get real download file url failed: %v", err)
+				return fmt.Errorf("get real download file url failed: %v", err)
+			}
+
+			raw, err := util.GET(file.URL, util.WithRetry(1))
+			if err != nil {
+				log.Printf("donwload file: %v failed: %v", file.Share, err)
+				return fmt.Errorf("donwload file: %v faile: %v", file.Share, err)
+			}
+
+			values := rLanZouContent.FindAllStringSubmatch(string(raw), 1)
+			if len(values) == 0 || len(values[0]) < 2 {
+				log.Printf("match file content %v failed", rLanZouContent.String())
+				return fmt.Errorf("match file content %v failed", rLanZouContent.String())
+			}
+
+			key = time.Now().In(time.UTC).Format("20060102") + "_" + key
+			log.Printf("key: %v urls: %v", key, values[0][1])
+			return UploadCache(key, []string{values[0][1]})
+		}
+	}
+
+	return fmt.Errorf("no match lanzou file, pealse check")
 }
 
 func UploadCache(k string, v interface{}) error {
@@ -371,6 +402,17 @@ func main() {
 			err = PullFormatFiles(config.Meta["url"], config.Name)
 			if err != nil {
 				log.Printf("PullFormatFiles url=%q failed; %v", config.Meta["url"], err)
+			}
+		case TypeYouTube:
+			log.Printf("type=%q name=%s", config.Type, config.Name)
+			rURL := regexp.MustCompile(config.Meta["url"])
+			rPWD := regexp.MustCompile(config.Meta["pwd"])
+			rLanZouName := regexp.MustCompile(config.Meta["name"])
+			rLanZouContent := regexp.MustCompile(config.Meta["content"])
+			err = PullYoutubeFiles(config.Meta["apikey"],
+				config.Meta["channelid"], rURL, rPWD, rLanZouName, rLanZouContent, config.Name)
+			if err != nil {
+				log.Printf("PullYoutubeFiles url=%q failed; %v", config.Meta["url"], err)
 			}
 		default:
 			log.Println("not support")
