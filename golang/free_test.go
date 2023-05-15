@@ -11,6 +11,11 @@ func TestPullYoutubeFiles(t *testing.T) {
 	rLANZOUFile := regexp.MustCompile(`客户端一键订阅.txt`)
 	rLANZOUContent := regexp.MustCompile(`(https://oss\.v2rayse\.com/proxies/data/.*?\.yaml)`)
 	err := PullYoutubeFiles("1111111111111",
-		"UCdNWJgaBXWtfy9p4Kzvt8zw", rURL, rPWD, rLANZOUFile, rLANZOUContent, "xiaoxiange")
+		"222222222", rURL, rPWD, rLANZOUFile, rLANZOUContent, "xiaoxiange")
 	t.Logf("%v", err)
+}
+
+func TestPull(t *testing.T) {
+	result, err := FetchLatestFile("https://github.com/a/b.git", "master")
+	t.Logf("%v, %v", err, result)
 }

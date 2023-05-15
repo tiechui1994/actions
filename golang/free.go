@@ -12,6 +12,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -59,6 +61,21 @@ func FetchVideo(apiKey, channelID string) (desc, videoID string, err error) {
 type differ struct {
 	File string
 	OP   string
+	Date int64
+}
+
+func getFileModifyDate(dir, path string) int64 {
+	// git log --follow --pretty='%at' --max-count=1 go.mod
+	cmd := exec.Command("bash", "-c",
+		fmt.Sprintf("cd %s && git log --follow --pretty='%%at' --max-count=1 %s", dir, path))
+	out, err := cmd.Output()
+	if err != nil {
+		return 0
+	}
+
+	fmt.Println(path, strings.TrimSpace(string(out)))
+	v, _ := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
+	return v
 }
 
 func gitTodayDiffer(dir string) (files []differ, err error) {
@@ -71,7 +88,6 @@ func gitTodayDiffer(dir string) (files []differ, err error) {
 		return files, err
 	}
 
-	log.Println("git log:", strings.TrimSpace(string(out)))
 
 	var (
 		start, end string
@@ -102,11 +118,15 @@ func gitTodayDiffer(dir string) (files []differ, err error) {
 			files = append(files, differ{
 				File: kv[2],
 				OP:   kv[0],
+				Date: getFileModifyDate(dir, kv[2]),
 			})
+		} else if kv[0] == "D" {
+			continue
 		} else {
 			files = append(files, differ{
 				File: kv[1],
 				OP:   kv[0],
+				Date: getFileModifyDate(dir, kv[1]),
 			})
 		}
 	}
@@ -138,6 +158,10 @@ func FetchLatestFile(git, branch string) (result []string, err error) {
 		return result, err
 	}
 
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Date > files[j].Date
+	})
+
 	rgroup := regexp.MustCompile(`proxy-groups:`)
 	rproxy := regexp.MustCompile(`proxies:`)
 	for _, file := range files {
@@ -157,6 +181,7 @@ func FetchLatestFile(git, branch string) (result []string, err error) {
 		}
 	}
 
+	log.Println("git files:", result)
 	return result, nil
 }
 
