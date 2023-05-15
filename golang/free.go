@@ -88,7 +88,6 @@ func gitTodayDiffer(dir string) (files []differ, err error) {
 		return files, err
 	}
 
-
 	var (
 		start, end string
 	)
@@ -260,6 +259,8 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZou
 	// get youtube mp3 file url
 	u := fmt.Sprintf("https://web.quinn.eu.org/youtube?url=%v",
 		fmt.Sprintf("https://www.youtube.com/watch?v=%v", videoID))
+	retry := 0
+again:
 	raw, err := util.GET(u, util.WithRetry(3))
 	if err != nil {
 		return fmt.Errorf("get youtube mp3 file url: %w", err)
@@ -276,13 +277,17 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZou
 		return err
 	}
 	if len(videoFile.Error) != 0 {
+		if retry < 3 {
+			retry += 1
+			goto again
+		}
 		return fmt.Errorf("download mp3 file failed: %v", videoFile.Error)
 	}
 
 	log.Printf("from %q get audio url %v", u, videoFile.Audio[0].URL)
 
 	// download mp3 file
-	raw, err = util.GET(videoFile.Audio[0].URL, util.WithRetry(3))
+	raw, err = util.GET(videoFile.Audio[0].URL, util.WithRetry(5))
 	if err != nil {
 		return fmt.Errorf("download youtube speech failed: %w", err)
 	}
