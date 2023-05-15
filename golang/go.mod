@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/mxk/go-imap v0.0.0-20150429134902-531c36c3f12d
-	github.com/tiechui1994/tool v1.5.7-0.20230514104004-ec08c3680160
+	github.com/tiechui1994/tool v1.5.7-0.20230515055407-8b2926252006
 	google.golang.org/api v0.121.0
 )
 
