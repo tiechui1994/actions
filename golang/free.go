@@ -266,27 +266,35 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZou
 
 	log.Printf("lanzou cloud url: %v", url)
 
-	// download mp3 file
-	tmp, _ := os.MkdirTemp("", "music")
-	mp3File := filepath.Join(tmp, "youtube.mp3")
-
-	err = speech.FetchYouTubeAudio(videoID, mp3File)
-	if err != nil {
-		return fmt.Errorf("download youtube mp3 file failed: %w", err)
-	}
-
-	log.Printf("mp3 file save in: %v.", mp3File)
-
-	password, err := speech.SpeechToText(mp3File)
-	if err != nil {
-		return fmt.Errorf("speech to text failed: %w", err)
-	}
-
-	passwords := rPwd.FindAllStringSubmatch(password, 1)
+	// pwd
+	var pwd string
+	passwords := rPwd.FindAllStringSubmatch(desc, 1)
 	if len(passwords) == 0 || len(passwords[0]) < 1 {
-		return fmt.Errorf("invalid password")
+		// download mp3 file(password contains)
+		tmp, _ := os.MkdirTemp("", "music")
+		mp3File := filepath.Join(tmp, "youtube.mp3")
+
+		err = speech.FetchYouTubeAudio(videoID, mp3File)
+		if err != nil {
+			return fmt.Errorf("download youtube mp3 file failed: %w", err)
+		}
+
+		log.Printf("mp3 file save in: %v.", mp3File)
+
+		// speech mp3 to text
+		password, err := speech.SpeechToText(mp3File)
+		if err != nil {
+			return fmt.Errorf("speech to text failed: %w", err)
+		}
+		passwords := rPwd.FindAllStringSubmatch(password, 1)
+		if len(passwords) == 0 || len(passwords[0]) < 1 {
+			return fmt.Errorf("invalid password")
+		}
+		pwd = passwords[0][1]
+	} else {
+		pwd = passwords[0][1]
 	}
-	pwd := passwords[0][1]
+
 	log.Printf("lan zou cloud file password: %v.", pwd)
 
 	// get lanzou file
