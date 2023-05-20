@@ -30,6 +30,15 @@ import (
 // 玉兔分享 oss.v2rayse.com + proxy
 // NodeFree nodefree.org
 
+func GetNow() time.Time {
+	now, err := time.ParseInLocation("2006-01-02", *freeDate, time.UTC)
+	if err != nil {
+		now = time.Now().In(time.UTC)
+	}
+
+	return now
+}
+
 func FetchVideo(apiKey, channelID string) (desc, videoID string, err error) {
 	service, err := youtube.NewService(context.Background(), option.WithAPIKey(apiKey))
 	if err != nil {
@@ -38,13 +47,13 @@ func FetchVideo(apiKey, channelID string) (desc, videoID string, err error) {
 
 	list, err := service.Search.List([]string{"snippet"}).
 		ChannelId(channelID).
-		MaxResults(5).
+		MaxResults(8).
 		Order("date").Do()
 	if err != nil {
 		return desc, videoID, err
 	}
 
-	now := time.Now().In(time.UTC).Format("2006-01-02")
+	now := GetNow().Format("2006-01-02")
 	if len(list.Items) > 0 && strings.HasPrefix(list.Items[0].Snippet.PublishedAt, now) {
 		videos, err := service.Videos.List([]string{"snippet"}).
 			Id(list.Items[0].Id.VideoId).Do()
@@ -80,9 +89,10 @@ func getFileModifyDate(dir, path string) int64 {
 
 func gitTodayDiffer(dir string) (files []differ, err error) {
 	//git log --since='2023-05-03 00:00:00 +0000' --format='%h'
-	today := time.Now().In(time.UTC).Format("2006-01-02")
+	today := GetNow().Format("2006-01-02")
 	cmd := exec.Command("bash", "-c",
-		fmt.Sprintf("cd %s && git log --since='%s 00:00:00 +0000' --format='%%h'", dir, today))
+		fmt.Sprintf("cd %s && git log --since='%s 00:00:00 +0000' --until='%s 23:59:59 +0000' --format='%%h'",
+			dir, today, today))
 	out, err := cmd.Output()
 	if err != nil {
 		return files, err
@@ -135,7 +145,7 @@ func gitTodayDiffer(dir string) (files []differ, err error) {
 	return files, nil
 }
 
-func FetchLatestFile(git, branch string) (result []string, err error) {
+func fetchLatestGitFile(git, branch string) (result []string, err error) {
 	dir, err := os.MkdirTemp("", "git")
 	if err != nil {
 		return result, err
@@ -186,7 +196,7 @@ func FetchLatestFile(git, branch string) (result []string, err error) {
 
 func PullGitFiles(git, branch string, key string) (err error) {
 	endpoint := git[:len(git)-len(".git")]
-	files, err := FetchLatestFile(git, branch)
+	files, err := fetchLatestGitFile(git, branch)
 	if err != nil {
 		return err
 	}
@@ -204,7 +214,7 @@ func PullGitFiles(git, branch string, key string) (err error) {
 		}
 	}
 
-	key = time.Now().In(time.UTC).Format("20060102") + "_" + key
+	key = GetNow().Format("20060102") + "_" + key
 	log.Println("key:", key, "urls:", urls)
 	if len(urls) == 0 {
 		return nil
@@ -214,8 +224,8 @@ func PullGitFiles(git, branch string, key string) (err error) {
 }
 
 func PullFormatFiles(format string, key string) (err error) {
-	date := time.Now().In(time.UTC)
-	y, m, d := date.Date()
+	now := GetNow()
+	y, m, d := now.Date()
 
 	url := format
 	url = strings.ReplaceAll(url, "${Y}", fmt.Sprintf("%04d", y))
@@ -233,7 +243,7 @@ func PullFormatFiles(format string, key string) (err error) {
 		urls = append(urls, url)
 	}
 
-	key = time.Now().In(time.UTC).Format("20060102") + "_" + key
+	key = now.Format("20060102") + "_" + key
 	log.Println("key:", key, "urls:", urls)
 	if len(urls) == 0 {
 		return nil
@@ -306,7 +316,7 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZou
 				return fmt.Errorf("match file content %v failed", rLanZouContent.String())
 			}
 
-			key = time.Now().In(time.UTC).Format("20060102") + "_" + key
+			key = GetNow().Format("20060102") + "_" + key
 			log.Printf("key: %v urls: %v", key, values[0][1])
 			return UploadCache(key, []string{values[0][1]})
 		}
@@ -356,6 +366,7 @@ const (
 var (
 	freeConfig = flag.String("config", "", "config content")
 	freeCache  = flag.String("cache", "", "cache url")
+	freeDate   = flag.String("date", "", "pull date")
 )
 
 func init() {
