@@ -256,47 +256,13 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZou
 
 	log.Printf("lanzou cloud url: %v", url)
 
-	// get youtube mp3 file url
-	u := fmt.Sprintf("https://web.quinn.eu.org/youtube?url=%v",
-		fmt.Sprintf("https://www.youtube.com/watch?v=%v", videoID))
-	retry := 0
-again:
-	raw, err := util.GET(u, util.WithRetry(3))
-	if err != nil {
-		return fmt.Errorf("get youtube mp3 file url: %w", err)
-	}
-	var videoFile struct {
-		Error string `json:"error"`
-		Audio []struct {
-			URL    string `json:"url"`
-			Acodec string `json:"acodec"`
-		} `json:"a"`
-	}
-	err = json.Unmarshal(raw, &videoFile)
-	if err != nil {
-		return err
-	}
-	if len(videoFile.Error) != 0 {
-		if retry < 3 {
-			retry += 1
-			goto again
-		}
-		return fmt.Errorf("download mp3 file failed: %v", videoFile.Error)
-	}
-
-	log.Printf("from %q get audio url %v", u, videoFile.Audio[0].URL)
-
 	// download mp3 file
-	raw, err = util.GET(videoFile.Audio[0].URL, util.WithRetry(5))
-	if err != nil {
-		return fmt.Errorf("download youtube speech failed: %w", err)
-	}
-
 	tmp, _ := os.MkdirTemp("", "music")
 	mp3File := filepath.Join(tmp, "youtube.mp3")
-	err = ioutil.WriteFile(mp3File, raw, 0666)
+
+	err = speech.FetchYouTubeAudio(videoID, mp3File)
 	if err != nil {
-		return fmt.Errorf("write youtube speech failed: %w", err)
+		return fmt.Errorf("download youtube mp3 file failed: %w", err)
 	}
 
 	log.Printf("mp3 file save in: %v.", mp3File)
