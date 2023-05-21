@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,11 +46,18 @@ func FetchVideo(apiKey, channelID string) (desc, videoID string, err error) {
 		return desc, videoID, err
 	}
 
+	count := 0
+try:
 	list, err := service.Search.List([]string{"snippet"}).
 		ChannelId(channelID).
 		MaxResults(8).
 		Order("date").Do()
 	if err != nil {
+		if count < 3 {
+			count += 1
+			time.Sleep(time.Second)
+			goto try
+		}
 		return desc, videoID, err
 	}
 
@@ -57,9 +65,16 @@ func FetchVideo(apiKey, channelID string) (desc, videoID string, err error) {
 	if len(list.Items) > 0 {
 		for _, v := range list.Items {
 			if strings.HasPrefix(v.Snippet.PublishedAt, now) {
+				count = 0
+			again:
 				videos, err := service.Videos.List([]string{"snippet"}).
 					Id(list.Items[0].Id.VideoId).Do()
 				if err != nil {
+					if count < 3 {
+						count += 1
+						time.Sleep(time.Second)
+						goto again
+					}
 					return desc, videoID, err
 				}
 
@@ -266,9 +281,9 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZou
 	if len(uRLs) == 0 || len(uRLs[0]) < 1 {
 		return fmt.Errorf("invalid url")
 	}
-	url := uRLs[0][1]
+	urlLanZou := uRLs[0][1]
 
-	log.Printf("lanzou cloud url: %v", url)
+	log.Printf("lanzou cloud url: %v", urlLanZou)
 
 	// pwd
 	var pwd string
@@ -302,7 +317,9 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZou
 	log.Printf("lan zou cloud file password: %v.", pwd)
 
 	// get lanzou file
-	files, err := speech.FetchLanZouInfo(url, pwd)
+	u, _ := url.Parse(urlLanZou)
+	u.Host = "www.lanzouy.com"
+	files, err := speech.FetchLanZouInfo(u.String(), pwd)
 	if err != nil {
 		return fmt.Errorf("get lanzou cloud url failed: %w", err)
 	}
