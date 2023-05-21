@@ -409,21 +409,23 @@ func main() {
 	for _, config := range configs {
 		switch config.Type {
 		case TypeGit:
-			log.Printf("type=%q name=%s url=%s branch=%s", config.Type, config.Name,
-				config.Meta["url"], config.Meta["branch"])
+			log.Printf("==== type=%q name=%s =========", config.Type, config.Name)
+			log.Printf(" url=%s branch=%s", config.Meta["url"], config.Meta["branch"])
 			err = PullGitFiles(config.Meta["url"], config.Meta["branch"], config.Name)
 			if err != nil {
-				log.Printf("PullGitFiles url=%q failed; %v", config.Meta["url"], err)
+				log.Printf("PullGitFiles name=%q url=%q failed: %v",
+					config.Name, config.Meta["url"], err)
 			}
 		case TypeFormat:
-			log.Printf("type=%q name=%s url=%s", config.Type, config.Name,
-				config.Meta["url"])
+			log.Printf("======== type=%q name=%s =========", config.Type, config.Name)
+			log.Printf("url=%s", config.Meta["url"])
 			err = PullFormatFiles(config.Meta["url"], config.Name)
 			if err != nil {
-				log.Printf("PullFormatFiles url=%q failed: %v", config.Meta["url"], err)
+				log.Printf("PullFormatFiles name=%q url=%q failed: %v",
+					config.Name, config.Meta["url"], err)
 			}
 		case TypeYouTube:
-			log.Printf("type=%q name=%s", config.Type, config.Name)
+			log.Printf("======== type=%q name=%s ========", config.Type, config.Name)
 			rURL := regexp.MustCompile(config.Meta["url"])
 			rPWD := regexp.MustCompile(config.Meta["pwd"])
 			rLanZouName := regexp.MustCompile(config.Meta["name"])
@@ -431,7 +433,8 @@ func main() {
 			err = PullYoutubeFiles(config.Meta["apikey"],
 				config.Meta["channelid"], rURL, rPWD, rLanZouName, rLanZouContent, config.Name)
 			if err != nil {
-				log.Printf("PullYoutubeFiles url=%q failed; %v", config.Meta["url"], err)
+				log.Printf("PullYoutubeFiles name=%q failed: %v",
+					config.Name, err)
 			}
 		default:
 			log.Println("not support")
