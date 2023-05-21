@@ -54,14 +54,18 @@ func FetchVideo(apiKey, channelID string) (desc, videoID string, err error) {
 	}
 
 	now := GetNow().Format("2006-01-02")
-	if len(list.Items) > 0 && strings.HasPrefix(list.Items[0].Snippet.PublishedAt, now) {
-		videos, err := service.Videos.List([]string{"snippet"}).
-			Id(list.Items[0].Id.VideoId).Do()
-		if err != nil {
-			return desc, videoID, err
-		}
+	if len(list.Items) > 0 {
+		for _, v := range list.Items {
+			if strings.HasPrefix(v.Snippet.PublishedAt, now) {
+				videos, err := service.Videos.List([]string{"snippet"}).
+					Id(list.Items[0].Id.VideoId).Do()
+				if err != nil {
+					return desc, videoID, err
+				}
 
-		return videos.Items[0].Snippet.Description, list.Items[0].Id.VideoId, nil
+				return videos.Items[0].Snippet.Description, list.Items[0].Id.VideoId, nil
+			}
+		}
 	}
 
 	return desc, videoID, fmt.Errorf("today: %v no youtube video", now)
@@ -304,15 +308,15 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZou
 	}
 
 	for _, file := range files {
-		if file.Icon == "txt" && rLanZouName.MatchString(file.Name) {
+		if rLanZouName.MatchString(file.Name) {
 			log.Printf("lanzou file: %v, url: %v, %v", file.Name, file.Share, file.Download)
-			err = speech.LanZouRealURL(&file)
+			u, err := speech.LanZouRealURL(file.Download)
 			if err != nil {
 				log.Printf("get real download file url failed: %v", err)
 				return fmt.Errorf("get real download file url failed: %v", err)
 			}
 
-			raw, err := util.GET(file.URL, util.WithRetry(1))
+			raw, err := util.GET(u, util.WithRetry(2))
 			if err != nil {
 				log.Printf("donwload file: %v failed: %v", file.Share, err)
 				return fmt.Errorf("donwload file: %v faile: %v", file.Share, err)
