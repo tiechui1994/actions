@@ -305,6 +305,7 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZou
 		if err != nil {
 			return fmt.Errorf("speech to text failed: %w", err)
 		}
+		password = strings.ReplaceAll(password, "\n", "")
 		passwords := rPwd.FindAllStringSubmatch(password, 1)
 		if len(passwords) == 0 || len(passwords[0]) < 1 {
 			log.Printf("password text: %v", password)
