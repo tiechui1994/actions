@@ -307,6 +307,7 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZou
 		}
 		passwords := rPwd.FindAllStringSubmatch(password, 1)
 		if len(passwords) == 0 || len(passwords[0]) < 1 {
+			log.Printf("password text: %v", password)
 			return fmt.Errorf("invalid password")
 		}
 		pwd = passwords[0][1]
@@ -427,7 +428,7 @@ func main() {
 		switch config.Type {
 		case TypeGit:
 			log.Printf("==== type=%q name=%s =========", config.Type, config.Name)
-			log.Printf(" url=%s branch=%s", config.Meta["url"], config.Meta["branch"])
+			log.Printf("git url: %s branch: %s", config.Meta["url"], config.Meta["branch"])
 			err = PullGitFiles(config.Meta["url"], config.Meta["branch"], config.Name)
 			if err != nil {
 				log.Printf("PullGitFiles name=%q url=%q failed: %v",
@@ -435,7 +436,7 @@ func main() {
 			}
 		case TypeFormat:
 			log.Printf("======== type=%q name=%s =========", config.Type, config.Name)
-			log.Printf("url=%s", config.Meta["url"])
+			log.Printf("format url: %s", config.Meta["url"])
 			err = PullFormatFiles(config.Meta["url"], config.Name)
 			if err != nil {
 				log.Printf("PullFormatFiles name=%q url=%q failed: %v",
@@ -447,6 +448,8 @@ func main() {
 			rPWD := regexp.MustCompile(config.Meta["pwd"])
 			rLanZouName := regexp.MustCompile(config.Meta["name"])
 			rLanZouContent := regexp.MustCompile(config.Meta["content"])
+			log.Printf("file url regex: %s, pwd regex: %s, name regex: %s, content regex: %s",
+				rURL, rPWD, rLanZouName, rLanZouContent)
 			err = PullYoutubeFiles(config.Meta["apikey"],
 				config.Meta["channelid"], rURL, rPWD, rLanZouName, rLanZouContent, config.Name)
 			if err != nil {
