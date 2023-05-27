@@ -20,7 +20,6 @@ free:clean verify
 	go build $(LDFLAGS) -o free free.go $(UTIL)
 
 verify:
-	go mod verify
 	go mod tidy
 
 clean:
