@@ -4,13 +4,14 @@ go 1.17
 
 require (
 	github.com/mxk/go-imap v0.0.0-20150429134902-531c36c3f12d
-	github.com/tiechui1994/tool v1.5.7-0.20230527091636-001a50eccb31
+	github.com/tiechui1994/tool v1.5.7-0.20230527121831-e9043152974f
 	google.golang.org/api v0.121.0
 )
 
 require (
 	cloud.google.com/go/compute v1.19.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	github.com/dustinxie/ecc v0.0.0-20210511000915-959544187564 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/s2a-go v0.1.3 // indirect
