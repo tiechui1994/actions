@@ -33,6 +33,14 @@ on:
           - 25
           - 30
           - 60
+      convert:
+        description: 'convert video'
+        required: false
+        default: false
+        type: choice
+        options:
+          - true
+          - false
 
 jobs:
   vedio:
@@ -63,7 +71,7 @@ jobs:
         FPS: ${{github.event.inputs.fps}}
 
     - name: Convert
-      if: ${{ success() }}
+      if: ${{ success() && github.event.inputs.convert == 'true' }}
       run: |
         cd ${{github.workspace}}
         name=$(ls|grep $NAME)
@@ -73,6 +81,9 @@ jobs:
           tar xf ffmpeg.tar.xz && chmod a+x ffmpeg/ffmpeg
           name=$(ls|grep $NAME)
           ffmpeg/ffmpeg -i "$name" -crf 20 -c:v libx264 "${NAME}.mp4"
+          if [[ $? -eq 0 ]]; then
+            rm -rf ${name}
+          fi
         fi
         ls -lh
       env:
@@ -81,9 +92,10 @@ jobs:
     - name: Upload
       if: ${{ success() }}
       run: |
+        name=$(ls|grep $NAME)
         make -C golang upload
-        golang/upload -upload -file "${NAME}.mp4"
+        golang/upload -upload -file "${{github.workspace}}/${name}"
       env:
         ALIDRIVE_TOKEN: ${{secrets.ALIDRIVE_TOKEN}}
-        NAME: ${{github.workspace}}/${{github.event.inputs.name}}
+        NAME: ${{github.event.inputs.name}}
 
