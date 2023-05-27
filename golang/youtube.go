@@ -44,7 +44,7 @@ func main() {
 			}
 			return val >= int64(*quality) && format.Fps >= *fps
 		},
-	).OrderBy(speech.QualityOrder).First()
+	).OrderBy(speech.QualityOrder).Last()
 	if err != nil {
 		fmt.Println("Query Video not exist: ", err)
 		os.Exit(1)
