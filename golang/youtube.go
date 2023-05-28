@@ -12,10 +12,11 @@ import (
 )
 
 func main() {
-	quality := flag.Int("quality", 720, "Vedio Quality")
-	fps := flag.Int("fps", 30, "Vedio FPS")
-	name := flag.String("name", "", "Save Vedio Name")
-	u := flag.String("url", "", "YouTube Download URL")
+	audio := flag.Bool("audio", false, "audio")
+	quality := flag.Int("quality", 720, "video Quality")
+	fps := flag.Int("fps", 30, "video FPS")
+	name := flag.String("name", "", "save file name")
+	u := flag.String("url", "", "youtube download URL")
 	flag.Parse()
 
 	if *u == "" {
@@ -34,19 +35,25 @@ func main() {
 		os.Exit(1)
 	}
 
+	var format speech.Format
+	var err error
 	yt := speech.YouTube{VideoID: strings.TrimSpace(values[0][1])}
-	format, err := yt.Filter(
-		speech.WithVideoOnly,
-		func(format speech.Format) bool {
-			var val int64
-			if strings.HasSuffix(format.Res, "p") {
-				val, _ = strconv.ParseInt(format.Res[:len(format.Res)-1], 10, 64)
-			}
-			return val >= int64(*quality) && format.Fps >= *fps
-		},
-	).OrderBy(speech.QualityOrder).Last()
+	if *audio {
+		format, err = yt.Filter(speech.WithAudioOnly).First()
+	} else {
+		format, err = yt.Filter(
+			speech.WithVideoOnly,
+			func(format speech.Format) bool {
+				var val int64
+				if strings.HasSuffix(format.Res, "p") {
+					val, _ = strconv.ParseInt(format.Res[:len(format.Res)-1], 10, 64)
+				}
+				return val >= int64(*quality) && format.Fps >= *fps
+			},
+		).OrderBy(speech.QualityOrder).Last()
+	}
 	if err != nil {
-		fmt.Println("Query Video not exist: ", err)
+		fmt.Println("query audio/video not exist: ", err)
 		os.Exit(1)
 	}
 
