@@ -71,7 +71,7 @@ jobs:
         FPS: ${{github.event.inputs.fps}}
 
     - name: Convert
-      if: ${{ success() && github.event.inputs.convert == 'true' }}
+      if: ${{ success() && github.event.inputs.convert != 'false' }}
       run: |
         cd ${{github.workspace}}
         name=$(ls|grep $NAME)
