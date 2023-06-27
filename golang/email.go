@@ -172,7 +172,7 @@ func (e *Email) Handle(configs []config) error {
 	fmt.Println("mail len:", len(uids))
 	set := new(imap.SeqSet)
 
-	for _, uid := range uids {
+	for idx, uid := range uids {
 		set.Clear()
 		set.AddNum(uid)
 		cmd, err = imap.Wait(e.client.UIDFetch(set, "FLAGS", "ENVELOPE", "RFC822.TEXT"))
@@ -184,6 +184,9 @@ func (e *Email) Handle(configs []config) error {
 		for cmd.InProgress() {
 			e.client.Recv(-1)
 		}
+
+		fmt.Printf("fetch idx=%d uid=%d success! \n", idx, uid)
+
 		for _, response := range cmd.Data {
 			fileds := response.MessageInfo().Attrs
 			_ = fileds["FLAGS"]
