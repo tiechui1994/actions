@@ -1,5 +1,32 @@
 #!/usr/bin/env bash
 
+colab_init_node() {
+     if [[ ! -d "/usr/local/node" ]]; then
+        wget --quiet https://nodejs.org/dist/v18.16.1/node-v18.16.1-linux-x64.tar.xz -O node.tar.xz
+        rm -rf node && mkdir node
+        tar xf node.tar.xz -C node --strip-components 1 && \
+        mv node /usr/local && rm -rf node.tar.xz
+        ln -sf /usr/local/node/bin/node /usr/local/bin/node
+        ln -sf /usr/local/node/bin/npm /usr/local/bin/npm
+    fi
+
+    node -v
+}
+
+colab_init_go() {
+    if [[ ! -d "/usr/local/go" ]]; then
+        wget --quiet https://go.dev/dl/go1.17.10.linux-amd64.tar.gz -O go.tar.gz
+        rm -rf go && mkdir go
+        tar xf go.tar.gz -C go --strip-components 1 && \
+        mv go /usr/local && rm -rf go.tar.gz
+        ln -sf /usr/local/go/bin/go /usr/local/bin/go
+        ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+    fi
+
+    go version
+}
+
+
 colab_init() {
     apt-get --quiet update && \
     apt-get --quiet install  --yes openssh-server net-tools iputils-ping iproute2 iptables openssl vim
