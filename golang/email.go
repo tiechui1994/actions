@@ -616,8 +616,8 @@ func main() {
 
 	cfg := `[{
         "name": "github",
-        "since": "2021-01-10T00:00:00Z",
-        "before": "2022-04-18T00:00:00Z",
+        "since": "2022-01-10T00:00:00Z",
+        "before": "2025-04-18T00:00:00Z",
         "from": ["github.com"],
         "body": ["jobs have failed", "refs/heads", "All jobs were cancelled",
                  "No jobs were run", "Successfully deployed",
@@ -627,8 +627,8 @@ func main() {
         }
     }, {
         "name": "google",
-        "since": "2021-01-10T00:00:00Z",
-        "before": "2022-04-18T00:00:00Z",
+        "since": "2022-01-10T00:00:00Z",
+        "before": "2025-04-18T00:00:00Z",
         "from": ["accounts.google.com"],
         "subject": ["安全提醒", "帐号的安全性"],
         "op": {
@@ -636,25 +636,33 @@ func main() {
         }
     }, {
         "name": "jd",
-        "since": "2021-01-10T00:00:00Z",
-        "before": "2022-04-18T00:00:00Z",
+        "since": "2022-01-10T00:00:00Z",
+        "before": "2025-04-18T00:00:00Z",
         "from": ["newsletter1@jd.com"],
         "op": {
             "type": "delete"
         }
     }, {
 		"name": "hkisl",
- 	    "since": "2021-01-10T00:00:00Z",
-        "before": "2022-04-18T00:00:00Z",
+ 	    "since": "2022-01-10T00:00:00Z",
+        "before": "2025-04-18T00:00:00Z",
 		"from": ["noreply-wms@hkisl.net"],
         "op": {
             "type": "delete"
         }
 	}, {
 		"name": "qovery",
- 	    "since": "2021-01-10T00:00:00Z",
-        "before": "2022-04-18T00:00:00Z",
+ 	    "since": "2023-01-10T00:00:00Z",
+        "before": "2025-04-18T00:00:00Z",
 		"from": ["qovery.com"],
+        "op": {
+            "type": "delete"
+        }
+	}, {
+		"name": "calendar",
+ 	    "since": "2023-01-10T00:00:00Z",
+        "before": "2025-04-18T00:00:00Z",
+		"from": ["broadlink.eu.org"],
         "op": {
             "type": "delete"
         }

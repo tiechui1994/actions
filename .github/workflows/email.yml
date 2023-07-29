@@ -2,6 +2,7 @@ name: email
 on:
   schedule:
     - cron: '*/30 * * * *'
+  workflow_dispatch:
 
 jobs:
   email:
@@ -22,7 +23,7 @@ jobs:
         persist-credentials: false
 
     - name: Delete emails
-      timeout-minutes: 30
+      timeout-minutes: 60
       run: |
         make -C golang email && \
         golang/email -u ${{secrets.EMAIL_USERNAME}} -p ${{secrets.EMAIL_PASSWORD}}
