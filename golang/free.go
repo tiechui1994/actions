@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"goland/notify"
 	"io/ioutil"
 	"log"
 	"net/url"
@@ -398,11 +400,29 @@ var (
 	freeConfig = flag.String("config", "", "config content")
 	freeCache  = flag.String("cache", "", "cache url")
 	freeDate   = flag.String("date", "", "pull date")
+
+	to notify.EmailInfo
 )
 
 func init() {
 	log.SetFlags(log.Ldate | log.Lshortfile | log.Ltime)
 	log.SetPrefix("[free] ")
+
+	to = notify.EmailInfo{
+		Email: "2904951429@qq.com",
+	}
+	notify.DefaultURL("https://broadlink.eu.org/api/email")
+	notify.DefaultFrom(notify.EmailInfo{
+		Email: "no-reply@broadlink.eu.org",
+	})
+}
+
+func emailJSON(v interface{}) string {
+	var buf bytes.Buffer
+	e := json.NewEncoder(&buf)
+	e.SetIndent("", "   ")
+	_ = e.Encode(v)
+	return buf.String()
 }
 
 func main() {
@@ -434,6 +454,16 @@ func main() {
 			if err != nil {
 				log.Printf("PullGitFiles name=%q url=%q failed: %v",
 					config.Name, config.Meta["url"], err)
+				_ = notify.SendEmail(
+					notify.WithSubject(fmt.Sprintf("Fetch Type=%q Failed At %q", config.Type, time.Now().Format(time.RFC3339))),
+					notify.WithTo(to),
+					notify.WithContent(notify.TypePlain, emailJSON(map[string]interface{}{
+						"type":  config.Type,
+						"name":  config.Name,
+						"url":   config.Meta["url"],
+						"error": err.Error(),
+					})),
+				)
 			}
 		case TypeFormat:
 			log.Printf("======== type=%q name=%s =========", config.Type, config.Name)
@@ -442,6 +472,16 @@ func main() {
 			if err != nil {
 				log.Printf("PullFormatFiles name=%q url=%q failed: %v",
 					config.Name, config.Meta["url"], err)
+				_ = notify.SendEmail(
+					notify.WithSubject(fmt.Sprintf("Fetch Type=%q Failed At %q", config.Type, time.Now().Format(time.RFC3339))),
+					notify.WithTo(to),
+					notify.WithContent(notify.TypePlain, emailJSON(map[string]interface{}{
+						"type":  config.Type,
+						"name":  config.Name,
+						"url":   config.Meta["url"],
+						"error": err.Error(),
+					})),
+				)
 			}
 		case TypeYouTube:
 			log.Printf("======== type=%q name=%s ========", config.Type, config.Name)
@@ -456,6 +496,16 @@ func main() {
 			if err != nil {
 				log.Printf("PullYoutubeFiles name=%q failed: %v",
 					config.Name, err)
+				_ = notify.SendEmail(
+					notify.WithSubject(fmt.Sprintf("Fetch Type=%q Failed At %q", config.Type, time.Now().Format(time.RFC3339))),
+					notify.WithTo(to),
+					notify.WithContent(notify.TypePlain, emailJSON(map[string]interface{}{
+						"type":  config.Type,
+						"name":  config.Name,
+						"url":   config.Meta["url"],
+						"error": err.Error(),
+					})),
+				)
 			}
 		default:
 			log.Println("not support")
