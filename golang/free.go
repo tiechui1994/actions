@@ -455,7 +455,7 @@ func main() {
 				log.Printf("PullGitFiles name=%q url=%q failed: %v",
 					config.Name, config.Meta["url"], err)
 				_ = notify.SendEmail(
-					notify.WithSubject(fmt.Sprintf("Fetch Type=%q Failed At %q", config.Type, time.Now().Format(time.RFC3339))),
+					notify.WithSubject(fmt.Sprintf("Fetch Type=%s Failed At %s", config.Type, time.Now().Format(time.RFC3339))),
 					notify.WithTo(to),
 					notify.WithContent(notify.TypePlain, emailJSON(map[string]interface{}{
 						"type":  config.Type,
@@ -473,7 +473,7 @@ func main() {
 				log.Printf("PullFormatFiles name=%q url=%q failed: %v",
 					config.Name, config.Meta["url"], err)
 				_ = notify.SendEmail(
-					notify.WithSubject(fmt.Sprintf("Fetch Type=%q Failed At %q", config.Type, time.Now().Format(time.RFC3339))),
+					notify.WithSubject(fmt.Sprintf("Fetch Type=%s Failed At %s", config.Type, time.Now().Format(time.RFC3339))),
 					notify.WithTo(to),
 					notify.WithContent(notify.TypePlain, emailJSON(map[string]interface{}{
 						"type":  config.Type,
@@ -497,7 +497,7 @@ func main() {
 				log.Printf("PullYoutubeFiles name=%q failed: %v",
 					config.Name, err)
 				_ = notify.SendEmail(
-					notify.WithSubject(fmt.Sprintf("Fetch Type=%q Failed At %q", config.Type, time.Now().Format(time.RFC3339))),
+					notify.WithSubject(fmt.Sprintf("Fetch Type=%s Failed At %s", config.Type, time.Now().Format(time.RFC3339))),
 					notify.WithTo(to),
 					notify.WithContent(notify.TypePlain, emailJSON(map[string]interface{}{
 						"type":  config.Type,
