@@ -20,7 +20,7 @@ free:clean verify
 	go build $(LDFLAGS) -o free free.go $(UTIL)
 
 verify:
-	go mod tidy
+	go mod tidy -compat=1.17
 
 clean:
 	rm -rf upload workflow sign email video youtube free
