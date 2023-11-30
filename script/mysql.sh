@@ -126,15 +126,11 @@ init() {
 
 download_mysql() {
     # tencent, mirrorservice, mysql(https://downloads.mysql.com/archives/community)
-    url="https://mirrors.cloud.tencent.com/mysql/downloads/MySQL-5.7/mysql-$version.tar.gz"
-    url="https://www.mirrorservice.org/sites/ftp.mysql.com/Downloads/MySQL-5.7/mysql-$version.tar.gz"
     url="https://cdn.mysql.com/archives/mysql-${version:0:3}/mysql-$version.tar.gz"
     download "mysql.tar.gz" ${url} axel 1
 }
 
 download_boost(){
-    url="https://udomain.dl.sourceforge.net/project/boost/boost/1.61.0/boost_1_61_0.tar.gz"
-    url="https://udomain.dl.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.gz"
     url="https://cdn.mysql.com/archives/mysql-${version:0:3}/mysql-boost-$version.tar.gz"
     download "boost.tar.gz" ${url} axel 1
     if [[ $? -eq ${success} ]]; then
@@ -164,24 +160,46 @@ build() {
     # DWITH_EMBEDDED_SHARED_LIBRARY 是否构建共享的libmysqld 嵌入式服务器库
     # DWITH_EMBEDDED_SERVER 是否构建libmysqld嵌入式服务器库
     # DWITH_UNIT_TESTS 是否使用单元测试编译 MySQL
-    cmake . \
-    -DCMAKE_INSTALL_PREFIX=${installdir}/mysql \
-    -DSYSCONFDIR=${installdir}/conf \
-    -DDOWNLOAD_BOOST=1 \
-    -DWITH_BOOST=${workdir}/mysql/boost \
-    -DDEFAULT_CHARSET=utf8 \
-    -DDEFAULT_COLLATION=utf8_general_ci \
-    -DWITH_INNOBASE_STORAGE_ENGINE=1 \
-    -DWITH_PARTITION_STORAGE_ENGINE=1 \
-    -DWITH_FEDERATED_STORAGE_ENGINE=1 \
-    -DWITH_BLACKHOLE_STORAGE_ENGINE=1 \
-    -DWITH_MYISAM_STORAGE_ENGINE=1 \
-    -DENABLED_LOCAL_INFILE=1 \
-    -DWITH_EMBEDDED_SHARED_LIBRARY=0 \
-    -DWITH_EMBEDDED_SERVER=0 \
-    -DWITH_DEBUG=0 \
-    -DENABLE_DTRACE=0 \
-    -DWITH_UNIT_TESTS=0
+    if [[ ${version:0:3} == "5.7" ]]; then
+      cmake . \
+      -DCMAKE_INSTALL_PREFIX=${installdir}/mysql \
+      -DSYSCONFDIR=${installdir}/conf \
+      -DDOWNLOAD_BOOST=1 \
+      -DWITH_BOOST=${workdir}/mysql/boost \
+      -DDEFAULT_CHARSET=utf8 \
+      -DDEFAULT_COLLATION=utf8_general_ci \
+      -DWITH_INNOBASE_STORAGE_ENGINE=1 \
+      -DWITH_PARTITION_STORAGE_ENGINE=1 \
+      -DWITH_FEDERATED_STORAGE_ENGINE=1 \
+      -DWITH_BLACKHOLE_STORAGE_ENGINE=1 \
+      -DWITH_MYISAM_STORAGE_ENGINE=1 \
+      -DENABLED_LOCAL_INFILE=1 \
+      -DWITH_EMBEDDED_SHARED_LIBRARY=0 \
+      -DWITH_EMBEDDED_SERVER=0 \
+      -DWITH_DEBUG=0 \
+      -DENABLE_DTRACE=0 \
+      -DWITH_UNIT_TESTS=0
+    else
+      cmake . \
+      -DCMAKE_INSTALL_PREFIX=${installdir}/mysql \
+      -DSYSCONFDIR=${installdir}/conf \
+      -DDOWNLOAD_BOOST=1 \
+      -DWITH_BOOST=${workdir}/mysql/boost \
+      -DDEFAULT_CHARSET=utf8 \
+      -DDEFAULT_COLLATION=utf8_general_ci \
+      -DWITH_INNOBASE_STORAGE_ENGINE=1 \
+      -DWITH_PARTITION_STORAGE_ENGINE=1 \
+      -DWITH_FEDERATED_STORAGE_ENGINE=1 \
+      -DWITH_BLACKHOLE_STORAGE_ENGINE=1 \
+      -DWITH_MYISAM_STORAGE_ENGINE=1 \
+      -DENABLED_LOCAL_INFILE=1 \
+      -DWITH_EMBEDDED_SHARED_LIBRARY=0 \
+      -DWITH_EMBEDDED_SERVER=0 \
+      -DWITH_DEBUG=0 \
+      -DENABLE_DTRACE=0 \
+      -DWITH_UNIT_TESTS=0 \
+      -DFORCE_INSOURCE_BUILD=1
+    fi
     if [[ $? -ne 0 ]]; then
         log_error "cmake fail, plaease check and try again.."
         return ${failure}
