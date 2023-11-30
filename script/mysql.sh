@@ -132,6 +132,9 @@ download_mysql() {
 
 download_boost(){
     url="https://cdn.mysql.com/archives/mysql-${version:0:3}/mysql-boost-$version.tar.gz"
+    if [[ ${version:0:3} == "8.0" ]]; then
+       url=" https://boostorg.jfrog.io/artifactory/main/release/1.73.0/source/boost_1_73_0.tar.gz"
+    fi
     download "boost.tar.gz" ${url} axel 1
     if [[ $? -eq ${success} ]]; then
         mv "$workdir/boost" "$workdir/mysql/boost"
@@ -164,6 +167,7 @@ build() {
       cmake . \
       -DCMAKE_INSTALL_PREFIX=${installdir}/mysql \
       -DSYSCONFDIR=${installdir}/conf \
+      -DDOWNLOAD_BOOST=1 \
       -DWITH_BOOST=${workdir}/mysql/boost \
       -DDEFAULT_CHARSET=utf8 \
       -DDEFAULT_COLLATION=utf8_general_ci \
@@ -182,6 +186,7 @@ build() {
       cmake . \
       -DCMAKE_INSTALL_PREFIX=${installdir}/mysql \
       -DSYSCONFDIR=${installdir}/conf \
+      -DDOWNLOAD_BOOST=1 \
       -DWITH_BOOST=${workdir}/mysql/boost \
       -DDEFAULT_CHARSET=utf8 \
       -DDEFAULT_COLLATION=utf8_general_ci \
