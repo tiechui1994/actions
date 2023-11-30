@@ -133,7 +133,9 @@ download_mysql() {
 download_boost(){
     url="https://cdn.mysql.com/archives/mysql-${version:0:3}/mysql-boost-$version.tar.gz"
     if [[ ${version:0:3} == "8.0" ]]; then
-       url=" https://boostorg.jfrog.io/artifactory/main/release/1.73.0/source/boost_1_73_0.tar.gz"
+        boost=$(grep -E 'BOOST_PACKAGE_NAME "boost_.*?"' -o "$workdir/mysql/cmake/boost.cmake"|cut -d '"' -f2)
+        boot_version="$(echo "$boost" | sed -r '/.*/ s|.*([0-9]+)_([0-9]+)_([0-9]+)|\1.\2.\3|')"
+        url="https://jaist.dl.sourceforge.net/project/boost/boost/${boot_version}/${boost}.tar.gz"
     fi
     download "boost.tar.gz" ${url} axel 1
     if [[ $? -eq ${success} ]]; then
@@ -246,6 +248,7 @@ config() {
     datadir=@installdir/data   # 数据目录
     tmpdir=@installdir/tmp     # 临时目录
 
+    server_id=1
     default_storage_engine=InnoDB
     innodb_file_per_table=ON
     innodb_flush_log_at_trx_commit=1
