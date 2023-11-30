@@ -164,7 +164,6 @@ build() {
       cmake . \
       -DCMAKE_INSTALL_PREFIX=${installdir}/mysql \
       -DSYSCONFDIR=${installdir}/conf \
-      -DDOWNLOAD_BOOST=1 \
       -DWITH_BOOST=${workdir}/mysql/boost \
       -DDEFAULT_CHARSET=utf8 \
       -DDEFAULT_COLLATION=utf8_general_ci \
@@ -183,7 +182,6 @@ build() {
       cmake . \
       -DCMAKE_INSTALL_PREFIX=${installdir}/mysql \
       -DSYSCONFDIR=${installdir}/conf \
-      -DDOWNLOAD_BOOST=1 \
       -DWITH_BOOST=${workdir}/mysql/boost \
       -DDEFAULT_CHARSET=utf8 \
       -DDEFAULT_COLLATION=utf8_general_ci \
