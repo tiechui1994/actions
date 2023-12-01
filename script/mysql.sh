@@ -703,12 +703,11 @@ case "$1" in
         fi
 
         # check password
-        password="$(grep 'temporary password' "@installdir/logs/mysql.err"|cut -d ' ' -f11)"
+        password=$(cat @installdir/logs/mysql.err|sed -n -r '/temporary password/s|.*root@localhost: (.*)|\1|p')
         echo "current password is: $password"
         echo "please use follow command and sql login and update your password:"
         echo "mysql -u root --password='$password'"
-        echo "SET PASSWORD = PASSWORD('your new password');"
-        echo "ALTER user 'root'@'localhost' PASSWORD EXPIRE NEVER;"
+        echo "ALTER USER 'root'@'localhost' IDENTIFIED BY 'new-password' PASSWORD EXPIRE NEVER;"
         echo "FLUSH PRIVILEGES;"
         echo "mysql install successfully"
     ;;
