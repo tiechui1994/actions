@@ -707,7 +707,7 @@ case "$1" in
         echo "current password is: $password"
         echo "please use follow command and sql login and update your password:"
         echo "mysql -u root --password='$password'"
-        echo "ALTER USER 'root'@'localhost' IDENTIFIED BY 'new-password' PASSWORD EXPIRE NEVER;"
+        echo "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'new-password' PASSWORD EXPIRE NEVER;"
         echo "FLUSH PRIVILEGES;"
         echo "mysql install successfully"
     ;;
