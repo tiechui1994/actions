@@ -212,10 +212,10 @@ func fetchLatestGitFile(git, branch string) (result []string, err error) {
 					if info.IsDir() {
 						return err
 					}
-					log.Printf("zip files: %v", path)
+					log.Printf("zip file: %v", path)
 					files = append(files, differ{
 						OP:   file.OP,
-						File: path,
+						File: path[len(dir):],
 						Date: file.Date,
 						callback: func() (string, error) {
 							return utils.UploadFile(path)

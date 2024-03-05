@@ -83,7 +83,6 @@ func unzip(filename string, password string, distDir string) bool {
 
 			filename := filepath.Join(distDir, f.Name)
 			_ = os.MkdirAll(filepath.Dir(filename), 0777)
-			_ = ioutil.WriteFile(filename, buffer.Bytes(), f.Mode())
 			fd, err := os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_RDWR|os.O_SYNC, f.Mode())
 			if err != nil {
 				continue
