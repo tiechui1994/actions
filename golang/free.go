@@ -444,6 +444,9 @@ func main() {
 		log.Printf("Unmarshal failed: %v", err)
 		os.Exit(2)
 	}
+	
+        log.Printf("%v", string(raw)
+	
 
 	for _, config := range configs {
 		switch config.Type {
