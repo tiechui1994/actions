@@ -8,6 +8,8 @@ import (
 	"flag"
 	"fmt"
 	"goland/notify"
+	"goland/utils"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"net/url"
@@ -89,9 +91,10 @@ try:
 }
 
 type differ struct {
-	File string
-	OP   string
-	Date int64
+	File     string
+	OP       string
+	Date     int64
+	callback func() (string, error)
 }
 
 func getFileModifyDate(dir, path string) int64 {
@@ -194,8 +197,32 @@ func fetchLatestGitFile(git, branch string) (result []string, err error) {
 
 	rgroup := regexp.MustCompile(`proxy-groups:`)
 	rproxy := regexp.MustCompile(`proxies:`)
-	for _, file := range files {
+	for i := 0; i < len(files); i++ {
+		file := files[i]
 		if file.OP == "D" {
+			continue
+		}
+
+		// 处理 zip 文件(加密)
+		if strings.HasSuffix(filepath.Join(dir, file.File), ".zip") {
+			distDir := filepath.Join(dir, fmt.Sprintf("temp_%v", time.Now().Unix()))
+			err = utils.BruteForce(filepath.Join(dir, file.File), distDir, strings.Split("0123456789", ""))
+			if err == nil {
+				_ = filepath.Walk(distDir, func(path string, info fs.FileInfo, err error) error {
+					if info.IsDir() {
+						return err
+					}
+					files = append(files, differ{
+						OP:   file.OP,
+						File: path,
+						Date: file.Date,
+						callback: func() (string, error) {
+							return utils.UploadFile(path)
+						},
+					})
+					return nil
+				})
+			}
 			continue
 		}
 
@@ -207,6 +234,14 @@ func fetchLatestGitFile(git, branch string) (result []string, err error) {
 		log.Printf("file: %v, match: %v", file.File,
 			rproxy.Match(data) && rgroup.Match(data))
 		if rproxy.Match(data) && rgroup.Match(data) {
+			if file.callback != nil {
+				uploadUrl, err := file.callback()
+				if err == nil {
+					result = append(result, uploadUrl)
+				}
+				continue
+			}
+
 			result = append(result, file.File)
 		}
 	}
@@ -225,11 +260,20 @@ func PullGitFiles(git, branch string, key string) (err error) {
 	var urls []string
 	if strings.HasPrefix(git, "https://github.com") {
 		for _, file := range files {
+			if strings.HasPrefix(file, "https") {
+				urls = append(urls, file)
+				continue
+			}
 			urls = append(urls, strings.ReplaceAll(endpoint, "github.com", "raw.githubusercontent.com")+"/"+
 				filepath.Join(branch, file))
 		}
 	} else if strings.HasPrefix(git, "https://agit.ai") {
 		for _, file := range files {
+			if strings.HasPrefix(file, "https") {
+				urls = append(urls, file)
+				continue
+			}
+
 			urls = append(urls, endpoint+"/"+
 				filepath.Join("raw/branch", branch, file))
 		}
@@ -444,9 +488,8 @@ func main() {
 		log.Printf("Unmarshal failed: %v", err)
 		os.Exit(2)
 	}
-	
-        log.Printf("%v", string(raw)
-	
+
+	log.Printf("%v", string(raw))
 
 	for _, config := range configs {
 		switch config.Type {
