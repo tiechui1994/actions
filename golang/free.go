@@ -445,7 +445,7 @@ func main() {
 		os.Exit(2)
 	}
 	
-        log.Printf("%v", string(raw)
+        log.Printf("%v", string(raw))
 	
 
 	for _, config := range configs {
