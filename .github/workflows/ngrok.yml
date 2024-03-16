@@ -55,14 +55,10 @@ jobs:
 
         # config
         cat > ngrok.yml <<-EOF
+        version: 2
         authtoken: ${{github.event.inputs.accesstoken}}
         # regions: us, jp, in, ap
         region: jp
-        log: /var/log/ngrok.log
-        log_level: info
-        log_format: json
-        update: false
-        update_channel: stable
         tunnels:
           ssh:
             addr: 22
