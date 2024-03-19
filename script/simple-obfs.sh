@@ -19,6 +19,7 @@ init() {
 
 
 clone() {
+    git config --global http.sslverify false && \
     git clone https://github.com/shadowsocks/simple-obfs.git ${workdir}/simple-obfs && \
     cd ${workdir}/simple-obfs && \
     git submodule update --init --recursive
