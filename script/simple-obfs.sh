@@ -14,7 +14,7 @@ init() {
     export DEBIAN_FRONTEND=noninteractive
     export TZ=Asia/Shanghai
     apt-get install -y build-essential g++ sudo curl make gcc file tar patch openssl tzdata \
-        git autoconf libtool libssl-dev libpcre3-dev libev-dev asciidoc xmlto automake --no-install-recommends
+        git zip autoconf libtool libssl-dev libpcre3-dev libev-dev asciidoc xmlto automake --no-install-recommends
 }
 
 
