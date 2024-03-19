@@ -406,10 +406,7 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZou
 func UploadCache(k string, v interface{}) error {
 	try := false
 again:
-	raw, err := util.POST(*freeCache+"?key="+k, util.WithBody(map[string]interface{}{
-		"value": v,
-		"ttl":   7 * 24 * 60 * 60,
-	}), util.WithRetry(2))
+	raw, err := util.POST(*freeCache+fmt.Sprintf("?key=%v&ttl=%v", k, 7*24*60*60), util.WithBody(v), util.WithRetry(2))
 	if err != nil {
 		if !try {
 			try = !try
