@@ -9,9 +9,12 @@ import (
 	"fmt"
 	"goland/notify"
 	"goland/utils"
+	"gopkg.in/yaml.v3"
 	"io/fs"
 	"io/ioutil"
 	"log"
+	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -20,13 +23,186 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/tiechui1994/proxy/adapter"
+	"github.com/tiechui1994/proxy/constant"
 	"github.com/tiechui1994/tool/speech"
 	"github.com/tiechui1994/tool/util"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
+
+type RawConfig struct {
+	Port               int       `yaml:"port"`
+	SocksPort          int       `yaml:"socks-port,omitempty"`
+	RedirPort          yaml.Node `yaml:"redir-port,omitempty"`
+	TProxyPort         yaml.Node `yaml:"tproxy-port,omitempty"`
+	MixedPort          yaml.Node `yaml:"mixed-port,omitempty"`
+	Authentication     yaml.Node `yaml:"authentication,omitempty"`
+	AllowLan           yaml.Node `yaml:"allow-lan,omitempty"`
+	BindAddress        yaml.Node `yaml:"bind-address,omitempty"`
+	Mode               yaml.Node `yaml:"mode"`
+	LogLevel           yaml.Node `yaml:"log-level"`
+	IPv6               yaml.Node `yaml:"ipv6,omitempty"`
+	ExternalController string    `yaml:"external-controller"`
+	ExternalUI         string    `yaml:"external-ui,omitempty"`
+	Secret             string    `yaml:"secret"`
+	Interface          yaml.Node `yaml:"interface-name,omitempty"`
+	RoutingMark        yaml.Node `yaml:"routing-mark,omitempty"`
+	Tunnels            yaml.Node `yaml:"tunnels,omitempty"`
+
+	ProxyProvider yaml.Node                `yaml:"proxy-providers,omitempty"`
+	Hosts         yaml.Node                `yaml:"hosts,omitempty"`
+	Inbounds      yaml.Node                `yaml:"inbounds,omitempty"`
+	DNS           yaml.Node                `yaml:"dns"`
+	Experimental  yaml.Node                `yaml:"experimental,omitempty"`
+	Profile       yaml.Node                `yaml:"profile,omitempty"`
+	Proxy         []map[string]interface{} `yaml:"proxies"`
+	ProxyGroup    yaml.Node                `yaml:"proxy-groups"`
+	Rule          yaml.Node                `yaml:"rules"`
+}
+
+func urlToMetadata(rawURL string) (addr constant.Metadata, err error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return
+	}
+	port := u.Port()
+	if port == "" {
+		switch u.Scheme {
+		case "https":
+			port = "443"
+		case "http":
+			port = "80"
+		default:
+			err = fmt.Errorf("%s scheme not Support", rawURL)
+			return
+		}
+	}
+
+	p, _ := strconv.ParseUint(port, 10, 16)
+	addr = constant.Metadata{
+		Host:    u.Hostname(),
+		DstIP:   nil,
+		DstPort: constant.Port(p),
+	}
+	return
+}
+
+func YamlConfigTest(file string) (u string, err error) {
+	raw, err := ioutil.ReadFile(file)
+	if err != nil {
+		return u, fmt.Errorf("ReadFile: %w", err)
+	}
+
+	config := &RawConfig{}
+	err = yaml.Unmarshal(raw, config)
+	if err != nil {
+		return u, fmt.Errorf("yaml Unmarshal: %w", err)
+	}
+
+	lock := sync.Mutex{}
+	testWorker := func(index int, proxy constant.ProxyAdapter) {
+		reqURL := "https://api6.ipify.org?format=json"
+		addr, err := urlToMetadata(reqURL)
+		if err != nil {
+			log.Printf("urlToMetadata:%v", err)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(7000))
+		defer cancel()
+
+		start := time.Now()
+		instance, err := proxy.DialContext(ctx, &addr)
+		if err != nil {
+			log.Printf("DialContext:%v", err)
+			return
+		}
+		defer instance.Close()
+
+		req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+		if err != nil {
+			return
+		}
+		req = req.WithContext(ctx)
+		transport := &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return instance, nil
+			},
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+		client := http.Client{
+			Transport: transport,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+		defer client.CloseIdleConnections()
+
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("%v client.Do:%v", proxy.Name(), err)
+			return
+		}
+		raw, _ := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		log.Printf("%v total: %v, data: %v", proxy.Name(), time.Since(start), string(raw))
+
+		lock.Lock()
+		config.Proxy[index]["v6"] = true
+		lock.Unlock()
+	}
+
+	var wg sync.WaitGroup
+	var count int
+	proxiesConfig := config.Proxy
+	for idx, mapping := range proxiesConfig {
+		proxy, err := adapter.ParseProxy(mapping)
+		if err != nil {
+			return u, fmt.Errorf("proxy %d: %w", idx, err)
+		}
+
+		count += 1
+		index := idx
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			testWorker(index, proxy)
+		}()
+		if count == 20 {
+			wg.Wait()
+			count = 0
+		}
+	}
+	if count != 0 {
+		wg.Wait()
+	}
+
+	temp, _ := os.MkdirTemp("", "config.yaml")
+	defer os.RemoveAll(temp)
+
+	fileName := filepath.Join(temp, "config.yaml")
+	fd, err := os.Create(fileName)
+	if err != nil {
+		return u, fmt.Errorf("")
+	}
+	defer fd.Close()
+
+	en := yaml.NewEncoder(fd)
+	err = en.Encode(config)
+	if err != nil {
+		return u, fmt.Errorf("yaml Encoder: %w", err)
+	}
+	_ = fd.Sync()
+
+	return utils.UploadFile(fileName)
+}
 
 // 大飞分享 oss.v2rayse.com
 // 由零开始 agit.ai/blue/youlingkaishi
@@ -218,7 +394,7 @@ func fetchLatestGitFile(git, branch string) (result []string, err error) {
 						File: path[len(dir):],
 						Date: file.Date,
 						callback: func() (string, error) {
-							return utils.UploadFile(path)
+							return YamlConfigTest(path)
 						},
 					})
 					return nil
@@ -227,6 +403,12 @@ func fetchLatestGitFile(git, branch string) (result []string, err error) {
 			continue
 		}
 
+		// 没有设置 callback 的正常文件
+		if file.callback == nil {
+			file.callback = func() (string, error) {
+				return YamlConfigTest(filepath.Join(dir, file.File))
+			}
+		}
 		data, err := ioutil.ReadFile(filepath.Join(dir, file.File))
 		if err != nil {
 			continue
@@ -306,7 +488,11 @@ func PullFormatFiles(format string, key string) (err error) {
 		return err
 	}
 	if rproxy.Match(raw) && rgroup.Match(raw) {
-		urls = append(urls, url)
+		fileName := "./nodefree.yaml"
+		_ = ioutil.WriteFile(fileName, raw, 0666)
+		if u, err := YamlConfigTest(fileName); err == nil {
+			urls = append(urls, u)
+		}
 	}
 
 	key = now.Format("20060102") + "_" + key

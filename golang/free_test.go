@@ -1,6 +1,9 @@
 package main
 
 import (
+	"gopkg.in/yaml.v3"
+	"io/ioutil"
+	"os"
 	"regexp"
 	"testing"
 )
@@ -23,4 +26,25 @@ func TestPullYoutubeDafei(t *testing.T) {
 	err := PullYoutubeFiles("11-111-11-11",
 		"111", rURL, rPWD, rLANZOUFile, rLANZOUContent, "dafei")
 	t.Logf("%v", err)
+}
+
+func TestRawConfig(t *testing.T) {
+	raw, err := ioutil.ReadFile("./config.yaml")
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+
+	config := &RawConfig{}
+	err = yaml.Unmarshal(raw, config)
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+
+	for i := range config.Proxy {
+		config.Proxy[i]["v6"] = true
+	}
+
+	file, _ := os.Create("./www.yaml")
+	en := yaml.NewEncoder(file)
+	en.Encode(config)
 }
