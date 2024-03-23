@@ -112,7 +112,7 @@ func YamlConfigTest(file string) (u string, err error) {
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(7000))
+		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(15000))
 		defer cancel()
 
 		start := time.Now()
@@ -134,7 +134,7 @@ func YamlConfigTest(file string) (u string, err error) {
 			},
 			MaxIdleConns:          100,
 			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
+			TLSHandshakeTimeout:   15 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
 		}
 		client := http.Client{
@@ -147,7 +147,7 @@ func YamlConfigTest(file string) (u string, err error) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Printf("%v client.Do:%v", proxy.Name(), err)
+			log.Printf("%v not support ipv6", proxy.Name())
 			return
 		}
 		raw, _ := ioutil.ReadAll(resp.Body)
