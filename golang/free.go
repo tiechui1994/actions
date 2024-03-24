@@ -161,10 +161,15 @@ func YamlConfigTest(file string) (u string, err error) {
 
 	var wg sync.WaitGroup
 	var count int
+	var invalidIndex = make(map[int]bool)
 	proxiesConfig := config.Proxy
 	for idx, mapping := range proxiesConfig {
 		proxy, err := adapter.ParseProxy(mapping)
 		if err != nil {
+			if !strings.Contains(err.Error(), "missing type") &&
+				!strings.Contains(err.Error(), "unsupport proxy type") {
+				invalidIndex[idx] = true
+			}
 			return u, fmt.Errorf("proxy %d: %w", idx, err)
 		}
 
@@ -182,6 +187,18 @@ func YamlConfigTest(file string) (u string, err error) {
 	}
 	if count != 0 {
 		wg.Wait()
+	}
+
+	// 非法的类型
+	if len(invalidIndex) > 0 {
+		proxies := make([]map[string]interface{}, 0)
+		for idx, val := range config.Proxy {
+			if invalidIndex[idx] {
+				continue
+			}
+			proxies = append(proxies, val)
+		}
+		config.Proxy = proxies
 	}
 
 	temp, _ := os.MkdirTemp("", "config.yaml")
