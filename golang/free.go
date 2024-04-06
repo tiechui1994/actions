@@ -118,7 +118,6 @@ func YamlConfigTest(file string) (u string, err error) {
 		start := time.Now()
 		instance, err := proxy.DialContext(ctx, &addr)
 		if err != nil {
-			log.Printf("DialContext:%v", err)
 			return
 		}
 		defer instance.Close()
@@ -166,11 +165,15 @@ func YamlConfigTest(file string) (u string, err error) {
 	for idx, mapping := range proxiesConfig {
 		proxy, err := adapter.ParseProxy(mapping)
 		if err != nil {
+			log.Printf("proxy %d: %v", idx, err)
+
+			// will remove
 			if !strings.Contains(err.Error(), "missing type") &&
 				!strings.Contains(err.Error(), "unsupport proxy type") {
 				invalidIndex[idx] = true
 			}
-			return u, fmt.Errorf("proxy %d: %w", idx, err)
+
+			continue
 		}
 
 		count += 1
@@ -222,10 +225,8 @@ func YamlConfigTest(file string) (u string, err error) {
 }
 
 // 大飞分享 oss.v2rayse.com
-// 由零开始 agit.ai/blue/youlingkaishi
-// 科技网络 github.com/guoxing123/jiedian
-// 小贤哥 oss.v2rayse.com
-// 玉兔分享 oss.v2rayse.com + proxy
+// 由零开始 agit.ai
+// 科技网络 github.com
 // NodeFree nodefree.org
 
 func GetNow() time.Time {
@@ -410,9 +411,6 @@ func fetchLatestGitFile(git, branch string) (result []string, err error) {
 						OP:   file.OP,
 						File: path[len(dir):],
 						Date: file.Date,
-						callback: func() (string, error) {
-							return YamlConfigTest(path)
-						},
 					})
 					return nil
 				})
@@ -421,21 +419,19 @@ func fetchLatestGitFile(git, branch string) (result []string, err error) {
 		}
 
 		// 没有设置 callback 的正常文件
-		if file.callback == nil {
-			file.callback = func() (string, error) {
-				return YamlConfigTest(filepath.Join(dir, file.File))
-			}
+		file.callback = func() (string, error) {
+			return YamlConfigTest(filepath.Join(dir, file.File))
 		}
 		data, err := ioutil.ReadFile(filepath.Join(dir, file.File))
 		if err != nil {
 			continue
 		}
 
-		log.Printf("file: %v, match: %v", file.File,
-			rproxy.Match(data) && rgroup.Match(data))
+		log.Printf("file: %v, match: %v", file.File, rproxy.Match(data) && rgroup.Match(data))
 		if rproxy.Match(data) && rgroup.Match(data) {
 			if file.callback != nil {
 				uploadUrl, err := file.callback()
+				log.Printf("file: %v test result: %v", file.File, err)
 				if err == nil {
 					result = append(result, uploadUrl)
 				}
@@ -458,22 +454,17 @@ func PullGitFiles(git, branch string, key string) (err error) {
 	}
 
 	var urls []string
-	if strings.HasPrefix(git, "https://github.com") {
-		for _, file := range files {
-			if strings.HasPrefix(file, "https") {
-				urls = append(urls, file)
-				continue
-			}
-			urls = append(urls, strings.ReplaceAll(endpoint, "github.com", "raw.githubusercontent.com")+"/"+
-				filepath.Join(branch, file))
+	for _, file := range files {
+		if strings.HasPrefix(file, "https") {
+			urls = append(urls, file)
+			continue
 		}
-	} else if strings.HasPrefix(git, "https://agit.ai") {
-		for _, file := range files {
-			if strings.HasPrefix(file, "https") {
-				urls = append(urls, file)
-				continue
-			}
 
+		// file path
+		if strings.HasPrefix(git, "https://github.com") {
+			urls = append(urls, strings.ReplaceAll(endpoint, "github.com", "raw.githubusercontent.com")+
+				"/"+filepath.Join(branch, file))
+		} else if strings.HasPrefix(git, "https://agit.ai") {
 			urls = append(urls, endpoint+"/"+
 				filepath.Join("raw/branch", branch, file))
 		}
