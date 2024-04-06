@@ -35,8 +35,8 @@ func main() {
 		EVENTSCHEDULE = "schedule"
 	)
 
-	schedule := time.Now().Add(-3 * 24 * time.Hour)
-	common := time.Now().Add(-7 * 24 * time.Hour)
+	schedule := time.Now().Add(-1 * 24 * time.Hour)
+	common := time.Now().Add(-3 * 24 * time.Hour)
 
 	for _, v := range list {
 		if v.Event == EVENTSCHEDULE && v.CreatedAt.Before(schedule) ||
