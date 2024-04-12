@@ -13,7 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func Convert(file string) error {
+func Convert(file string, adapter bool) error {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
@@ -29,7 +29,7 @@ func Convert(file string) error {
 	}
 
 	list, err := handleBase64(string(data))
-	if err == nil && len(list) > 0 {
+	if adapter && err == nil && len(list) > 0 {
 		ipList := make([]string, 0)
 		for _, v := range list {
 			if ip, ok := v["server"]; ok {

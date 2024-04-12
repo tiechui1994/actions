@@ -363,7 +363,7 @@ func gitTodayDiffer(dir string) (files []differ, err error) {
 	return files, nil
 }
 
-func fetchLatestGitFile(git, branch string) (result []string, err error) {
+func fetchLatestGitFile(git, branch string, convert bool) (result []string, err error) {
 	dir, err := os.MkdirTemp("", "git")
 	if err != nil {
 		return result, err
@@ -424,7 +424,7 @@ func fetchLatestGitFile(git, branch string) (result []string, err error) {
 		}
 
 		// 转换成 yaml
-		err := utils.Convert(filepath.Join(dir, file.File))
+		err := utils.Convert(filepath.Join(dir, file.File), convert)
 		if err != nil {
 			continue
 		}
@@ -453,9 +453,9 @@ func fetchLatestGitFile(git, branch string) (result []string, err error) {
 	return result, nil
 }
 
-func PullGitFiles(git, branch string, key string) (err error) {
+func PullGitFiles(git, branch string, key string, convert bool) (err error) {
 	endpoint := git[:len(git)-len(".git")]
-	files, err := fetchLatestGitFile(git, branch)
+	files, err := fetchLatestGitFile(git, branch, convert)
 	if err != nil {
 		return err
 	}
@@ -695,7 +695,8 @@ func main() {
 		case TypeGit:
 			log.Printf("==== type=%q name=%s =========", config.Type, config.Name)
 			log.Printf("git url: %s branch: %s", config.Meta["url"], config.Meta["branch"])
-			err = PullGitFiles(config.Meta["url"], config.Meta["branch"], config.Name)
+			convert, _ := strconv.ParseBool(config.Meta["adapter"])
+			err = PullGitFiles(config.Meta["url"], config.Meta["branch"], config.Name, convert)
 			if err != nil {
 				log.Printf("PullGitFiles name=%q url=%q failed: %v",
 					config.Name, config.Meta["url"], err)
