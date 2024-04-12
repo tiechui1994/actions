@@ -422,6 +422,13 @@ func fetchLatestGitFile(git, branch string) (result []string, err error) {
 		file.callback = func() (string, error) {
 			return YamlConfigTest(filepath.Join(dir, file.File))
 		}
+
+		// 转换成 yaml
+		err := utils.Convert(filepath.Join(dir, file.File))
+		if err != nil {
+			continue
+		}
+		
 		data, err := ioutil.ReadFile(filepath.Join(dir, file.File))
 		if err != nil {
 			continue
