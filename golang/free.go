@@ -103,13 +103,11 @@ func YamlConfigTest(file string) (u string, err error) {
 		return u, fmt.Errorf("yaml Unmarshal: %w", err)
 	}
 
-	lock := sync.Mutex{}
-	testWorker := func(index int, proxy constant.ProxyAdapter) {
-		reqURL := "https://api6.ipify.org?format=json"
+	testWorker := func(proxy constant.ProxyAdapter, reqURL string) error {
 		addr, err := urlToMetadata(reqURL)
 		if err != nil {
 			log.Printf("urlToMetadata:%v", err)
-			return
+			return fmt.Errorf("url: %w", err)
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(15000))
@@ -118,13 +116,13 @@ func YamlConfigTest(file string) (u string, err error) {
 		start := time.Now()
 		instance, err := proxy.DialContext(ctx, &addr)
 		if err != nil {
-			return
+			return err
 		}
 		defer instance.Close()
 
 		req, err := http.NewRequest(http.MethodGet, reqURL, nil)
 		if err != nil {
-			return
+			return fmt.Errorf("request: %w", err)
 		}
 		req = req.WithContext(ctx)
 		transport := &http.Transport{
@@ -147,18 +145,17 @@ func YamlConfigTest(file string) (u string, err error) {
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Printf("%v not support ipv6", proxy.Name())
-			return
+			return fmt.Errorf("client: %w", err)
 		}
-		raw, _ := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
-		log.Printf("%v total: %v, data: %v", proxy.Name(), time.Since(start), string(raw))
+		defer resp.Body.Close()
 
-		lock.Lock()
-		config.Proxy[index]["v6"] = true
-		lock.Unlock()
+		raw, _ := ioutil.ReadAll(resp.Body)
+		log.Printf("%v total: %v, data: %v", proxy.Name(), time.Since(start), string(raw))
+		return nil
 	}
 
 	var wg sync.WaitGroup
+	var lock sync.Mutex
 	var count int
 	var invalidIndex = make(map[int]bool)
 	proxiesConfig := config.Proxy
@@ -179,11 +176,23 @@ func YamlConfigTest(file string) (u string, err error) {
 		count += 1
 		index := idx
 		wg.Add(1)
-		go func() {
+		go func(index int) {
 			defer wg.Done()
-			testWorker(index, proxy)
-		}()
-		if count == 20 {
+			urL := "https://api6.ipify.org?format=json"
+			if err := testWorker(proxy, urL); err == nil {
+				lock.Lock()
+				proxiesConfig[index]["v6"] = true
+				lock.Unlock()
+			}
+
+			urL = "https://www.google.com/favicon.ico"
+			if err := testWorker(proxy, urL); err == nil {
+				lock.Lock()
+				proxiesConfig[index]["balance"] = true
+				lock.Unlock()
+			}
+		}(index)
+		if count == 30 {
 			wg.Wait()
 			count = 0
 		}
@@ -428,7 +437,7 @@ func fetchLatestGitFile(git, branch string, convert bool) (result []string, err 
 		if err != nil {
 			continue
 		}
-		
+
 		data, err := ioutil.ReadFile(filepath.Join(dir, file.File))
 		if err != nil {
 			continue
