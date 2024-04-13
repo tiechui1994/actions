@@ -103,14 +103,14 @@ func YamlConfigTest(file string) (u string, err error) {
 		return u, fmt.Errorf("yaml Unmarshal: %w", err)
 	}
 
-	testWorker := func(proxy constant.ProxyAdapter, reqURL string, readBody bool) error {
+	testWorker := func(proxy constant.ProxyAdapter, reqURL string, ms uint64, readBody bool) error {
 		addr, err := urlToMetadata(reqURL)
 		if err != nil {
 			log.Printf("urlToMetadata:%v", err)
 			return fmt.Errorf("url: %w", err)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(15000))
+		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(ms))
 		defer cancel()
 
 		start := time.Now()
@@ -180,14 +180,14 @@ func YamlConfigTest(file string) (u string, err error) {
 		go func(index int) {
 			defer wg.Done()
 			urL := "https://api6.ipify.org?format=json"
-			if err := testWorker(proxy, urL, true); err == nil {
+			if err := testWorker(proxy, urL, 15000,true); err == nil {
 				lock.Lock()
 				proxiesConfig[index]["v6"] = true
 				lock.Unlock()
 			}
 
 			urL = "https://www.google.com/favicon.ico"
-			if err := testWorker(proxy, urL, false); err == nil {
+			if err := testWorker(proxy, urL, 4000,false); err == nil {
 				lock.Lock()
 				proxiesConfig[index]["balance"] = true
 				lock.Unlock()
