@@ -103,7 +103,7 @@ func YamlConfigTest(file string) (u string, err error) {
 		return u, fmt.Errorf("yaml Unmarshal: %w", err)
 	}
 
-	testWorker := func(proxy constant.ProxyAdapter, reqURL string) error {
+	testWorker := func(proxy constant.ProxyAdapter, reqURL string, readBody bool) error {
 		addr, err := urlToMetadata(reqURL)
 		if err != nil {
 			log.Printf("urlToMetadata:%v", err)
@@ -148,9 +148,10 @@ func YamlConfigTest(file string) (u string, err error) {
 			return fmt.Errorf("client: %w", err)
 		}
 		defer resp.Body.Close()
-
-		raw, _ := ioutil.ReadAll(resp.Body)
-		log.Printf("%v total: %v, data: %v", proxy.Name(), time.Since(start), string(raw))
+		if readBody {
+			raw, _ := ioutil.ReadAll(resp.Body)
+			log.Printf("%v total: %v, data: %v", proxy.Name(), time.Since(start), string(raw))
+		}
 		return nil
 	}
 
@@ -179,14 +180,14 @@ func YamlConfigTest(file string) (u string, err error) {
 		go func(index int) {
 			defer wg.Done()
 			urL := "https://api6.ipify.org?format=json"
-			if err := testWorker(proxy, urL); err == nil {
+			if err := testWorker(proxy, urL, true); err == nil {
 				lock.Lock()
 				proxiesConfig[index]["v6"] = true
 				lock.Unlock()
 			}
 
 			urL = "https://www.google.com/favicon.ico"
-			if err := testWorker(proxy, urL); err == nil {
+			if err := testWorker(proxy, urL, false); err == nil {
 				lock.Lock()
 				proxiesConfig[index]["balance"] = true
 				lock.Unlock()
