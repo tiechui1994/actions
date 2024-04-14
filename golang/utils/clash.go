@@ -80,7 +80,12 @@ func Convert(file string, adapter bool) error {
 					uniqueRegion[region] -= 1
 				}
 			} else {
-				name := fmt.Sprintf("节点_%v", ip[:strings.Index(ip, ".")])
+				idx := strings.Index(ip, ".")
+				if idx == -1 {
+					fmt.Println("server:", ip)
+					idx = len(ip)
+				}
+				name := fmt.Sprintf("节点_%v", ip[:idx])
 				if uniqueRegion[name] == 0 {
 					v["name"] = name
 					uniqueRegion[name] += 1
