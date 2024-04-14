@@ -83,7 +83,8 @@ func Convert(file string, adapter bool) error {
 				idx := strings.Index(ip, ".")
 				if idx == -1 {
 					fmt.Println("server:", ip)
-					idx = len(ip)
+					invalidIndex[index] = true
+					continue
 				}
 				name := fmt.Sprintf("节点_%v", ip[:idx])
 				if uniqueRegion[name] == 0 {
