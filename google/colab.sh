@@ -38,7 +38,7 @@ colab_init() {
     fi
 
     if [[ ! -d "/usr/local/frp" ]]; then
-        wget --quiet https://github.com/fatedier/frp/releases/download/v0.45.0/frp_0.45.0_linux_amd64.tar.gz -O frp.tgz
+        wget --quiet https://github.com/fatedier/frp/releases/download/v0.57.0/frp_0.57.0_linux_amd64.tar.gz -O frp.tgz
         rm -rf frp && mkdir frp
         tar xf frp.tgz -C frp --strip-components 1 && \
         mv frp /usr/local && rm -rf frp.tgz
@@ -174,34 +174,38 @@ EOF
     frpc=${frpc//'@NAME'/'frpc'}
     frpc=${frpc//'@DESC'/'frpc'}
     frpc=${frpc//'@DAEMON'/'/usr/local/frp/frpc'}
-    frpc=${frpc//'@ARGS'/'--config=/usr/local/frp/frpc.ini'}
+    frpc=${frpc//'@ARGS'/'--config=/usr/local/frp/frpc.json'}
     printf "%s" "$frpc" > /etc/init.d/frpc
     chmod a+x /etc/init.d/frpc
 }
 
 colab_frp_config() {
     read -r -d '' conf <<-'EOF'
-[common]
-server_addr = frp1.freefrp.net
-server_port = 7000
-token = freefrp.net
-
-[ssh_@NAME_@UID]
-type = tcp
-local_ip = 127.0.0.1
-local_port = 22
-remote_port = 20022
-
+{
+   "serverAddr": "frp.freefrp.net",
+   "serverPort": 7000,
+   "auth": {
+       "method": "token",
+       "token" : "freefrp.net"
+   },
+   "proxies":[{
+       "name":"ssh_@NAME_@UID",
+       "type":"tcp",
+       "localIp":"127.0.0.1",
+       "localPort":22,
+       "remotePort":43892
+   }]
+}
 EOF
 
     frpc=${conf}
     frpc=${frpc//'@NAME'/'google'}
     frpc=${frpc//'@UID'/$(date '+%s')}
-    printf "%s" "$frpc" > /usr/local/frp/frpc.ini
+    printf "%s" "$frpc" > /usr/local/frp/frpc.json
 }
 
 colab_frp_upload() {
-    value="ssh root@frp1.freefrp.net -p 20022"
+    value="ssh root@frp1.freefrp.net -p 43892"
     data='{"ttl":28800,"value":"@value"}'
     curl --request POST -sL \
          --url 'https://api.quinn.eu.org/api/mongo?key=frpc'\
