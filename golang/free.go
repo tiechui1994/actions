@@ -158,6 +158,7 @@ func YamlConfigTest(file string) (u string, err error) {
 	var wg sync.WaitGroup
 	var lock sync.Mutex
 	var count int
+	var balanceCount int
 	var invalidIndex = make(map[int]bool)
 	proxiesConfig := config.Proxy
 	for idx, mapping := range proxiesConfig {
@@ -180,15 +181,16 @@ func YamlConfigTest(file string) (u string, err error) {
 		go func(index int) {
 			defer wg.Done()
 			urL := "https://api6.ipify.org?format=json"
-			if err := testWorker(proxy, urL, 15000,true); err == nil {
+			if err := testWorker(proxy, urL, 15000, true); err == nil {
 				lock.Lock()
 				proxiesConfig[index]["v6"] = true
 				lock.Unlock()
 			}
 
 			urL = "https://www.google.com/favicon.ico"
-			if err := testWorker(proxy, urL, 4000,false); err == nil {
+			if err := testWorker(proxy, urL, 4000, false); err == nil {
 				lock.Lock()
+				balanceCount += 1
 				proxiesConfig[index]["balance"] = true
 				lock.Unlock()
 			}
@@ -212,6 +214,13 @@ func YamlConfigTest(file string) (u string, err error) {
 			proxies = append(proxies, val)
 		}
 		config.Proxy = proxies
+	}
+
+	// balance数量不足, all is balance
+	if balanceCount == 0 || float64(balanceCount) < 0.2*float64(len(config.Proxy)) {
+		for idx := range config.Proxy {
+			config.Proxy[idx]["balance"] = true
+		}
 	}
 
 	temp, _ := os.MkdirTemp("", "config.yaml")

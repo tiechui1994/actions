@@ -58,26 +58,47 @@ func Convert(file string, adapter bool) error {
 			uniqueRegion[v.Region] += 1
 		}
 
-		for _, v := range list {
-			if vv, ok := v["server"]; ok {
-				ip := vv.(string)
-				if region, ok := ipListUnique[ip]; ok {
-					if uniqueRegion[region] == 1 {
-						v["name"] = fmt.Sprintf("%v", region)
-					} else {
-						v["name"] = fmt.Sprintf("%v_%v", region, uniqueRegion[region])
-						uniqueRegion[region] -= 1
-					}
+		invalidIndex := make(map[int]bool, 0)
+		for index, v := range list {
+			server, ok := v["server"]
+			if !ok {
+				invalidIndex[index] = true
+				continue
+			}
+
+			ip := server.(string)
+			if region, ok := ipListUnique[ip]; ok {
+				if region == "0" {
+					invalidIndex[index] = true
+					continue
+				}
+
+				if uniqueRegion[region] == 1 {
+					v["name"] = fmt.Sprintf("%v", region)
 				} else {
-					if uniqueRegion["free"] == 0 {
-						v["name"] = "free"
-						uniqueRegion["free"] += 1
-					} else {
-						v["name"] = fmt.Sprintf("free_%v", uniqueRegion["free"])
-						uniqueRegion["free"] += 1
-					}
+					v["name"] = fmt.Sprintf("%v_%v", region, uniqueRegion[region])
+					uniqueRegion[region] -= 1
+				}
+			} else {
+				name := fmt.Sprintf("节点_%v", ip[:strings.Index(ip, ".")])
+				if uniqueRegion[name] == 0 {
+					v["name"] = name
+					uniqueRegion[name] += 1
+				} else {
+					v["name"] = fmt.Sprintf("%v%v", name, uniqueRegion[name])
+					uniqueRegion[name] += 1
 				}
 			}
+		}
+		if len(invalidIndex) > 0 {
+			newList := make([]map[string]interface{}, 0)
+			for i, v := range list {
+				if invalidIndex[i] {
+					continue
+				}
+				newList = append(newList, v)
+			}
+			list = newList
 		}
 
 		yamlStu.Proxy = list
