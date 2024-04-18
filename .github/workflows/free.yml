@@ -1,4 +1,4 @@
-name: free
+6name: free
 on:
   schedule:
     - cron: '0 */2 * * *'
@@ -28,7 +28,7 @@ jobs:
           persist-credentials: false
 
       - name: Pull
-        timeout-minutes: 30
+        timeout-minutes: 120
         run: |
           echo "inputs date: ${{github.event.inputs.tody}}"
           make -C golang free && \
