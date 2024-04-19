@@ -401,11 +401,11 @@ func fetchLatestGitFile(git, branch string, convert bool) (result []string, err 
 
 	var fileList []string
 	for _, file := range files {
-		fileList = append(fileList, file.File)
+		fileList = append(fileList, filepath.Join(dir, file.File))
 	}
 	list, err := utils.CombineToOneYaml(fileList, convert)
 	if err != nil || len(list) == 0 {
-		return result, fmt.Errorf("proxy is Empty or CombineToOneYaml: %w", err)
+		return result, fmt.Errorf("proxy is Empty or CombineToOneYaml: %v", err)
 	}
 
 	fileName := filepath.Join(dir, "connect.yaml")
