@@ -1,4 +1,4 @@
-6name: free
+name: free
 on:
   schedule:
     - cron: '0 */2 * * *'
