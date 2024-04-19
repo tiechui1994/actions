@@ -13,23 +13,49 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func Convert(file string, adapter bool) error {
+type node = map[string]interface{}
+
+func CombineToOneYaml(files []string, convert bool) ([]map[string]interface{}, error) {
+	var list []node
+	var uniqueEndpoint = make(map[string]bool)
+
+	for _, file := range files {
+		fileNodeList, err := getFileProxyList(file, convert)
+		if err != nil {
+			continue
+		}
+
+		for _, node := range fileNodeList {
+			key := fmt.Sprintf("%v_%v_%v", node["type"], node["server"], node["port"])
+			if uniqueEndpoint[key] {
+				continue
+			}
+
+			uniqueEndpoint[key] = true
+			list = append(list, node)
+		}
+	}
+
+	return list, nil
+}
+
+func getFileProxyList(file string, convert bool) ([]node, error) {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var yamlStu struct {
-		Proxy      []map[string]interface{} `yaml:"proxies"`
-		ProxyGroup yaml.Node                `yaml:"proxy-groups"`
+		Proxy []node `yaml:"proxies"`
 	}
 	err = yaml.Unmarshal(data, &yamlStu)
 	if err == nil {
-		return nil
+		return yamlStu.Proxy, nil
 	}
 
+	// 转换失败, 尝试 base64
 	list, err := handleBase64(string(data))
-	if adapter && err == nil && len(list) > 0 {
+	if convert && err == nil && len(list) > 0 {
 		ipList := make([]string, 0)
 		for _, v := range list {
 			if ip, ok := v["server"]; ok {
@@ -40,7 +66,7 @@ func Convert(file string, adapter bool) error {
 		raw, err := util.POST("https://quinn.deno.dev/api/ip", util.WithRetry(2),
 			util.WithBody(strings.Join(ipList, "\n")))
 		if err != nil {
-			return fmt.Errorf("ip List: %w", err)
+			return nil, fmt.Errorf("ip List: %w", err)
 		}
 		var stu []struct {
 			IP     string `json:"ip"`
@@ -48,7 +74,7 @@ func Convert(file string, adapter bool) error {
 		}
 		err = json.Unmarshal(raw, &stu)
 		if err != nil {
-			return fmt.Errorf("ip Unmarshal: %w", err)
+			return nil, fmt.Errorf("ip Unmarshal: %w", err)
 		}
 
 		ipListUnique := make(map[string]string)
@@ -82,9 +108,11 @@ func Convert(file string, adapter bool) error {
 			} else {
 				idx := strings.Index(ip, ".")
 				if idx == -1 {
-					fmt.Println("server:", ip)
-					invalidIndex[index] = true
-					continue
+					if len(ip) > 3 {
+						idx = 3
+					} else {
+						idx = len(ip)
+					}
 				}
 				name := fmt.Sprintf("节点_%v", ip[:idx])
 				if uniqueRegion[name] == 0 {
@@ -108,11 +136,11 @@ func Convert(file string, adapter bool) error {
 		}
 
 		yamlStu.Proxy = list
-		raw, _ = yaml.Marshal(yamlStu)
-		return ioutil.WriteFile(file, raw, 0666)
+		return yamlStu.Proxy, nil
 	}
 
-	return fmt.Errorf("invalid type")
+	// 其他
+	return nil, fmt.Errorf("invalid type")
 }
 
 func handleBase64(base64Str string) ([]map[string]interface{}, error) {

@@ -30,8 +30,6 @@ import (
 	"github.com/tiechui1994/proxy/constant"
 	"github.com/tiechui1994/tool/speech"
 	"github.com/tiechui1994/tool/util"
-	"google.golang.org/api/option"
-	"google.golang.org/api/youtube/v3"
 )
 
 type RawConfig struct {
@@ -265,52 +263,6 @@ func GetNow() time.Time {
 	return now
 }
 
-func FetchVideo(apiKey, channelID string) (desc, videoID string, err error) {
-	service, err := youtube.NewService(context.Background(), option.WithAPIKey(apiKey))
-	if err != nil {
-		return desc, videoID, err
-	}
-
-	count := 0
-try:
-	list, err := service.Search.List([]string{"snippet"}).
-		ChannelId(channelID).
-		MaxResults(8).
-		Order("date").Do()
-	if err != nil {
-		if count < 3 {
-			count += 1
-			time.Sleep(time.Second)
-			goto try
-		}
-		return desc, videoID, err
-	}
-
-	now := GetNow().Format("2006-01-02")
-	if len(list.Items) > 0 {
-		for _, v := range list.Items {
-			if strings.HasPrefix(v.Snippet.PublishedAt, now) {
-				count = 0
-			again:
-				videos, err := service.Videos.List([]string{"snippet"}).
-					Id(list.Items[0].Id.VideoId).Do()
-				if err != nil {
-					if count < 3 {
-						count += 1
-						time.Sleep(time.Second)
-						goto again
-					}
-					return desc, videoID, err
-				}
-
-				return videos.Items[0].Snippet.Description, list.Items[0].Id.VideoId, nil
-			}
-		}
-	}
-
-	return desc, videoID, fmt.Errorf("today: %v no youtube video", now)
-}
-
 type differ struct {
 	File     string
 	OP       string
@@ -332,9 +284,8 @@ func getFileModifyDate(dir, path string) int64 {
 	return v
 }
 
-func gitTodayDiffer(dir string) (files []differ, err error) {
+func gitTodayDiffer(dir, today string) (files []differ, err error) {
 	//git log --since='2023-05-03 00:00:00 +0000' --format='%h'
-	today := GetNow().Format("2006-01-02")
 	cmd := exec.Command("bash", "-c",
 		fmt.Sprintf("cd %s && git log --since='%s 00:00:00 +0000' --until='%s 23:59:59 +0000' --format='%%h'",
 			dir, today, today))
@@ -407,19 +358,14 @@ func fetchLatestGitFile(git, branch string, convert bool) (result []string, err 
 		return result, err
 	}
 
-	files, err := gitTodayDiffer(dir)
+	differFiles, err := gitTodayDiffer(dir, GetNow().Format("2006-01-02"))
 	if err != nil {
 		return result, err
 	}
 
-	sort.Slice(files, func(i, j int) bool {
-		return files[i].Date > files[j].Date
-	})
-
-	rgroup := regexp.MustCompile(`proxy-groups:`)
-	rproxy := regexp.MustCompile(`proxies:`)
-	for i := 0; i < len(files); i++ {
-		file := files[i]
+	var files []differ
+	for i := 0; i < len(differFiles); i++ {
+		file := differFiles[i]
 		if file.OP == "D" {
 			continue
 		}
@@ -445,39 +391,38 @@ func fetchLatestGitFile(git, branch string, convert bool) (result []string, err 
 			continue
 		}
 
-		// 没有设置 callback 的正常文件
-		file.callback = func() (string, error) {
-			return YamlConfigTest(filepath.Join(dir, file.File))
-		}
-
-		// 转换成 yaml
-		err := utils.Convert(filepath.Join(dir, file.File), convert)
-		if err != nil {
-			continue
-		}
-
-		data, err := ioutil.ReadFile(filepath.Join(dir, file.File))
-		if err != nil {
-			continue
-		}
-
-		log.Printf("file: %v, match: %v", file.File, rproxy.Match(data) && rgroup.Match(data))
-		if rproxy.Match(data) && rgroup.Match(data) {
-			if file.callback != nil {
-				uploadUrl, err := file.callback()
-				log.Printf("file: %v test result: %v", file.File, err)
-				if err == nil {
-					result = append(result, uploadUrl)
-				}
-				continue
-			}
-
-			result = append(result, file.File)
-		}
+		// only handle types
+		files = append(files, file)
 	}
 
-	log.Println("git files:", result)
-	return result, nil
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Date > files[j].Date
+	})
+
+	var fileList []string
+	for _, file := range files {
+		fileList = append(fileList, file.File)
+	}
+	list, err := utils.CombineToOneYaml(fileList, convert)
+	if err != nil || len(list) == 0 {
+		return result, fmt.Errorf("proxy is Empty or CombineToOneYaml: %w", err)
+	}
+
+	fileName := filepath.Join(dir, "connect.yaml")
+	fd, _ := os.Create(fileName)
+	defer fd.Close()
+	config := &RawConfig{Proxy: list}
+	err = yaml.NewEncoder(fd).Encode(config)
+	if err != nil {
+		return result, fmt.Errorf("yaml Unmarshal: %w", err)
+	}
+
+	u, err := YamlConfigTest(fileName)
+	if err != nil {
+		return result, err
+	}
+
+	return []string{u}, nil
 }
 
 func PullGitFiles(git, branch string, key string, convert bool) (err error) {
@@ -517,15 +462,15 @@ func PullFormatFiles(format string, key string) (err error) {
 	now := GetNow()
 	y, m, d := now.Date()
 
-	url := format
-	url = strings.ReplaceAll(url, "${Y}", fmt.Sprintf("%04d", y))
-	url = strings.ReplaceAll(url, "${M}", fmt.Sprintf("%02d", m))
-	url = strings.ReplaceAll(url, "${D}", fmt.Sprintf("%02d", d))
+	u := format
+	u = strings.ReplaceAll(u, "${Y}", fmt.Sprintf("%04d", y))
+	u = strings.ReplaceAll(u, "${M}", fmt.Sprintf("%02d", m))
+	u = strings.ReplaceAll(u, "${D}", fmt.Sprintf("%02d", d))
 
 	var urls []string
 	rgroup := regexp.MustCompile(`proxy-groups:`)
 	rproxy := regexp.MustCompile(`proxies:`)
-	raw, err := util.GET(url, util.WithRetry(3))
+	raw, err := util.GET(u, util.WithRetry(3))
 	if err != nil {
 		return err
 	}
@@ -547,7 +492,7 @@ func PullFormatFiles(format string, key string) (err error) {
 }
 
 func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZouContent *regexp.Regexp, key string) (err error) {
-	desc, videoID, err := FetchVideo(apiKey, channelID)
+	desc, videoID, err := utils.FetchVideo(apiKey, channelID, GetNow().Format("2006-01-02"))
 	if err != nil {
 		return err
 	}
