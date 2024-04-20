@@ -72,6 +72,22 @@ func YamlConfigTest(file string) (u string, err error) {
 		return u, fmt.Errorf("ReadFile: %w", err)
 	}
 
+	// HK Speed Test
+	data, err := util.POST("https://api.quinn.eu.org/api/speed",
+		util.WithBody(map[string]interface{}{"data": raw}),
+		util.WithRetry(2))
+	if err == nil {
+		log.Printf("HK Test: %v", string(data))
+		var result struct{
+			URL string `json:"url"`
+		}
+		err = json.Unmarshal(data, &result)
+		if err == nil && result.URL != "" {
+			return result.URL, nil
+		}
+	}
+
+	// Local Speed Test
 	config := &RawConfig{}
 	err = yaml.Unmarshal(raw, config)
 	if err != nil {
