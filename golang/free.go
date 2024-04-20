@@ -167,7 +167,6 @@ func YamlConfigTest(file string) (u string, err error) {
 				balanceCount += 1
 				proxiesConfig[index]["balance"] = true
 				lock.Unlock()
-				log.Printf("%v support [balance]", proxy.Name())
 			}
 
 			urL = "https://www.youtube.com/favicon.ico"
@@ -176,7 +175,6 @@ func YamlConfigTest(file string) (u string, err error) {
 				balanceCount += 1
 				proxiesConfig[index]["video"] = true
 				lock.Unlock()
-				log.Printf("%v support [video]", proxy.Name())
 			}
 		}(index)
 		if count == 30 {
