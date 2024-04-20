@@ -33,30 +33,7 @@ import (
 )
 
 type RawConfig struct {
-	Port               int       `yaml:"port"`
-	SocksPort          int       `yaml:"socks-port,omitempty"`
-	RedirPort          yaml.Node `yaml:"redir-port,omitempty"`
-	TProxyPort         yaml.Node `yaml:"tproxy-port,omitempty"`
-	MixedPort          yaml.Node `yaml:"mixed-port,omitempty"`
-	Authentication     yaml.Node `yaml:"authentication,omitempty"`
-	AllowLan           yaml.Node `yaml:"allow-lan,omitempty"`
-	BindAddress        yaml.Node `yaml:"bind-address,omitempty"`
-	Mode               yaml.Node `yaml:"mode"`
-	LogLevel           yaml.Node `yaml:"log-level"`
-	IPv6               yaml.Node `yaml:"ipv6,omitempty"`
-	ExternalController string    `yaml:"external-controller"`
-	ExternalUI         string    `yaml:"external-ui,omitempty"`
-	Secret             string    `yaml:"secret"`
-	Interface          yaml.Node `yaml:"interface-name,omitempty"`
-	RoutingMark        yaml.Node `yaml:"routing-mark,omitempty"`
-	Tunnels            yaml.Node `yaml:"tunnels,omitempty"`
-
 	ProxyProvider yaml.Node                `yaml:"proxy-providers,omitempty"`
-	Hosts         yaml.Node                `yaml:"hosts,omitempty"`
-	Inbounds      yaml.Node                `yaml:"inbounds,omitempty"`
-	DNS           yaml.Node                `yaml:"dns"`
-	Experimental  yaml.Node                `yaml:"experimental,omitempty"`
-	Profile       yaml.Node                `yaml:"profile,omitempty"`
 	Proxy         []map[string]interface{} `yaml:"proxies"`
 	ProxyGroup    yaml.Node                `yaml:"proxy-groups"`
 	Rule          yaml.Node                `yaml:"rules"`
@@ -142,7 +119,6 @@ func YamlConfigTest(file string) (u string, err error) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Printf("%v not support ipv6", proxy.Name())
 			return fmt.Errorf("client: %w", err)
 		}
 		defer resp.Body.Close()
@@ -191,6 +167,7 @@ func YamlConfigTest(file string) (u string, err error) {
 				balanceCount += 1
 				proxiesConfig[index]["balance"] = true
 				lock.Unlock()
+				log.Printf("%v support [balance]", proxy.Name())
 			}
 
 			urL = "https://www.youtube.com/favicon.ico"
@@ -199,6 +176,7 @@ func YamlConfigTest(file string) (u string, err error) {
 				balanceCount += 1
 				proxiesConfig[index]["video"] = true
 				lock.Unlock()
+				log.Printf("%v support [video]", proxy.Name())
 			}
 		}(index)
 		if count == 30 {
