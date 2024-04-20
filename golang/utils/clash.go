@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -22,6 +23,7 @@ func CombineToOneYaml(files []string, convert bool) ([]map[string]interface{}, e
 	for _, file := range files {
 		fileNodeList, err := getFileProxyList(file, convert)
 		if err != nil {
+			log.Printf("file=%v get failed: %w", file, err)
 			continue
 		}
 
@@ -53,16 +55,19 @@ func getFileProxyList(file string, convert bool) ([]node, error) {
 		return yamlStu.Proxy, nil
 	}
 
+	if !convert {
+		goto handle
+	}
+
 	// 转换失败, 尝试 base64
-	list, err := handleBase64(string(data))
-	if convert && err == nil && len(list) > 0 {
+	yamlStu.Proxy, err = handleBase64(string(data))
+	if err == nil && len(yamlStu.Proxy) > 0 {
 		ipList := make([]string, 0)
-		for _, v := range list {
+		for _, v := range yamlStu.Proxy {
 			if ip, ok := v["server"]; ok {
 				ipList = append(ipList, ip.(string))
 			}
 		}
-
 		raw, err := util.POST("https://quinn.deno.dev/api/ip", util.WithRetry(2),
 			util.WithBody(strings.Join(ipList, "\n")))
 		if err != nil {
@@ -77,6 +82,7 @@ func getFileProxyList(file string, convert bool) ([]node, error) {
 			return nil, fmt.Errorf("ip Unmarshal: %w", err)
 		}
 
+		// name ready
 		ipListUnique := make(map[string]string)
 		uniqueRegion := make(map[string]int)
 		for _, v := range stu {
@@ -84,8 +90,9 @@ func getFileProxyList(file string, convert bool) ([]node, error) {
 			uniqueRegion[v.Region] += 1
 		}
 
+		// set name
 		invalidIndex := make(map[int]bool, 0)
-		for index, v := range list {
+		for index, v := range yamlStu.Proxy {
 			server, ok := v["server"]
 			if !ok {
 				invalidIndex[index] = true
@@ -98,7 +105,6 @@ func getFileProxyList(file string, convert bool) ([]node, error) {
 					invalidIndex[index] = true
 					continue
 				}
-
 				if uniqueRegion[region] == 1 {
 					v["name"] = fmt.Sprintf("%v", region)
 				} else {
@@ -124,23 +130,25 @@ func getFileProxyList(file string, convert bool) ([]node, error) {
 				}
 			}
 		}
+
+		// remove invalid endpoint
 		if len(invalidIndex) > 0 {
 			newList := make([]map[string]interface{}, 0)
-			for i, v := range list {
+			for i, v := range yamlStu.Proxy {
 				if invalidIndex[i] {
 					continue
 				}
 				newList = append(newList, v)
 			}
-			list = newList
+			yamlStu.Proxy = newList
 		}
 
-		yamlStu.Proxy = list
 		return yamlStu.Proxy, nil
 	}
 
+handle:
 	// 其他
-	return nil, fmt.Errorf("invalid type")
+	return nil, fmt.Errorf("invalid type: %w", err)
 }
 
 func handleBase64(base64Str string) ([]map[string]interface{}, error) {
