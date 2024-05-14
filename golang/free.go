@@ -226,15 +226,14 @@ func YamlConfigTest(file string) (u string, err error) {
 	return utils.UploadFile(fileName)
 }
 
-// 大飞分享 oss.v2rayse.com
-// 由零开始 agit.ai
-// 科技网络 github.com
-// NodeFree nodefree.org
-
 func GetNow() time.Time {
-	now, err := time.ParseInLocation("2006-01-02", *freeDate, time.UTC)
+	location, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
-		now = time.Now().In(time.UTC)
+		location = time.UTC
+	}
+	now, err := time.ParseInLocation("2006-01-02", *freeDate, location)
+	if err != nil {
+		now = time.Now().In(location)
 	}
 
 	return now
