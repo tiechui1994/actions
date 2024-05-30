@@ -171,7 +171,8 @@ func YamlConfigTest(file string) (u string, err error) {
 			}
 
 			urL = "https://www.youtube.com/favicon.ico"
-			if err := testWorker(proxy, urL, 5000, false); err == nil {
+			err := testWorker(proxy, urL, 5000, false)
+			if err == nil || proxiesConfig[index]["region"] == "cn" {
 				lock.Lock()
 				balanceCount += 1
 				proxiesConfig[index]["video"] = true

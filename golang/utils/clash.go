@@ -23,7 +23,7 @@ func CombineToOneYaml(files []string, convert bool) ([]map[string]interface{}, e
 	for _, file := range files {
 		fileNodeList, err := getFileProxyList(file, convert)
 		if err != nil {
-			log.Printf("file=%v get failed: %w", file, err)
+			log.Printf("file=%v get failed: %v", file, err)
 			continue
 		}
 
@@ -50,18 +50,38 @@ func getFileProxyList(file string, convert bool) ([]node, error) {
 	var yamlStu struct {
 		Proxy []node `yaml:"proxies"`
 	}
-	err = yaml.Unmarshal(data, &yamlStu)
-	if err == nil {
-		return yamlStu.Proxy, nil
-	}
 
-	if !convert {
-		goto handle
+	cn2en := map[string]string{
+		"中国":    "cn",
+		"美国":    "us",
+		"韩国":    "kr",
+		"日本":    "jp",
+		"新加坡":   "sg",
+		"香港":    "hk",
+		"台湾":    "tw",
+		"加拿大":   "ca",
+		"德国":    "de",
+		"英国":    "gb",
+		"哈萨克斯坦": "kz",
+		"立陶宛":   "lt",
+		"卢森堡":   "lu",
+		"马耳他":   "mt",
+		"荷兰":    "nl",
+		"马来西亚":  "my",
+		"俄罗斯":   "ru",
+		"塞舌尔":   "sc",
+		"瑞典":    "se",
+		"乌克兰":   "ua",
+		"法国":    "fr",
+		"保加利亚":  "bg",
+		"奥地利":   "at",
+		"澳大利亚":  "au",
 	}
-
-	// 转换失败, 尝试 base64
-	yamlStu.Proxy, err = handleBase64(string(data))
-	if err == nil && len(yamlStu.Proxy) > 0 {
+	type region struct {
+		IP     string `json:"ip"`
+		Region string `json:"region"`
+	}
+	setRegion := func() ([]region, error) {
 		ipList := make([]string, 0)
 		for _, v := range yamlStu.Proxy {
 			if ip, ok := v["server"]; ok {
@@ -73,13 +93,44 @@ func getFileProxyList(file string, convert bool) ([]node, error) {
 		if err != nil {
 			return nil, fmt.Errorf("ip List: %w", err)
 		}
-		var stu []struct {
-			IP     string `json:"ip"`
-			Region string `json:"region"`
-		}
+		var stu []region
 		err = json.Unmarshal(raw, &stu)
 		if err != nil {
 			return nil, fmt.Errorf("ip Unmarshal: %w", err)
+		}
+		var serverRegion = make(map[string]string)
+		for _, v := range stu {
+			serverRegion[v.IP] = v.Region
+		}
+		for _, v := range yamlStu.Proxy {
+			if ip, ok := v["server"]; ok {
+				vv := serverRegion[ip.(string)]
+				if en, ok := cn2en[vv]; ok {
+					vv = en
+				}
+				v["region"] = vv
+			}
+		}
+
+		return stu, nil
+	}
+
+	err = yaml.Unmarshal(data, &yamlStu)
+	if err == nil {
+		_, _ = setRegion()
+		return yamlStu.Proxy, nil
+	}
+
+	if !convert {
+		goto handle
+	}
+
+	// 转换失败, 尝试 base64
+	yamlStu.Proxy, err = handleBase64(string(data))
+	if err == nil && len(yamlStu.Proxy) > 0 {
+		stu, err := setRegion()
+		if err != nil {
+			return nil, err
 		}
 
 		// name ready
