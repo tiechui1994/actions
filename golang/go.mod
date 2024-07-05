@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/mxk/go-imap v0.0.0-20150429134902-531c36c3f12d
 	github.com/tiechui1994/proxy v0.0.3
-	github.com/tiechui1994/tool v1.5.9
+	github.com/tiechui1994/tool v1.5.10-0.20240705093003-f6bd4c62a580
 	github.com/yeka/zip v0.0.0-20231116150916-03d6312748a9
 	google.golang.org/api v0.121.0
 	gopkg.in/yaml.v3 v3.0.1
