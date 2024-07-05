@@ -42,7 +42,6 @@ func main() {
 		format, err = yt.Filter(speech.WithAudioOnly).First()
 	} else {
 		format, err = yt.Filter(
-			speech.WithVideoOnly,
 			func(format speech.Format) bool {
 				var val int64
 				if strings.HasSuffix(format.Res, "p") {
