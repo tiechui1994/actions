@@ -62,8 +62,10 @@ jobs:
 
     - name: Downalod
       run: |
+        wget --quiet  https://github.com/tiechui1994/actions/releases/download/ffmpeg_5.1/ffmpeg.tar.xz -O ffmpeg.tar.xz
+        tar xf ffmpeg.tar.xz && chmod a+x ffmpeg/ffmpeg && chmod a+x ffmpeg/ffprobe
         make -C golang youtube
-        golang/youtube -name $NAME -url $URL -quality $QUALITY -fps $FPS
+        golang/youtube -name $NAME -url $URL -quality $QUALITY -fps $FPS -ffmpeg ffmpeg/ffmpeg -ffprobe ffmpeg/ffprobe
       env:
         NAME: ${{github.workspace}}/${{github.event.inputs.name}}
         URL: ${{github.event.inputs.url}}
@@ -77,8 +79,6 @@ jobs:
         name=$(ls|grep $NAME)
         echo "ext: ${name##*.}"
         if [[ "${name##*.}" != "mp4" ]]; then
-          wget --quiet  https://github.com/tiechui1994/actions/releases/download/ffmpeg_5.1/ffmpeg.tar.xz -O ffmpeg.tar.xz
-          tar xf ffmpeg.tar.xz && chmod a+x ffmpeg/ffmpeg
           name=$(ls|grep $NAME)
           ffmpeg/ffmpeg -i "$name" -crf 20 -c:v libx264 "${NAME}.mp4"
           if [[ $? -eq 0 ]]; then

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -17,6 +19,8 @@ func main() {
 	fps := flag.Int("fps", 30, "video FPS")
 	name := flag.String("name", "", "save file name")
 	u := flag.String("url", "", "youtube download URL")
+	ffprobe := flag.String("ffprobe", "", "ffprobe PATH")
+	ffmpeg := flag.String("ffmpeg", "", "ffprobe PATH")
 	flag.Parse()
 
 	if *u == "" {
@@ -25,6 +29,10 @@ func main() {
 	}
 	if *name == "" {
 		fmt.Println("invalid name")
+		os.Exit(1)
+	}
+	if !*audio && (*ffmpeg == "" || *ffprobe == "") {
+		fmt.Println("invalid ffmpeg/ffprobe")
 		os.Exit(1)
 	}
 
@@ -42,6 +50,7 @@ func main() {
 		format, err = yt.Filter(speech.WithAudioOnly).First()
 	} else {
 		format, err = yt.Filter(
+			speech.WithVideoOnly,
 			func(format speech.Format) bool {
 				var val int64
 				if strings.HasSuffix(format.Res, "p") {
@@ -55,17 +64,66 @@ func main() {
 		fmt.Println("query audio/video not exist: ", err)
 		os.Exit(1)
 	}
-
-	filepath := fmt.Sprintf("%v.%v", *name, format.SubType)
+	filePath := fmt.Sprintf("%v.%v", *name, format.SubType)
 	fmt.Printf("chouice quality: %vP, FPS: %v\n", *quality, *fps)
 	fmt.Printf("really quality: %v, FPS: %v\n", format.Res, format.Fps)
-	fmt.Printf("filepath: %v\n", filepath)
+	fmt.Printf("filepath: %v\n", filePath)
 	fmt.Printf("url: %v\n", format.Url)
 
-	err = format.Download(filepath)
+	err = format.Download(filePath)
 	if err != nil {
 		fmt.Println("Download Failed.", err)
 		os.Exit(1)
+	}
+
+	if !*audio {
+		command := fmt.Sprintf("%v -v quiet -print_format json -show_streams %v", *ffprobe, filePath)
+		cmd := exec.Command("bash", "-c", command)
+		raw, err := cmd.Output()
+		if err != nil {
+			fmt.Println("ffprobe Failed.", err, "==>", string(raw))
+			os.Exit(1)
+		}
+		var result struct {
+			Streams []map[string]interface{} `json:"streams"`
+		}
+		_ = json.Unmarshal(raw, &result)
+		if len(result.Streams) == 1 {
+			yt := speech.YouTube{VideoID: strings.TrimSpace(values[0][1])}
+			format, err := yt.Filter(speech.WithAudioOnly).First()
+			if err != nil {
+				fmt.Println("query audio not exist: ", err)
+				os.Exit(1)
+			}
+
+			audioPath := fmt.Sprintf("audio_%v.%v", *name, format.SubType)
+			defer os.Remove(audioPath)
+			err = format.Download(audioPath)
+			if err != nil {
+				fmt.Println("Download Failed.", err)
+				os.Exit(1)
+			}
+
+			videoPath := filePath
+			filePath = fmt.Sprintf("%v.mp4", *name)
+			if videoPath == filePath {
+				temp := strings.ReplaceAll(videoPath, videoPath[:strings.Index(videoPath, ".")], "video_"+*name)
+				_ = os.Rename(videoPath, temp)
+				videoPath = temp
+			}
+
+			fmt.Println("Combine Video and Audio")
+			defer os.Remove(videoPath)
+			command := fmt.Sprintf("%v -v info -i %v -i %v -threads 4 -c:v h264 -c:a aac -f mp4 %v", *ffmpeg, videoPath, audioPath, filePath)
+			cmd := exec.Command("bash", "-c", command)
+			cmd.Stderr = os.Stderr
+			cmd.Stdout = os.Stdout
+			err = cmd.Run()
+			if err != nil {
+				fmt.Println("Combined Failed.", err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	fmt.Println("Download Success, file size:", fmt.Sprintf("%0.2f MB", float64(format.FileSize)/(1024.0*1024.0)))
