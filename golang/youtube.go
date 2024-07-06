@@ -89,6 +89,14 @@ func main() {
 			Streams []map[string]interface{} `json:"streams"`
 		}
 		_ = json.Unmarshal(raw, &result)
+
+		var videoCodec string
+		for _, v := range result.Streams {
+			if v["codec_name"] == "video" {
+				videoCodec = v["codec_name"].(string)
+			}
+		}
+
 		if len(result.Streams) == 1 {
 			yt := speech.YouTube{VideoID: strings.TrimSpace(values[0][1])}
 			audioFormat, err := yt.Filter(speech.WithAudioOnly).First()
@@ -111,9 +119,23 @@ func main() {
 			_ = os.Rename(filePath, videoPath)
 			defer os.Remove(videoPath)
 
+			var command string
+			switch videoCodec {
+			case "vp9":
+				filePath = fmt.Sprintf("%v.%v", *name, format.SubType)
+				command = fmt.Sprintf("%v -v info -i %v -i %v -threads 4 -c:v copy -c:a libopus %v", *ffmpeg, videoPath, audioPath, filePath)
+			case "h264":
+				filePath = fmt.Sprintf("%v.%v", *name, format.SubType)
+				command = fmt.Sprintf("%v -v info -i %v -i %v -threads 4 -c:v copy -c:a aac %v", *ffmpeg, videoPath, audioPath, filePath)
+			case "mpeg4":
+				filePath = fmt.Sprintf("%v.%v", *name, format.SubType)
+				command = fmt.Sprintf("%v -v info -i %v -i %v -threads 4 -c:v copy -map 0:v -map 1:a %v", *ffmpeg, videoPath, audioPath, filePath)
+			default:
+				command = fmt.Sprintf("%v -v info -i %v -i %v -threads 4 -c:v h264 -c:a aac -f mp4 %v", *ffmpeg, videoPath, audioPath, filePath)
+			}
+
 			filePath = fmt.Sprintf("%v.mp4", *name)
-			fmt.Println("Combine Video and Audio")
-			command := fmt.Sprintf("%v -v info -i %v -i %v -threads 4 -c:v h264 -c:a aac -f mp4 %v", *ffmpeg, videoPath, audioPath, filePath)
+			fmt.Println("Combine Video and Audio: ", command)
 			cmd := exec.Command("bash", "-c", command)
 			cmd.Stderr = os.Stderr
 			cmd.Stdout = os.Stdout
