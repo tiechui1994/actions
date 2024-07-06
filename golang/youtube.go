@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -81,7 +82,7 @@ func main() {
 		cmd := exec.Command("bash", "-c", command)
 		raw, err := cmd.Output()
 		if err != nil {
-			fmt.Println("ffprobe Failed.", err, "==>", string(raw))
+			fmt.Println("ffprobe Failed.", err)
 			os.Exit(1)
 		}
 		var result struct {
@@ -90,30 +91,28 @@ func main() {
 		_ = json.Unmarshal(raw, &result)
 		if len(result.Streams) == 1 {
 			yt := speech.YouTube{VideoID: strings.TrimSpace(values[0][1])}
-			format, err := yt.Filter(speech.WithAudioOnly).First()
+			audioFormat, err := yt.Filter(speech.WithAudioOnly).First()
 			if err != nil {
 				fmt.Println("query audio not exist: ", err)
 				os.Exit(1)
 			}
 
-			audioPath := fmt.Sprintf("audio_%v.%v", *name, format.SubType)
+			dir, fileName := filepath.Split(*name)
+
+			audioPath := filepath.Join(dir, fmt.Sprintf("audio_%v.%v", fileName, audioFormat.SubType))
 			defer os.Remove(audioPath)
-			err = format.Download(audioPath)
+			err = audioFormat.Download(audioPath)
 			if err != nil {
-				fmt.Println("Download Failed.", err)
+				fmt.Println("Download Audio Failed.", err)
 				os.Exit(1)
 			}
 
-			videoPath := filePath
-			filePath = fmt.Sprintf("%v.mp4", *name)
-			if videoPath == filePath {
-				temp := strings.ReplaceAll(videoPath, videoPath[:strings.Index(videoPath, ".")], "video_"+*name)
-				_ = os.Rename(videoPath, temp)
-				videoPath = temp
-			}
-
-			fmt.Println("Combine Video and Audio")
+			videoPath := filepath.Join(dir, fmt.Sprintf("video_%v.%v", fileName, format.SubType))
+			_ = os.Rename(filePath, videoPath)
 			defer os.Remove(videoPath)
+
+			filePath = fmt.Sprintf("%v.mp4", *name)
+			fmt.Println("Combine Video and Audio")
 			command := fmt.Sprintf("%v -v info -i %v -i %v -threads 4 -c:v h264 -c:a aac -f mp4 %v", *ffmpeg, videoPath, audioPath, filePath)
 			cmd := exec.Command("bash", "-c", command)
 			cmd.Stderr = os.Stderr
