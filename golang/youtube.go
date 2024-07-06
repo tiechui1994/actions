@@ -92,7 +92,7 @@ func main() {
 
 		var videoCodec string
 		for _, v := range result.Streams {
-			if v["codec_name"] == "video" {
+			if v["codec_type"] == "video" {
 				videoCodec = v["codec_name"].(string)
 			}
 		}
