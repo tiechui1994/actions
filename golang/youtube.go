@@ -48,7 +48,11 @@ func main() {
 	var err error
 	yt := speech.YouTube{VideoID: strings.TrimSpace(values[0][1])}
 	if *audio {
-		format, err = yt.Filter(speech.WithAudioOnly).First()
+		format, err = yt.Filter(
+			speech.WithAudioOnly,
+		).OrderBy(func(i, j speech.Format) bool {
+			return i.BitRate < j.BitRate
+		}).First()
 	} else {
 		format, err = yt.Filter(
 			speech.WithVideoOnly,
@@ -99,7 +103,9 @@ func main() {
 
 		if len(result.Streams) == 1 {
 			yt := speech.YouTube{VideoID: strings.TrimSpace(values[0][1])}
-			audioFormat, err := yt.Filter(speech.WithAudioOnly).First()
+			audioFormat, err := yt.Filter(speech.WithAudioOnly).OrderBy(func(i, j speech.Format) bool {
+				return i.BitRate < j.BitRate
+			}).First()
 			if err != nil {
 				fmt.Println("query audio not exist: ", err)
 				os.Exit(1)
