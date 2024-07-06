@@ -130,11 +130,14 @@ func main() {
 			case "mpeg4":
 				filePath = fmt.Sprintf("%v.%v", *name, format.SubType)
 				command = fmt.Sprintf("%v -v info -i %v -i %v -threads 4 -c:v copy -map 0:v -map 1:a %v", *ffmpeg, videoPath, audioPath, filePath)
+			case "mpeg2video":
+				filePath = fmt.Sprintf("%v.%v", *name, format.SubType)
+				command = fmt.Sprintf("%v -v info -i %v -i %v -threads 4 -c:v copy -c:a mp2 %v", *ffmpeg, videoPath, audioPath, filePath)
 			default:
+				filePath = fmt.Sprintf("%v.mp4", *name)
 				command = fmt.Sprintf("%v -v info -i %v -i %v -threads 4 -c:v h264 -c:a aac -f mp4 %v", *ffmpeg, videoPath, audioPath, filePath)
 			}
 
-			filePath = fmt.Sprintf("%v.mp4", *name)
 			fmt.Println("Combine Video and Audio: ", command)
 			cmd := exec.Command("bash", "-c", command)
 			cmd.Stderr = os.Stderr
