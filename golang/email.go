@@ -424,6 +424,7 @@ var envelopeDateTimeLayouts = [...]string{
 	"Mon, 02 Jan 2006 15:04:05 MST",
 	"Mon, 2 Jan 2006 15:04:05 -0700",
 	"02 Jan 2006 15:04:05 -0700", // new date
+	"2 Jan 2006 15:04:05 -0700",  // new date
 }
 
 var commentRE = regexp.MustCompile(`[ \t]+\(.*\)$`)
@@ -673,6 +674,12 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+
+	now := time.Now().Add(time.Hour)
+	for i := range configs {
+		configs[i].Before = now
+		configs[i].Since = now.Add(-60*24*time.Hour)
 	}
 
 	e := Email{
