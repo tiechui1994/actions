@@ -51,32 +51,6 @@ func getFileProxyList(file string, convert bool) ([]node, error) {
 		Proxy []node `yaml:"proxies"`
 	}
 
-	cn2en := map[string]string{
-		"中国":    "cn",
-		"美国":    "us",
-		"韩国":    "kr",
-		"日本":    "jp",
-		"新加坡":   "sg",
-		"香港":    "hk",
-		"台湾":    "tw",
-		"加拿大":   "ca",
-		"德国":    "de",
-		"英国":    "gb",
-		"哈萨克斯坦": "kz",
-		"立陶宛":   "lt",
-		"卢森堡":   "lu",
-		"马耳他":   "mt",
-		"荷兰":    "nl",
-		"马来西亚":  "my",
-		"俄罗斯":   "ru",
-		"塞舌尔":   "sc",
-		"瑞典":    "se",
-		"乌克兰":   "ua",
-		"法国":    "fr",
-		"保加利亚":  "bg",
-		"奥地利":   "at",
-		"澳大利亚":  "au",
-	}
 	type region struct {
 		IP     string `json:"ip"`
 		Region string `json:"region"`
@@ -104,11 +78,7 @@ func getFileProxyList(file string, convert bool) ([]node, error) {
 		}
 		for _, v := range yamlStu.Proxy {
 			if ip, ok := v["server"]; ok {
-				vv := serverRegion[ip.(string)]
-				if en, ok := cn2en[vv]; ok {
-					vv = en
-				}
-				v["region"] = vv
+				v["region"] = serverRegion[ip.(string)]
 			}
 		}
 
