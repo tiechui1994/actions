@@ -679,7 +679,7 @@ func main() {
 	now := time.Now().Add(time.Hour)
 	for i := range configs {
 		configs[i].Before = now
-		configs[i].Since = now.Add(-60*24*time.Hour)
+		configs[i].Since = now.Add(-90*24*time.Hour)
 	}
 
 	e := Email{
