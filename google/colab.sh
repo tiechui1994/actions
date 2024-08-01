@@ -77,7 +77,12 @@ EOF
     service ssh start
 }
 
-colab_frp_service() {
+colab_tcpover_service() {
+    colab_init_go
+
+    go install github.com/tiechui1994/tool/cmd/tcpover@v1.5.12
+    mv "$(go env GOPATH)/bin/tcpover" /usr/bin/tcpover
+
     read -r -d '' conf <<-'EOF'
 #!/bin/sh
 
@@ -171,46 +176,16 @@ esac
 EOF
 
     frpc=${conf}
-    frpc=${frpc//'@NAME'/'frpc'}
-    frpc=${frpc//'@DESC'/'frpc'}
-    frpc=${frpc//'@DAEMON'/'/usr/local/frp/frpc'}
-    frpc=${frpc//'@ARGS'/'--config=/usr/local/frp/frpc.json'}
-    printf "%s" "$frpc" > /etc/init.d/frpc
-    chmod a+x /etc/init.d/frpc
+    frpc=${frpc//'@NAME'/'tcpover'}
+    frpc=${frpc//'@DESC'/'tcpover'}
+    frpc=${frpc//'@DAEMON'/'/usr/bin/tcpover'}
+    frpc=${frpc//'@ARGS'/'-a -e=wss://tcpover.pages.dev/api/ssh -d=google'}
+    printf "%s" "$frpc" > /etc/init.d/tcpover
+    chmod a+x /etc/init.d/tcpover
 }
 
-colab_frp_config() {
-    read -r -d '' conf <<-'EOF'
-{
-   "serverAddr": "frp.freefrp.net",
-   "serverPort": 7000,
-   "auth": {
-       "method": "token",
-       "token" : "freefrp.net"
-   },
-   "proxies":[{
-       "name":"ssh_@NAME_@UID",
-       "type":"tcp",
-       "localIp":"127.0.0.1",
-       "localPort":22,
-       "remotePort":43892
-   }]
-}
-EOF
-
-    frpc=${conf}
-    frpc=${frpc//'@NAME'/'google'}
-    frpc=${frpc//'@UID'/$(date '+%s')}
-    printf "%s" "$frpc" > /usr/local/frp/frpc.json
-}
-
-colab_frp_upload() {
-    value="ssh root@frp1.freefrp.net -p 43892"
-    data='{"ttl":28800,"value":"@value"}'
-    curl --request POST -sL \
-         --url 'https://api.quinn.eu.org/api/mongo?key=frpc'\
-         --data "${data//'@value'/$value}" > /dev/null
-
+colab_tcpover_upload() {
+    value="ssh -o 'ProxyCommand tcpover -c -e=wss://tcpover.pages.dev/api/ssh -d=google' root@127.0.0.1"
     echo "ssh: [ $value ]"
 }
 
