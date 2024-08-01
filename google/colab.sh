@@ -176,7 +176,7 @@ EOF
 }
 
 colab_tcpover_upload() {
-    value="ssh -o 'ProxyCommand tcpover -c -e=wss://tcpover.pages.dev/api/ssh -d=google' root@127.0.0.1"
+    value="ssh -o 'ProxyCommand tcpover -c -e=wss://tcpover.pages.dev/api/ssh -d=google' -o 'Compression yes' root@127.0.0.1"
     echo "ssh: [ $value ]"
 }
 
