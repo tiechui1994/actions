@@ -36,21 +36,12 @@ colab_init() {
             apt-get --quiet install --yes "$i"
         done
     fi
-
-    if [[ ! -d "/usr/local/frp" ]]; then
-        wget --quiet https://github.com/fatedier/frp/releases/download/v0.57.0/frp_0.57.0_linux_amd64.tar.gz -O frp.tgz
-        rm -rf frp && mkdir frp
-        tar xf frp.tgz -C frp --strip-components 1 && \
-        mv frp /usr/local && rm -rf frp.tgz
-    fi
-}
-
-colab_change_passwd() {
-    passwd=$(echo $@ |openssl passwd -6 -stdin)
-    sed -i -E "/^root/ s|root:([^:]+?):(.*)|root:$passwd:\2|" /etc/shadow
 }
 
 colab_ssh_root() {
+    passwd=$(echo $@ |openssl passwd -6 -stdin)
+    sed -i -E "/^root/ s|root:([^:]+?):(.*)|root:$passwd:\2|" /etc/shadow
+
     cat > /etc/ssh/sshd_config <<-'EOF'
 Port 22
 AddressFamily any
