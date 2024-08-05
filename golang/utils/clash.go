@@ -16,12 +16,12 @@ import (
 
 type node = map[string]interface{}
 
-func CombineToOneYaml(files []string, convert bool) ([]map[string]interface{}, error) {
+func CombineToOneYaml(queryIPURL string, files []string, convert bool) ([]map[string]interface{}, error) {
 	var list []node
 	var uniqueEndpoint = make(map[string]bool)
 
 	for _, file := range files {
-		fileNodeList, err := getFileProxyList(file, convert)
+		fileNodeList, err := getFileProxyList(queryIPURL, file, convert)
 		if err != nil {
 			log.Printf("file=%v get failed: %v", file, err)
 			continue
@@ -41,7 +41,7 @@ func CombineToOneYaml(files []string, convert bool) ([]map[string]interface{}, e
 	return list, nil
 }
 
-func getFileProxyList(file string, convert bool) ([]node, error) {
+func getFileProxyList(queryIPURL, file string, convert bool) ([]node, error) {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func getFileProxyList(file string, convert bool) ([]node, error) {
 				ipList = append(ipList, ip.(string))
 			}
 		}
-		raw, err := util.POST("https://quinn.deno.dev/api/ip", util.WithRetry(2),
+		raw, err := util.POST(queryIPURL, util.WithRetry(2),
 			util.WithBody(strings.Join(ipList, "\n")))
 		if err != nil {
 			return nil, fmt.Errorf("ip List: %w", err)

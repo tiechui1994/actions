@@ -380,7 +380,7 @@ func fetchLatestGitFile(git, branch string, convert bool) (result []string, err 
 	for _, file := range files {
 		fileList = append(fileList, filepath.Join(dir, file.File))
 	}
-	list, err := utils.CombineToOneYaml(fileList, convert)
+	list, err := utils.CombineToOneYaml(queryIPURL, fileList, convert)
 	if err != nil || len(list) == 0 {
 		return result, fmt.Errorf("proxy is Empty or CombineToOneYaml: %v", err)
 	}
@@ -556,7 +556,7 @@ func PullYoutubeFiles(apiKey, channelID string, rURL, rPwd, rLanZouName, rLanZou
 func UploadCache(k string, v interface{}) error {
 	try := false
 again:
-	raw, err := util.POST(*freeCache+fmt.Sprintf("?key=%v&ttl=%v", k, 7*24*60*60), util.WithBody(v), util.WithRetry(2))
+	raw, err := util.POST(cacheURL+fmt.Sprintf("?key=%v&ttl=%v", k, 7*24*60*60), util.WithBody(v), util.WithRetry(2))
 	if err != nil {
 		if !try {
 			try = !try
@@ -589,21 +589,36 @@ const (
 )
 
 var (
+	endpoint   string
 	freeConfig = flag.String("config", "", "config content")
-	freeCache  = flag.String("cache", "", "cache url")
 	freeDate   = flag.String("date", "", "pull date")
+	to         notify.EmailInfo
 
-	to notify.EmailInfo
+	cacheURL   string
+	emailURL   string
+	queryIPURL string
 )
 
 func init() {
 	log.SetFlags(log.Ldate | log.Lshortfile | log.Ltime)
 	log.SetPrefix("[free] ")
 
+	if endpoint == "" {
+		endpoint = os.Getenv("ENDPOINT")
+	}
+	if endpoint == "" {
+		fmt.Println("there no endpoint config")
+		os.Exit(1)
+	}
+
+	cacheURL = endpoint + "/api/mongo"
+	emailURL = endpoint + "/api/email"
+	queryIPURL = endpoint + "/api/ip"
+
 	to = notify.EmailInfo{
 		Email: "2904951429@qq.com",
 	}
-	notify.DefaultURL("https://broadlink.eu.org/api/email")
+	notify.DefaultURL(emailURL)
 	notify.DefaultFrom(notify.EmailInfo{
 		Email: "no-reply@broadlink.eu.org",
 	})
@@ -619,7 +634,7 @@ func emailJSON(v interface{}) string {
 
 func main() {
 	flag.Parse()
-	if *freeCache == "" || *freeConfig == "" {
+	if *freeConfig == "" {
 		log.Printf("config and cache must be set")
 		os.Exit(1)
 	}
