@@ -32,7 +32,9 @@ jobs:
         run: |
           echo "inputs date: ${{github.event.inputs.tody}}"
           make -C golang free && \
-          golang/free -cache https://api.quinn.eu.org/api/mongo \
+          golang/free \
           -config ${{secrets.CONFIG}} \
           -date "${{github.event.inputs.tody}}"
         shell: bash
+        env:
+          ENDPOINT: ${{secrets.ENDPOINT}}
