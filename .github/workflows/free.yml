@@ -1,0 +1,25 @@
+name: free
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      tody:
+        description: 'date'
+        required: false
+        default: ''
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        index: [0, 1, 2]
+
+    steps:
+      - uses: tiechui1994/free@master
+        with:
+          action: 'free'
+          date: ${{github.event.inputs.tody}}
+          count: 3
+          index: ${{matrix.index}}
