@@ -11,20 +11,13 @@ jobs:
       go: '1.17'
 
     steps:
-    - name: Use Go ${{ env.go }}
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.go }}
-
-    - name: Checkout
-      timeout-minutes: 1
-      uses: actions/checkout@v3
-      with:
-        persist-credentials: false
-
-    - name: Delete emails
-      timeout-minutes: 60
-      run: |
-        make -C golang email && \
-        golang/email -u ${{secrets.EMAIL_USERNAME}} -p ${{secrets.EMAIL_PASSWORD}}
-      shell: bash
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          repository: tiechui1994/free
+          token: ${{secrets.GIT_TOKEN}}
+          path: ./action
+      - uses: ./action/action/email
+        with:
+          username: ${{secrets.EMAIL_USERNAME}}
+          password: ${{secrets.EMAIL_PASSWORD}}
