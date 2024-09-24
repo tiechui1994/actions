@@ -2,7 +2,7 @@ module goland
 
 go 1.17
 
-require github.com/tiechui1994/tool v1.5.11-0.20240715081728-076c30bd8449
+require github.com/tiechui1994/tool v1.5.12
 
 require (
 	cloud.google.com/go/compute v1.19.1 // indirect
