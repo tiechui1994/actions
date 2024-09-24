@@ -10,16 +10,23 @@ on:
         default: ''
 
 jobs:
-  fetch:
+  free:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         index: [0, 1, 2]
 
     steps:
-      - uses: tiechui1994/free@master
+      - uses: actions/checkout@v3
         with:
-          action: 'free'
+          ref: master
+          repository: tiechui1994/free
+          token: ${{secrets.GIT_TOKEN}}
+          path: ./action
+      - uses: ./action/action/free
+        with:
+          config: ${{secrets.CONFIG}}
+          endpoint: ${{secrets.ENDPOINT}}
           date: ${{github.event.inputs.tody}}
           count: 3
           index: ${{matrix.index}}
