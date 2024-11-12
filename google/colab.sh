@@ -71,7 +71,7 @@ EOF
 colab_tcpover_service() {
     colab_init_go
 
-    go install github.com/tiechui1994/tool/cmd/tcpover@v1.5.12
+    go install github.com/tiechui1994/tcpover/cmd/tcpover@latest
     mv "$(go env GOPATH)/bin/tcpover" /usr/bin/tcpover
 
     read -r -d '' conf <<-'EOF'
@@ -170,13 +170,13 @@ EOF
     frpc=${frpc//'@NAME'/'tcpover'}
     frpc=${frpc//'@DESC'/'tcpover'}
     frpc=${frpc//'@DAEMON'/'/usr/bin/tcpover'}
-    frpc=${frpc//'@ARGS'/'-a -e=wss://tcpover.pages.dev/api/ssh -d=google'}
+    frpc=${frpc//'@ARGS'/'-a -e=wss://tcpover.pages.dev/api/ssh -name=google'}
     printf "%s" "$frpc" > /etc/init.d/tcpover
     chmod a+x /etc/init.d/tcpover
 }
 
 colab_tcpover_upload() {
-    value="ssh -o 'ProxyCommand tcpover -c -e=wss://tcpover.pages.dev/api/ssh -d=google' -o 'Compression yes' root@127.0.0.1"
+    value="ssh -o 'ProxyCommand tcpover -c -e=wss://tcpover.pages.dev/api/ssh -remoteName=google -remoteAddr 127.0.0.1:22' -o 'Compression yes' root@127.0.0.1"
     echo "ssh: [ $value ]"
 }
 
