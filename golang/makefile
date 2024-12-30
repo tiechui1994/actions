@@ -13,8 +13,11 @@ video:clean verify
 youtube:clean verify
 	go build $(LDFLAGS) -o youtube youtube.go $(UTIL)
 
+tool:clean verify
+	go build $(LDFLAGS) -o tool tool.go $(UTIL)
+
 verify:
 	go mod tidy -compat=1.17
 
 clean:
-	rm -rf upload workflow sign email video youtube free
+	rm -rf upload workflow sign email video youtube free tool
