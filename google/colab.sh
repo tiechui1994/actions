@@ -15,7 +15,7 @@ colab_init_node() {
 
 colab_init_go() {
     if [[ ! -d "/usr/local/go" ]]; then
-        wget --quiet https://go.dev/dl/go1.17.10.linux-amd64.tar.gz -O go.tar.gz
+        wget --quiet https://go.dev/dl/go1.23.1.linux-amd64.tar.gz -O go.tar.gz
         rm -rf go && mkdir go
         tar xf go.tar.gz -C go --strip-components 1 && \
         mv go /usr/local && rm -rf go.tar.gz
@@ -170,13 +170,13 @@ EOF
     frpc=${frpc//'@NAME'/'tcpover'}
     frpc=${frpc//'@DESC'/'tcpover'}
     frpc=${frpc//'@DAEMON'/'/usr/bin/tcpover'}
-    frpc=${frpc//'@ARGS'/'-a -e=wss://tcpover.pages.dev/api/ssh -name=google'}
+    frpc=${frpc//'@ARGS'/'-a -e=wss://tcpover.pages.dev/tcpdump/api/ssh -name=colab'}
     printf "%s" "$frpc" > /etc/init.d/tcpover
     chmod a+x /etc/init.d/tcpover
 }
 
 colab_tcpover_upload() {
-    value="ssh -o 'ProxyCommand tcpover -c -e=wss://tcpover.tcpover.link/api/ssh -remoteName=google -addr 127.0.0.1:22' -o 'Compression yes' root@127.0.0.1"
+    value="ssh -o 'ProxyCommand tcpover -c -e=wss://tcpover.tcpover.link/tcpdump/api/ssh -remoteName=colab -addr 127.0.0.1:22' -o 'Compression yes' root@127.0.0.1"
     echo "ssh: [ $value ]"
 }
 
