@@ -5,9 +5,9 @@ INSTALL=$2
 INIT=$3
 NAME=$4
 
-declare -r version=${VERSION:=1.18.0}
+declare -r version=${VERSION:=18.10.0}
 declare -r workdir=$(pwd)
-declare -r installdir=${INSTALL:=/opt/local/nginx}
+declare -r installdir=${INSTALL:=/opt/local/node}
 
 declare -r success=0
 declare -r failure=1
@@ -152,12 +152,16 @@ build() {
         return ${failure}
     fi
 
+    find . | grep node
+
     url="https://nodejs.org/dist/v$version/node-v$version-linux-x64.tar.gz"
     download "node-v$version-linux-x64.tar.gz" "$url" curl
 
     tar xf "node-v$version-linux-x64.tar.gz"
-    mv out/Releases
+    mv out "node-v$version-linux-x64"
     tar cfz "node-v$version-linux-x64" "node-v$version-linux-x64.tar.gz"
+
+    mv node-v$version-linux-x64.tar.gz" ${workdir}/$NAME
 }
 
 
