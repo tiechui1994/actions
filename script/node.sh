@@ -5,9 +5,9 @@ INSTALL=$2
 INIT=$3
 NAME=$4
 
-declare -r version=${VERSION:=1.18.0}
+declare -r version=${VERSION:=18.10.0}
 declare -r workdir=$(pwd)
-declare -r installdir=${INSTALL:=/opt/local/nginx}
+declare -r installdir=${INSTALL:=/opt/local/node}
 
 declare -r success=0
 declare -r failure=1
@@ -126,10 +126,9 @@ download() {
 
 download_node() {
     sudo apt-get update && \
-    sudo apt-get install build-essential \
-         openssl libssl-dev -y
+    sudo apt-get install build-essential openssl libssl-dev python3 -y
 
-    url="wget https://nodejs.org/dist/v$version/node-v$version.tar.gz"
+    url="https://nodejs.org/dist/v$version/node-v$version.tar.gz"
     cd ${workdir} && download "node.tar.gz" "$url" curl 1
 }
 
@@ -152,12 +151,16 @@ build() {
         return ${failure}
     fi
 
+    find . | grep node
+
     url="https://nodejs.org/dist/v$version/node-v$version-linux-x64.tar.gz"
     download "node-v$version-linux-x64.tar.gz" "$url" curl
 
     tar xf "node-v$version-linux-x64.tar.gz"
-    mv out/Releases
+    mv out "node-v$version-linux-x64"
     tar cfz "node-v$version-linux-x64" "node-v$version-linux-x64.tar.gz"
+
+    mv "node-v$version-linux-x64.tar.gz" ${workdir}/$NAME
 }
 
 
@@ -171,7 +174,7 @@ do_install(){
         init
      fi
 
-     download_nginx && download_openssl && download_zlib && download_pcre && download_proxy_connect
+     download_node
      if [[ $? -ne ${success} ]]; then
         exit $?
      fi
