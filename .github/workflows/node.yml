@@ -65,7 +65,7 @@ jobs:
           bash /app/script/node.sh \
               ${{github.event.inputs.version}} \
               ${{github.event.inputs.install}} \
-              1
+              1 \
               node-v${{github.event.inputs.version}}-${{matrix.os}}-linux-x64.tar.gz
       shell: bash
 
@@ -80,8 +80,6 @@ jobs:
   release:
     needs: [build_amd64]
     runs-on: ubuntu-latest
-    outputs:
-      count: ${{ steps.files.outputs.count }}
 
     steps:
     - name: Checkout
@@ -103,19 +101,12 @@ jobs:
         path: ./node-v${{github.event.inputs.version}}-22.04-linux-x64.tar.gz
         key: ${{github.sha}}-22.04-amd64
 
-    - name: Files
-      id: files
-      run: |
-        echo ${PWD}
-        echo "count=$(ls|grep node-v${{github.event.inputs.version}}|wc -l)" >>  $GITHUB_OUTPUT
-        ls -Al .
-
     - name: Release
-      if: ${{ success() && steps.files.outputs.count == 3 && github.event.inputs.temporary == 'false' }}
+      if: ${{ success() && github.event.inputs.temporary == 'false' }}
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GIT_TOKEN }}
-        file: ${{github.workspace}}/node-v${{github.event.inputs.version}}*
+        file: ${{github.workspace}}/node-v${{github.event.inputs.version}}-*
         asset_name: node_${{github.event.inputs.version}}
         tag: node_${{github.event.inputs.version}}
         overwrite: true
