@@ -175,7 +175,7 @@ jobs:
 
     - name: Upload amd64 temporary
       if: ${{ github.event.inputs.temporary != 'false' }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-pages-artifact@v3
       with:
         name: nginx_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64
         path: ${{github.workspace}}/nginx_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64.deb

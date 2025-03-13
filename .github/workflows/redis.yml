@@ -179,7 +179,7 @@ jobs:
 
       - name: Upload arm64 temporary
         if: ${{ github.event.inputs.temporary != 'false' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
           name: redis_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_arm64
           path: ${{github.workspace}}/redis_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_arm64.deb

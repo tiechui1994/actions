@@ -33,10 +33,8 @@ log_info() {
 }
 
 init() {
-    apt-get update
-    export DEBIAN_FRONTEND=noninteractive
-    export TZ=Asia/Shanghai
-    apt-get install -y build-essential g++ sudo curl make gcc file tar
+    sudo apt-get update && \
+    sudo apt-get install -y build-essential g++ sudo curl make gcc file tar
 }
 
 download() {

@@ -169,7 +169,7 @@ jobs:
 
     - name: Upload amd64 temporary
       if: ${{ github.event.inputs.temporary != 'false' }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-pages-artifact@v3
       with:
         name: simple-obfs_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64
         path: ${{github.workspace}}/simple-obfs_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64.zip

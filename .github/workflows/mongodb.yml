@@ -124,7 +124,7 @@ jobs:
 
     - name: Upload temporary
       if: ${{ github.event.inputs.temporary != 'false' }}
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-pages-artifact@v3
       with:
         name: mongodb_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64.deb
         path: ${{github.workspace}}/mongodb_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64.deb
