@@ -68,7 +68,7 @@ download() {
                 rm -rf ${filename} && mkdir ${filename}
                 tar -xf ${name} -C ${filename} --strip-components 1
                 if [[ $? -ne 0 ]]; then
-                    log_error "$name decopress failed"
+                    log_error "decompress $name to $filename failed"
                     rm -rf ${filename} && rm -rf ${name}
                     return ${failure}
                 fi
@@ -85,7 +85,7 @@ download() {
 
     # download
     log_info "$name url: $url"
-    log_info "begin to donwload $name ...."
+    log_info "begin to download $name ...."
     rm -rf ${name}
 
     command -v "$cmd" > /dev/null 2>&1
@@ -99,21 +99,21 @@ download() {
         rm -rf ${name}
         return ${failure}
     fi
-
     log_info "success to download $name"
 
-    # uncompress file
+    # decompress file
+    log_info "begin to decompress $name to $filename ...."
     if [[ ${decompress} && ${extends[$extend]} ]]; then
         if [[ $(file -i "$name") =~ ${extends[$extend]} ]]; then
             rm -rf ${filename} && mkdir ${filename}
             tar -xf ${name} -C ${filename} --strip-components 1
             if [[ $? -ne 0 ]]; then
-                log_error "$name decopress failed"
+                log_error "decompress $name to $filename failed"
                 rm -rf ${filename} && rm -rf ${name}
                 return ${failure}
              fi
 
-            log_info "success to decompress $name"
+            log_info "success decompress $name to $filename"
             return ${success} # success
         fi
 
@@ -140,11 +140,8 @@ build() {
     --prefix=${installdir}
 
     cpu=$(cat /proc/cpuinfo | grep 'processor' | wc -l)
-    openssl="$(openssl version |cut -d " " -f2)"
-    if [[ ${openssl} > "1.1.0" ]]; then
-        cpu=1
-    fi
 
+    log_info "exec command 'make -j $cpu' ...."
     make -j ${cpu}
     if [[ $? -ne 0 ]]; then
         log_error "build fail"
@@ -153,14 +150,14 @@ build() {
 
     find . | grep node
 
-    url="https://nodejs.org/dist/v$version/node-v$version-linux-x64.tar.gz"
-    download "node-v$version-linux-x64.tar.gz" "$url" curl
+    name="node-v$version-linux-x64.tar.gz"
+    url="https://nodejs.org/dist/v$version/$name"
+    download ${name} ${url} curl 1
 
-    tar xf "node-v$version-linux-x64.tar.gz"
-    mv out "node-v$version-linux-x64"
-    tar cfz "node-v$version-linux-x64" "node-v$version-linux-x64.tar.gz"
+    mv ./out/Release/node "node-v$version-linux-x64/bin/node"
+    rm -rf ${name} && tar cfz ${name} "node-v$version-linux-x64"
 
-    mv "node-v$version-linux-x64.tar.gz" ${workdir}/$NAME
+    mv ${name} ${workdir}/$NAME
 }
 
 

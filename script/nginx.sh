@@ -68,7 +68,7 @@ download() {
                 rm -rf ${filename} && mkdir ${filename}
                 tar -xf ${name} -C ${filename} --strip-components 1
                 if [[ $? -ne 0 ]]; then
-                    log_error "$name decopress failed"
+                    log_error "decompress $name to $filename failed"
                     rm -rf ${filename} && rm -rf ${name}
                     return ${failure}
                 fi
@@ -85,7 +85,7 @@ download() {
 
     # download
     log_info "$name url: $url"
-    log_info "begin to donwload $name ...."
+    log_info "begin to download $name ...."
     rm -rf ${name}
 
     command -v "$cmd" > /dev/null 2>&1
@@ -99,21 +99,21 @@ download() {
         rm -rf ${name}
         return ${failure}
     fi
-
     log_info "success to download $name"
 
-    # uncompress file
+    # decompress file
+    log_info "begin to decompress $name to $filename ...."
     if [[ ${decompress} && ${extends[$extend]} ]]; then
         if [[ $(file -i "$name") =~ ${extends[$extend]} ]]; then
             rm -rf ${filename} && mkdir ${filename}
             tar -xf ${name} -C ${filename} --strip-components 1
             if [[ $? -ne 0 ]]; then
-                log_error "$name decopress failed"
+                log_error "decompress $name to $filename failed"
                 rm -rf ${filename} && rm -rf ${name}
                 return ${failure}
              fi
 
-            log_info "success to decompress $name"
+            log_info "success decompress $name to $filename"
             return ${success} # success
         fi
 
