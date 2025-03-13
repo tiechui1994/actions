@@ -33,14 +33,10 @@ log_info() {
 }
 
 init() {
-    if [[ $VERSION =~ ^20|22|24|26.* ]]; then
-      grep --silent 'DISTRIB_RELEASE=18.04' /etc/lsb-release && touch ${workdir}/${NAME} && exit 0
-    fi
-
     apt-get update
     export DEBIAN_FRONTEND=noninteractive
     export TZ=Asia/Shanghai
-    apt-get install -y build-essential g++ sudo curl make gcc file tar patch openssl tzdata
+    apt-get install -y build-essential g++ sudo curl make gcc file tar
 }
 
 download() {
@@ -127,9 +123,6 @@ download() {
 }
 
 download_node() {
-    sudo apt-get update && \
-    sudo apt-get install build-essential openssl libssl-dev python3 -y
-
     url="https://nodejs.org/dist/v$version/node-v$version.tar.gz"
     cd ${workdir} && download "node.tar.gz" "$url" curl "node"
 }
@@ -138,11 +131,13 @@ download_node() {
 build() {
     cd ${workdir}/node
 
-    log_info "exec command './configure --prefix=$installdir' ...."
-    ./configure --prefix=${installdir}
+    # update configure.py
+    sed -i "s/'-static'/'-static', '-Wl,--whole-archive', '-lpthread', '-Wl,--no-whole-archive'/" configure.py
+
+    log_info "exec command  './configure --fully-static --enable-static --prefix=$installdir' ...."
+    ./configure --fully-static --enable-static  --prefix=${installdir}
 
     cpu=$(cat /proc/cpuinfo | grep 'processor' | wc -l)
-
     log_info "exec command 'make -j $cpu' ...."
     make -j ${cpu}
     if [[ $? -ne 0 ]]; then
