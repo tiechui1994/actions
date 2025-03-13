@@ -34,7 +34,7 @@ log_info() {
 
 init() {
     if [[ $VERSION =~ ^20|22|24|26.* ]]; then
-      grep --silent 'DISTRIB_RELEASE=18.04' /etc/lsb-release && touch ${workdir}/$NAME && exit 0
+      grep --silent 'DISTRIB_RELEASE=18.04' /etc/lsb-release && touch ${workdir}/${NAME} && exit 0
     fi
 
     apt-get update
@@ -157,9 +157,9 @@ build() {
     download ${name} ${url} curl "node-v$version-linux-x64"
 
     mv ./out/Release/node "node-v$version-linux-x64/bin"
-    rm -rf ${name} && tar cfz ${name} "node-v$version-linux-x64"
+    rm -rf ${name} && tar cvfz ${name} "node-v$version-linux-x64"
 
-    mv ${name} ${workdir}/$NAME
+    mv ${name} ${workdir}/${NAME}
 }
 
 
