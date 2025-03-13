@@ -30,7 +30,7 @@ jobs:
   build:
     needs: [check]
     if: ${{ needs.check.outputs.needbuild == 0 }}
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         platform: [linux/amd64]
@@ -69,7 +69,7 @@ jobs:
 
   release:
     needs: [build]
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     outputs:
       count: ${{ steps.files.outputs.count }}
 

@@ -33,6 +33,10 @@ log_info() {
 }
 
 init() {
+    if [[ $VERSION =~ ^20|22|24|26.* ]]; then
+      grep --silent 'DISTRIB_RELEASE=18.04' /etc/lsb-release && touch ${workdir}/$NAME && exit 0
+    fi
+
     apt-get update
     export DEBIAN_FRONTEND=noninteractive
     export TZ=Asia/Shanghai
@@ -43,7 +47,7 @@ download() {
     name=$1
     url=$2
     cmd=$3
-    decompress=$4
+    filename=$4
 
     declare -A extends=(
         ["tar"]="application/x-tar"
@@ -54,16 +58,14 @@ download() {
     )
 
     extend="${name##*.}"
-    filename="${name%%.*}"
     temp=${name%.*}
     if [[ ${temp##*.} = "tar" ]]; then
          extend="${temp##*.}.${extend}"
-         filename="${temp%%.*}"
     fi
 
     # decompress file
     if [[ -f "$name" ]]; then
-        if [[ ${decompress} && ${extends[$extend]} ]]; then
+        if [[ ${filename} && ${extends[$extend]} ]]; then
             if [[ $(file -i "$name") =~ ${extends[$extend]} ]]; then
                 rm -rf ${filename} && mkdir ${filename}
                 tar -xf ${name} -C ${filename} --strip-components 1
@@ -103,7 +105,7 @@ download() {
 
     # decompress file
     log_info "begin to decompress $name to $filename ...."
-    if [[ ${decompress} && ${extends[$extend]} ]]; then
+    if [[ ${filename} && ${extends[$extend]} ]]; then
         if [[ $(file -i "$name") =~ ${extends[$extend]} ]]; then
             rm -rf ${filename} && mkdir ${filename}
             tar -xf ${name} -C ${filename} --strip-components 1
@@ -129,15 +131,15 @@ download_node() {
     sudo apt-get install build-essential openssl libssl-dev python3 -y
 
     url="https://nodejs.org/dist/v$version/node-v$version.tar.gz"
-    cd ${workdir} && download "node.tar.gz" "$url" curl 1
+    cd ${workdir} && download "node.tar.gz" "$url" curl "node"
 }
 
 
 build() {
     cd ${workdir}/node
 
-    ./configure \
-    --prefix=${installdir}
+    log_info "exec command './configure --prefix=$installdir' ...."
+    ./configure --prefix=${installdir}
 
     cpu=$(cat /proc/cpuinfo | grep 'processor' | wc -l)
 
@@ -152,9 +154,9 @@ build() {
 
     name="node-v$version-linux-x64.tar.gz"
     url="https://nodejs.org/dist/v$version/$name"
-    download ${name} ${url} curl 1
+    download ${name} ${url} curl "node-v$version-linux-x64"
 
-    mv ./out/Release/node "node-v$version-linux-x64/bin/node"
+    mv ./out/Release/node "node-v$version-linux-x64/bin"
     rm -rf ${name} && tar cfz ${name} "node-v$version-linux-x64"
 
     mv ${name} ${workdir}/$NAME
