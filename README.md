@@ -2,9 +2,7 @@
 
 This project mainly provides compilation packages of some commonly used linux software on Ubuntu.
 
-Compiled software:
-
-- nginx
+## Cache and DataBase
 
 - redis
 
@@ -12,19 +10,32 @@ Compiled software:
 
 - pgsql
 
+- mongodb 
+
 - mqtt(mosquitto)
+
+
+## Proxy
+
+- bind 
+
+- nginx
+
+## VPN
 
 - strongswan(IKEv2 VPN)
 
 - openvpn(OpenVPN)
 
-Compiled tools:
+- obfs
+
+## Language
+
+- node
+
+## Tools
 
 - dlv
 
-General tools:
-
-- file proxy download
-
-- vedio download(m38u)
+- video download(m38u)
 

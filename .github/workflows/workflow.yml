@@ -2,8 +2,8 @@ name: workflow
 on:
   push:
     branches: master
-  schedule:
-  - cron: '0 22 * * *'
+  workflow_dispatch:
+
 
 jobs:
   workflow:
@@ -28,6 +28,7 @@ jobs:
         make -C golang workflow
         golang/workflow -repo tiechui1994/serverless -token ${{secrets.GIT_TOKEN}}
         golang/workflow -repo tiechui1994/actions -token ${{secrets.GIT_TOKEN}}
+        golang/workflow -repo tiechui1994/tzdb -token ${{secrets.GIT_TOKEN}}
         golang/workflow -repo tiechui1994/tzdb -workflow tzdb -branch main -token ${{secrets.GIT_TOKEN}}
       shell: bash
 
