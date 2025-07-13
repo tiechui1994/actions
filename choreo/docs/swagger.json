@@ -1,0 +1,200 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "stream service",
+        "title": "stream",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/v1/api",
+    "paths": {
+        "/": {
+            "get": {
+                "tags": [
+                    "streams"
+                ],
+                "summary": "Request cmd path",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "cmd work path",
+                        "name": "path",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "cmd execute",
+                        "name": "cmd",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/close": {
+            "get": {
+                "tags": [
+                    "streams"
+                ],
+                "summary": "Close stream push",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "push rtmp url",
+                        "name": "push",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/log": {
+            "get": {
+                "tags": [
+                    "streams"
+                ],
+                "summary": "Print logger file",
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/push": {
+            "get": {
+                "tags": [
+                    "streams"
+                ],
+                "summary": "Start push stream",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "force to push",
+                        "name": "force",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "push rtmp url",
+                        "name": "push",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "server error request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/run": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "streams"
+                ],
+                "summary": "Start run time",
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/upstart": {
+            "get": {
+                "tags": [
+                    "streams"
+                ],
+                "summary": "Upstart Service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "https file download url",
+                        "name": "url",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid downalod url",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "file operation failure",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "main.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "error message"
+                }
+            }
+        }
+    }
+}
