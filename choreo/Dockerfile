@@ -1,4 +1,4 @@
-FROM tiechui1994/stream:latest
+FROM tiechui1994/functionless:latest
 
 # Create a new user with UID 10014
 RUN addgroup -g 10014 choreo && \
@@ -8,5 +8,5 @@ USER 10014
 
 ENV PORT=8080
 EXPOSE 8080
-ENTRYPOINT ["/app/stream"]
-CMD ["/app/stream"]
+ENTRYPOINT ["/app/serverless"]
+CMD ["/app/serverless"]

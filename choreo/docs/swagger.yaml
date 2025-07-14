@@ -1,4 +1,4 @@
-basePath: /v1/api
+basePath: /
 definitions:
   main.ErrorResponse:
     properties:
@@ -9,72 +9,41 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  description: stream service
-  title: stream
-  version: "1.0"
+  description: serveless service
+  title: serveless
+  version: v
 paths:
   /:
     get:
-      parameters:
-      - description: cmd work path
-        in: query
-        name: path
-        required: true
-        type: string
-      - description: cmd execute
-        in: query
-        name: cmd
-        type: string
-      responses:
-        "200":
-          description: successful operation
-          schema:
-            type: string
-      summary: Request cmd path
-      tags:
-      - streams
-  /close:
-    get:
-      parameters:
-      - description: push rtmp url
-        in: header
-        name: push
-        type: string
       responses:
         "200":
           description: successful operation
           schema:
             type: string
         "400":
-          description: bad request
+          description: error bad request
+          schema:
+            type: string
+        "500":
+          description: server error request
           schema:
             $ref: '#/definitions/main.ErrorResponse'
-      summary: Close stream push
+      summary: Start push stream
       tags:
-      - streams
-  /log:
-    get:
+      - serverless
+  /api/{id}:
+    delete:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
       responses:
         "200":
           description: successful operation
           schema:
             type: string
-      summary: Print logger file
-      tags:
-      - streams
-  /push:
-    get:
-      parameters:
-      - description: force to push
-        in: header
-        name: force
-        type: string
-      - description: push rtmp url
-        in: header
-        name: push
-        required: true
-        type: string
-      responses:
         "202":
           description: successful operation
           schema:
@@ -89,41 +58,113 @@ paths:
             $ref: '#/definitions/main.ErrorResponse'
       summary: Start push stream
       tags:
-      - streams
-  /run:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: successful operation
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Start run time
-      tags:
-      - streams
-  /upstart:
+      - serverless
     get:
       parameters:
-      - description: https file download url
-        in: header
-        name: url
+      - description: execute
+        in: path
+        name: id
+        required: true
         type: string
       responses:
         "200":
           description: successful operation
           schema:
             type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
         "400":
-          description: invalid downalod url
+          description: bad request
           schema:
             $ref: '#/definitions/main.ErrorResponse'
         "500":
-          description: file operation failure
+          description: server error request
           schema:
             $ref: '#/definitions/main.ErrorResponse'
-      summary: Upstart Service
+      summary: Start push stream
       tags:
-      - streams
+      - serverless
+    options:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Start push stream
+      tags:
+      - serverless
+    post:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Start push stream
+      tags:
+      - serverless
+    put:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Start push stream
+      tags:
+      - serverless
 swagger: "2.0"

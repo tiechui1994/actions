@@ -1,59 +1,20 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "stream service",
-        "title": "stream",
+        "description": "serveless service",
+        "title": "serveless",
         "contact": {},
-        "version": "1.0"
+        "version": "v"
     },
     "host": "localhost:8080",
-    "basePath": "/v1/api",
+    "basePath": "/",
     "paths": {
         "/": {
             "get": {
                 "tags": [
-                    "streams"
+                    "serverless"
                 ],
-                "summary": "Request cmd path",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "cmd work path",
-                        "name": "path",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "cmd execute",
-                        "name": "cmd",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "successful operation",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/close": {
-            "get": {
-                "tags": [
-                    "streams"
-                ],
-                "summary": "Close stream push",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "push rtmp url",
-                        "name": "push",
-                        "in": "header"
-                    }
-                ],
+                "summary": "Start push stream",
                 "responses": {
                     "200": {
                         "description": "successful operation",
@@ -62,7 +23,13 @@
                         }
                     },
                     "400": {
-                        "description": "bad request",
+                        "description": "error bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "server error request",
                         "schema": {
                             "$ref": "#/definitions/main.ErrorResponse"
                         }
@@ -70,44 +37,28 @@
                 }
             }
         },
-        "/log": {
+        "/api/{id}": {
             "get": {
                 "tags": [
-                    "streams"
+                    "serverless"
                 ],
-                "summary": "Print logger file",
+                "summary": "Start push stream",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "successful operation",
                         "schema": {
                             "type": "string"
                         }
-                    }
-                }
-            }
-        },
-        "/push": {
-            "get": {
-                "tags": [
-                    "streams"
-                ],
-                "summary": "Start push stream",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "force to push",
-                        "name": "force",
-                        "in": "header"
                     },
-                    {
-                        "type": "string",
-                        "description": "push rtmp url",
-                        "name": "push",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
                     "202": {
                         "description": "successful operation",
                         "schema": {
@@ -127,40 +78,19 @@
                         }
                     }
                 }
-            }
-        },
-        "/run": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
+            },
+            "put": {
                 "tags": [
-                    "streams"
+                    "serverless"
                 ],
-                "summary": "Start run time",
-                "responses": {
-                    "200": {
-                        "description": "successful operation",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/upstart": {
-            "get": {
-                "tags": [
-                    "streams"
-                ],
-                "summary": "Upstart Service",
+                "summary": "Start push stream",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "https file download url",
-                        "name": "url",
-                        "in": "header"
+                        "description": "execute",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -170,14 +100,143 @@
                             "type": "string"
                         }
                     },
+                    "202": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "400": {
-                        "description": "invalid downalod url",
+                        "description": "bad request",
                         "schema": {
                             "$ref": "#/definitions/main.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "file operation failure",
+                        "description": "server error request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "serverless"
+                ],
+                "summary": "Start push stream",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "202": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "server error request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "serverless"
+                ],
+                "summary": "Start push stream",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "202": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "server error request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "options": {
+                "tags": [
+                    "serverless"
+                ],
+                "summary": "Start push stream",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "202": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "server error request",
                         "schema": {
                             "$ref": "#/definitions/main.ErrorResponse"
                         }
