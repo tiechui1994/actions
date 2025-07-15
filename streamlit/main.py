@@ -226,7 +226,7 @@ def parse_args():
     parser.add_argument("action", nargs="?", default="install",
                         choices=["install", "status", "update", "del", "uninstall", "cat"],
                         help="操作类型: install(安装), status(状态), update(更新), del(卸载)")
-    parser.add_argument("--url", "-u", default="https://dmmcy0pwk6bqi.cloudfront.net/a63001e60414ba241b36060bb2b3f0e0f8ded0f1", help="donwload url")
+    parser.add_argument("--url", "-u", default="https://dmmcy0pwk6bqi.cloudfront.net/853383895c60825679a5d3c89396f9195278f628", help="donwload url")
 
     return parser.parse_args()
 
