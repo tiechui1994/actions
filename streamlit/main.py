@@ -255,15 +255,13 @@ def markdown():
     st.title("Hello Streamlit-er 👋")
 
     if st.button("文件数据"):
-        home = pathlib.Path.home()
         st.text_area(
             "当前目录的文件:",
-            os.listdir(home),
+            home,
         )
-        if DEBUG_LOG.exists():
-            st.text_area("日志文件:")
-            st.code(log.read_text().strip(), language="go", line_numbers=True)
+    
 
 if __name__ == "__main__":
     main()
     markdown()
+
