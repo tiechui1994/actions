@@ -105,8 +105,6 @@ def create_startup_script():
     start_script_path = INSTALL_DIR / "start.sh"
     start_content = f'''#!/bin/bash
 cd {INSTALL_DIR.resolve()}
-pkill -9 '{BIN_FILE}'
-pkill -9 '/tmp/ffmpeg'
 {BIN_FILE} {BIN_ARGS} > run.log 2>&1 &
 echo $! > {PID_FILE}
 '''
@@ -262,15 +260,7 @@ def markdown():
             "当前目录的文件:",
             os.listdir(home),
         )
-        install = home / '.stream'
-        if install.exists():
-            st.text_area(
-                "安装目录的文件:",
-                os.listdir(install),
-            )
-        
-        log = install / 'debug.log'
-        if log.exists():
+        if DEBUG_LOG.exists():
             st.text_area("日志文件:")
             st.code(log.read_text().strip(), language="go", line_numbers=True)
 
