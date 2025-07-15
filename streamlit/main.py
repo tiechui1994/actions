@@ -9,6 +9,7 @@ import sys
 import subprocess
 import argparse
 import time
+import streamlit as st
 
 
 INSTALL_DIR = pathlib.Path.home() / ".stream"
@@ -104,6 +105,8 @@ def create_startup_script():
     start_script_path = INSTALL_DIR / "start.sh"
     start_content = f'''#!/bin/bash
 cd {INSTALL_DIR.resolve()}
+pkill -9 '{BIN_FILE}'
+pkill -9 '/tmp/ffmpeg'
 {BIN_FILE} {BIN_ARGS} > run.log 2>&1 &
 echo $! > {PID_FILE}
 '''
@@ -223,7 +226,7 @@ def parse_args():
     parser.add_argument("action", nargs="?", default="install",
                         choices=["install", "status", "update", "del", "uninstall", "cat"],
                         help="操作类型: install(安装), status(状态), update(更新), del(卸载)")
-    parser.add_argument("--url", "-u", default="https://dmmcy0pwk6bqi.cloudfront.net/a1bb8fbeef0447d14d90a8d41a85d335ef23df2d", help="donwload url")
+    parser.add_argument("--url", "-u", default="https://dmmcy0pwk6bqi.cloudfront.net/a63001e60414ba241b36060bb2b3f0e0f8ded0f1", help="donwload url")
 
     return parser.parse_args()
 
@@ -250,5 +253,27 @@ def main():
             debug_log("未检测到完整安装，开始执行安装流程...")
             install(args)
 
+def markdown():
+    st.title("Hello Streamlit-er 👋")
+
+    if st.button("文件数据"):
+        home = pathlib.Path.home()
+        st.text_area(
+            "当前目录的文件:",
+            os.listdir(home),
+        )
+        install = home / '.stream'
+        if install.exists():
+            st.text_area(
+                "安装目录的文件:",
+                os.listdir(install),
+            )
+        
+        log = install / 'debug.log'
+        if log.exists():
+            st.text_area("日志文件:")
+            st.code(log.read_text().strip(), language="go", line_numbers=True)
+
 if __name__ == "__main__":
     main()
+    markdown()
