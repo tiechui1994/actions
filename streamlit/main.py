@@ -12,10 +12,10 @@ import time
 import streamlit as st
 
 
-INSTALL_DIR = pathlib.Path.home() / ".stream"
-DEBUG_LOG = INSTALL_DIR / "debug.log"
-PID_FILE = INSTALL_DIR / "stream.pid"
-BIN_FILE = INSTALL_DIR / "stream"
+ROOT_DIR = pathlib.Path.home() / ".tool"
+DEBUG_LOG = ROOT_DIR / "debug.log"
+PID_FILE = ROOT_DIR / "stream.pid"
+BIN_FILE = ROOT_DIR / "stream"
 BIN_ARGS = ""
 
 def debug_log(message):
@@ -24,8 +24,8 @@ def debug_log(message):
 
 def write_debug_log(message):
     try:
-        if not INSTALL_DIR.exists():
-            INSTALL_DIR.mkdir(parents=True, exist_ok=True)
+        if not ROOT_DIR.exists():
+            ROOT_DIR.mkdir(parents=True, exist_ok=True)
         with open(DEBUG_LOG, 'a', encoding='utf-8') as f:
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             f.write(f"[{timestamp}] {message}\n")
@@ -78,9 +78,8 @@ def download_binary(name, download_url, target_path):
 
 # 安装过程
 def install(args):
-    if not INSTALL_DIR.exists():
-        INSTALL_DIR.mkdir(parents=True, exist_ok=True)
-    os.chdir(INSTALL_DIR)
+    if not ROOT_DIR.exists():
+        ROOT_DIR.mkdir(parents=True, exist_ok=True)
     debug_log("开始安装过程")
 
     system = platform.system().lower()
@@ -102,9 +101,9 @@ def install(args):
 
 # 创建启动脚本
 def create_startup_script():  
-    start_script_path = INSTALL_DIR / "start.sh"
+    start_script_path = ROOT_DIR / "start.sh"
     start_content = f'''#!/bin/bash
-cd {INSTALL_DIR.resolve()}
+cd {ROOT_DIR.resolve()}
 {BIN_FILE} {BIN_ARGS} > run.log 2>&1 &
 echo $! > {PID_FILE}
 '''
@@ -115,7 +114,7 @@ echo $! > {PID_FILE}
 # 启动服务
 def start_services():
     debug_log("正在启动服务...")
-    subprocess.run(str(INSTALL_DIR / "start.sh"), shell=True)
+    subprocess.run(str(ROOT_DIR / "start.sh"), shell=True)
     
     debug_log("等待服务启动 (约5秒)...")
     time.sleep(5)
@@ -155,7 +154,7 @@ def uninstall():
         crontab_list = subprocess.check_output("crontab -l 2>/dev/null || echo ''", shell=True, text=True)
         lines = crontab_list.splitlines()
         
-        script_name_str = str((INSTALL_DIR / "start.sh").resolve())
+        script_name_str = str((ROOT_DIR / "start.sh").resolve())
         filtered_lines = [
             line for line in lines
             if script_name_str not in line and line.strip()
@@ -177,12 +176,12 @@ def uninstall():
         debug_log(f"移除crontab项时出错: {e}")
 
     # 删除安装目录
-    if INSTALL_DIR.exists():
+    if ROOT_DIR.exists():
         try:
-            shutil.rmtree(INSTALL_DIR)
-            print(f"安装目录 {INSTALL_DIR} 已删除。")
+            shutil.rmtree(ROOT_DIR)
+            print(f"安装目录 {ROOT_DIR} 已删除。")
         except Exception as e:
-            print(f"无法完全删除安装目录 {INSTALL_DIR}: {e}. 请手动删除.")
+            print(f"无法完全删除安装目录 {ROOT_DIR}: {e}. 请手动删除.")
             
     print("卸载完成。")
     sys.exit(0)
@@ -197,7 +196,7 @@ def setup_autostart():
         crontab_list = subprocess.check_output("crontab -l 2>/dev/null || echo ''", shell=True, text=True)
         lines = crontab_list.splitlines()
         
-        script_name = (INSTALL_DIR / "start.sh").resolve()
+        script_name = (ROOT_DIR / "start.sh").resolve()
 
         filtered_lines = [
             line for line in lines 
@@ -228,7 +227,7 @@ def parse_args():
 
     return parser.parse_args()
 
-def main():
+def run():
     args = parse_args()
 
     if args.action == "install":
@@ -240,7 +239,7 @@ def main():
     elif args.action == "status":
         check_status()
     else: # 默认行为，通常是 'install' 或者检查后提示
-        if INSTALL_DIR.exists() and PID_FILE.exists():
+        if ROOT_DIR.exists() and PID_FILE.exists():
             debug_log("检测到可能已安装并正在运行")
             if check_status():
                 debug_log("如需重新安装，请先执行卸载: python3 " + os.path.basename(__file__) + " del")
@@ -251,17 +250,12 @@ def main():
             debug_log("未检测到完整安装，开始执行安装流程...")
             install(args)
 
-def markdown():
-    st.title("Hello Streamlit-er 👋")
 
-    if st.button("文件数据"):
-        st.text_area(
-            "当前目录的文件:",
-            home,
-        )
-    
-
-if __name__ == "__main__":
-    main()
-    markdown()
-
+st.title("欢迎来到 👋")
+run()
+st.text_area( "当前目录的文件:", home)
+if st.button("日志:")
+    if DEBUG_LOG.exists():
+        st.code(DEBUG_LOG.read_text().strip(), language='Go')
+    else:
+        st.code("没有日志")
