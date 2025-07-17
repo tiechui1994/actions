@@ -252,10 +252,14 @@ def run():
 
 
 st.title("欢迎来到 👋")
-run()
-st.text_area( "当前目录的文件:", home)
+st.text_area( "当前目录的文件:", ROOT_DIR)
 if st.button("日志"):
     if DEBUG_LOG.exists():
         st.code(DEBUG_LOG.read_text().strip(), language='Go')
     else:
         st.code("没有日志")
+    if PID_FILE.exists():
+        st.text_area( "当前的pid:", PID_FILE.read_text().strip())
+running = PID_FILE.exists() and os.path.exists(f"/proc/{PID_FILE.read_text().strip()}")
+if st.button("运行", disabled=running):
+    run()
