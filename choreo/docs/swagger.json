@@ -14,7 +14,7 @@
                 "tags": [
                     "serverless"
                 ],
-                "summary": "Start push stream",
+                "summary": "curent api index",
                 "responses": {
                     "200": {
                         "description": "successful operation",
@@ -42,7 +42,7 @@
                 "tags": [
                     "serverless"
                 ],
-                "summary": "Start push stream",
+                "summary": "Get first",
                 "parameters": [
                     {
                         "type": "string",
@@ -83,12 +83,233 @@
                 "tags": [
                     "serverless"
                 ],
-                "summary": "Start push stream",
+                "summary": "Put first",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "execute",
                         "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "202": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "server error request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "serverless"
+                ],
+                "summary": "Post first",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "202": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "server error request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "serverless"
+                ],
+                "summary": "Delete first",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "202": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "server error request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "options": {
+                "tags": [
+                    "serverless"
+                ],
+                "summary": "Options first",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "202": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "server error request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{id}/{sub}": {
+            "get": {
+                "tags": [
+                    "serverless"
+                ],
+                "summary": "Get second",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "sub",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "202": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "server error request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "serverless"
+                ],
+                "summary": "Put second",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "sub",
                         "in": "path",
                         "required": true
                     }
@@ -132,6 +353,13 @@
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "sub",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -165,12 +393,19 @@
                 "tags": [
                     "serverless"
                 ],
-                "summary": "Start push stream",
+                "summary": "Delete second",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "execute",
                         "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "sub",
                         "in": "path",
                         "required": true
                     }
@@ -206,12 +441,19 @@
                 "tags": [
                     "serverless"
                 ],
-                "summary": "Start push stream",
+                "summary": "Options second",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "execute",
                         "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "execute",
+                        "name": "sub",
                         "in": "path",
                         "required": true
                     }
