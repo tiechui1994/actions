@@ -254,7 +254,7 @@ def run():
 st.title("欢迎来到 👋")
 run()
 st.text_area( "当前目录的文件:", home)
-if st.button("日志:")
+if st.button("日志"):
     if DEBUG_LOG.exists():
         st.code(DEBUG_LOG.read_text().strip(), language='Go')
     else:
