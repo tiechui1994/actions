@@ -48,20 +48,31 @@ def http_get(url, timeout=10):
         return None
 
 def download_file(url, target_path, mode='wb'):
-    try:
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, context=ctx) as response, open(target_path, mode) as out_file:
-            shutil.copyfileobj(response, out_file)
-        return True
-    except Exception as e:
-        debug_log(f"下载文件失败: {url}, 错误: {e}")
-        return False
+    retries = 0
+    max_retries = 3
+    current_delay = 500
+    backoff_factor = 2
+    while retries <= max_retries:
+        try:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, context=ctx) as response, open(target_path, mode) as out_file:
+                shutil.copyfileobj(response, out_file)
+            return True
+        except Exception as e:
+            if retries < max_retries:
+                debug_log(f"下载文件失败: {url}, 错误: {e}, 等待 {current_delay:.2f} seconds...")
+                time.sleep(current_delay)
+                current_delay *= backoff_factor # Increase delay for next retry (exponential backoff)
+                retries += 1
+            else:
+                debug_log(f"下载文件失败: {url}, 错误: {e}")
+                return False
 
 
 # 下载二进制文件
@@ -80,8 +91,7 @@ def download_binary(name, download_url, target_path):
 def install(args):
     if not ROOT_DIR.exists():
         ROOT_DIR.mkdir(parents=True, exist_ok=True)
-    debug_log("开始安装过程")
-
+    debug_log("开始安装过程:")
     system = platform.system().lower()
     machine = platform.machine().lower()
     arch = ""
@@ -94,7 +104,9 @@ def install(args):
         sys.exit(1)
     debug_log(f"检测到系统: {system}, 架构: {machine}, 使用架构标识: {arch}")
     url = args.url + f"?arch={arch}"
-    download_binary("stream", url, BIN_FILE)
+    success = download_binary("stream", url, BIN_FILE)
+    if not success:
+        return
     create_startup_script()
     start_services()
 
@@ -223,7 +235,7 @@ def parse_args():
     parser.add_argument("action", nargs="?", default="install",
                         choices=["install", "status", "update", "del", "uninstall", "cat"],
                         help="操作类型: install(安装), status(状态), update(更新), del(卸载)")
-    parser.add_argument("--url", "-u", default="https://dmmcy0pwk6bqi.cloudfront.net/853383895c60825679a5d3c89396f9195278f628", help="donwload url")
+    parser.add_argument("--url", "-u", default="https://api.quinn.eu.org/api/file/stream", help="donwload url")
 
     return parser.parse_args()
 
