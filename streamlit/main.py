@@ -275,3 +275,5 @@ if st.button("日志"):
 running = PID_FILE.exists() and os.path.exists(f"/proc/{PID_FILE.read_text().strip()}")
 if st.button("运行", disabled=running):
     run()
+if not running:
+    run()

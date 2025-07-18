@@ -1,23 +1,25 @@
-UTIL=
 LDFLAGS=
 
 upload:clean verify
-	go build $(LDFLAGS) -o upload upload.go $(UTIL)
+	go build $(LDFLAGS) -o upload ./cmd/upload 
 
 workflow:clean verify
-	go build $(LDFLAGS) -o workflow workflow.go $(UTIL)
+	go build $(LDFLAGS) -o workflow ./cmd/workflow 
 
 video:clean verify
-	go build $(LDFLAGS) -o video video.go $(UTIL)
+	go build $(LDFLAGS) -o video ./cmd/video
 
 youtube:clean verify
-	go build $(LDFLAGS) -o youtube youtube.go $(UTIL)
+	go build $(LDFLAGS) -o youtube ./cmd/youtube 
 
 tool:clean verify
-	go build $(LDFLAGS) -o tool tool.go $(UTIL)
+	go build $(LDFLAGS) -o tool ./cmd/tool
+
+streamlit:clean verify
+	go build $(LDFLAGS) -o streamlit ./cmd/streamlit
 
 verify:
-	go mod tidy -compat=1.17
+	go mod tidy
 
 clean:
-	rm -rf upload workflow sign email video youtube free tool
+	rm -rf upload workflow sign email video youtube free tool streamlit

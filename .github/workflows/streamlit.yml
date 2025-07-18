@@ -1,0 +1,33 @@
+name: streamlit
+on:
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: 'streamlit endpoint url'
+        required: true
+        default: ''
+
+jobs:
+  streamlit:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Use Go
+      uses: actions/setup-go@v3
+      with:
+        check-latest: true
+        go-version: '1.22'
+
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v3
+      with:
+        persist-credentials: false
+
+    - name: Sign Streamlit
+      run: |
+        make -C golang streamlit
+        golang/streamlit -endpoint $ENDPOINT
+      shell: bash
+      env:
+        ENDPOINT: ${{github.event.inputs.endpoint}}
