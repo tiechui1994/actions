@@ -1,0 +1,331 @@
+basePath: /
+definitions:
+  main.ErrorResponse:
+    properties:
+      error:
+        example: error message
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: cloud service
+  title: cloud
+  version: v
+paths:
+  /:
+    get:
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: error bad request
+          schema:
+            type: string
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: curent api index
+      tags:
+      - cloud
+  /api/{id}:
+    delete:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Delete first
+      tags:
+      - cloud
+    get:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Get first
+      tags:
+      - cloud
+    options:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Options first
+      tags:
+      - cloud
+    post:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Post first
+      tags:
+      - cloud
+    put:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Put first
+      tags:
+      - cloud
+  /api/{id}/{sub}:
+    delete:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: execute
+        in: path
+        name: sub
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Delete second
+      tags:
+      - cloud
+    get:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: execute
+        in: path
+        name: sub
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Get second
+      tags:
+      - cloud
+    options:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: execute
+        in: path
+        name: sub
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Options second
+      tags:
+      - cloud
+    post:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: execute
+        in: path
+        name: sub
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Start push stream
+      tags:
+      - cloud
+    put:
+      parameters:
+      - description: execute
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: execute
+        in: path
+        name: sub
+        required: true
+        type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: string
+        "202":
+          description: successful operation
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: server error request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Put second
+      tags:
+      - cloud
+swagger: "2.0"
