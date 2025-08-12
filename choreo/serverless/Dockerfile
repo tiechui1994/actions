@@ -7,8 +7,9 @@ RUN addgroup -g 10014 choreo && \
 
 USER 10014
 
+COPY run.sh /app
+
 ENV PORT=8080
 EXPOSE 8080
-CMD ["sh", "-c", "curl -sL -o /tmp/serverless https://api.quinn.eu.org/api/file/functionless && chmod a+x /tmp/serverless && mv /tmp/serverless /app/serverless"]
-ENTRYPOINT ["/app/serverless"]
+ENTRYPOINT ["sh", "/app/run.sh"]
 
