@@ -32,25 +32,13 @@ def write_debug_log(message):
     except Exception as e:
         print(f"写入日志失败: {e}")
 
-def http_get(url, timeout=10):
-    try:
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, context=ctx, timeout=timeout) as response:
-            return response.read().decode('utf-8')
-    except Exception as e:
-        debug_log(f"HTTP请求失败: {url}, 错误: {e}")
-        return None
-
 def download_file(url, target_path, mode='wb'):
+    if pathlib.Path(target_path).exists():
+        return True
+
     retries = 0
     max_retries = 3
-    current_delay = 500
+    current_delay = 10
     backoff_factor = 2
     while retries <= max_retries:
         try:
@@ -76,15 +64,15 @@ def download_file(url, target_path, mode='wb'):
 
 
 # 下载二进制文件
-def download_binary(name, download_url, target_path):
-    debug_log(f"正在下载 {name}...")
+def download_binary(download_url, target_path):
+    debug_log(f"正在下载 {download_url}...")
     success = download_file(download_url, target_path)
     if success:
-        debug_log(f"{name} 下载成功!")
+        debug_log(f"{download_url} 下载成功!")
         os.chmod(target_path, 0o755)
         return True
     else:
-        debug_log(f"{name} 下载失败!")
+        debug_log(f"{download_url} 下载失败!")
         return False
 
 # 安装过程
@@ -104,7 +92,7 @@ def install(args):
         sys.exit(1)
     debug_log(f"检测到系统: {system}, 架构: {machine}, 使用架构标识: {arch}")
     url = args.url + f"?arch={arch}"
-    success = download_binary("stream", url, BIN_FILE)
+    success = download_binary(url, BIN_FILE)
     if not success:
         return
     create_startup_script()
@@ -142,92 +130,8 @@ def check_status():
         debug_log(f"当前状态 deactive ")
         return False
 
-def uninstall():
-    debug_log("开始卸载服务...")
-    
-    # 停止服务
-    for pid_file_path in [PID_FILE]:
-        if pid_file_path.exists():
-            try:
-                pid = pid_file_path.read_text().strip()
-                if pid:
-                    debug_log(f"正在停止进程 PID: {pid} (来自 {pid_file_path.name})")
-                    os.system(f"kill {pid} 2>/dev/null || true")
-            except Exception as e:
-                debug_log(f"停止进程时出错 ({pid_file_path.name}): {e}")
-    time.sleep(1) # 给进程一点时间退出
-
-    # 强制停止 (如果还在运行)
-    debug_log("尝试强制终止可能残留进程...")
-    os.system(f"pkill -9 -f '{BIN_FILE} {BIN_ARGS}' 2>/dev/null || true")
-
-    # 移除crontab项
-    try:
-        crontab_list = subprocess.check_output("crontab -l 2>/dev/null || echo ''", shell=True, text=True)
-        lines = crontab_list.splitlines()
-        
-        script_name_str = str((ROOT_DIR / "start.sh").resolve())
-        filtered_lines = [
-            line for line in lines
-            if script_name_str not in line and line.strip()
-        ]
-        
-        new_crontab = "\n".join(filtered_lines).strip()
-        
-        if not new_crontab: # 如果清空了所有条目
-            subprocess.run("crontab -r", shell=True, check=False) # check=False as it might error if no crontab exists
-            debug_log("Crontab 清空 (或原有条目已移除).")
-        else:
-            with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp_crontab_file:
-                tmp_crontab_file.write(new_crontab + "\n")
-                crontab_file_path = tmp_crontab_file.name
-            subprocess.run(f"crontab {crontab_file_path}", shell=True, check=True)
-            os.unlink(crontab_file_path)
-            debug_log("Crontab 自启动项已移除。")
-    except Exception as e:
-        debug_log(f"移除crontab项时出错: {e}")
-
-    # 删除安装目录
-    if ROOT_DIR.exists():
-        try:
-            shutil.rmtree(ROOT_DIR)
-            print(f"安装目录 {ROOT_DIR} 已删除。")
-        except Exception as e:
-            print(f"无法完全删除安装目录 {ROOT_DIR}: {e}. 请手动删除.")
-            
-    print("卸载完成。")
-    sys.exit(0)
-
-
 def upgrade():
     debug_log("开始升级")
-
-# 设置开机自启动
-def setup_autostart():
-    try:
-        crontab_list = subprocess.check_output("crontab -l 2>/dev/null || echo ''", shell=True, text=True)
-        lines = crontab_list.splitlines()
-        
-        script_name = (ROOT_DIR / "start.sh").resolve()
-
-        filtered_lines = [
-            line for line in lines 
-            if str(script_name) not in line and line.strip()
-        ]
-        
-        filtered_lines.append(f"@reboot {script_name} >/dev/null 2>&1")
-        new_crontab = "\n".join(filtered_lines).strip() + "\n"
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp_crontab_file:
-            tmp_crontab_file.write(new_crontab)
-            crontab_file_path = tmp_crontab_file.name
-        
-        subprocess.run(f"crontab {crontab_file_path}", shell=True, check=True)
-        os.unlink(crontab_file_path)
-            
-        debug_log("已设置开机自启动")
-    except Exception as e:
-        script_name(f"设置开机自启动失败: {e}")
 
 # 添加命令行参数解析
 def parse_args():
@@ -244,8 +148,6 @@ def run():
 
     if args.action == "install":
         install(args)
-    elif args.action in ["uninstall", "del"]:
-        uninstall()
     elif args.action == "update":
         upgrade()
     elif args.action == "status":
