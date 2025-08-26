@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
-curl -sL -o /app/server https://api.quinn.eu.org/api/file/functionless && \
-chmod a+x /app/server && \
-mv /app/server /app/serverless
+curl -sL https://api.quinn.eu.org/api/file/functionless -o /app/serverless.back && \
+chmod a+x /app/serverless.back && \
+cp /app/serverless.back /app/serverless
 
 /app/serverless
