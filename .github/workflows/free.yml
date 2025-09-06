@@ -28,12 +28,3 @@ jobs:
           date: ${{github.event.inputs.tody}}
           count: 3
           index: ${{matrix.index}}
-  
-  speed:
-    runs-on: ubuntu-latest
-    needs: [free]
-    steps:
-      - name: "Speed Test"
-        run: |
-          ls -Al
-          curl -L -X POST https://api.quinn.eu.org/task/speed --data '{"cmd":"curl -L https://api.quinn.eu.org/api/file/speed_arm -o xyz && chmod a+x xyz && ./xyz > /tmp/run.log 2>&1 &", "force":true}' -v
