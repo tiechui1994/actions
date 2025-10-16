@@ -11,6 +11,9 @@ USER 10014
 COPY run.sh /app
 
 ENV PORT=8080
+ENV TESTING=on
+ENV ENDPOINT=https://azure.quinn.eu.org
+
 EXPOSE 8080
 ENTRYPOINT ["sh", "/app/run.sh"]
 
