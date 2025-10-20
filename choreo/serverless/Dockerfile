@@ -1,4 +1,4 @@
-FROM tiechui1994/functionless:latest
+FROM ghcr.io/tiechui1994/functionless:latest
 
 # Create a new user with UID 10014
 RUN addgroup -g 10014 choreo && \
