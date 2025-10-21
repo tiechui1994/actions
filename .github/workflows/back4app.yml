@@ -1,0 +1,16 @@
+name: back4app
+on:
+  workflow_dispatch:
+
+jobs:
+  back4app:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          repository: tiechui1994/serverless
+          token: ${{secrets.GIT_TOKEN}}
+          path: ./action
+      - uses: ./action/action/back4app
