@@ -2,10 +2,15 @@ name: free_github
 on:
   workflow_dispatch:
     inputs:
-      tody:
-        description: 'date'
+      configName:
+        description: 'name'
         required: false
         default: ''
+        type: choice
+        options:
+        - ''
+        - 'gitCode'
+        - 'gitIssue'
 
 jobs:
   free_github:
@@ -21,9 +26,21 @@ jobs:
           repository: tiechui1994/free
           token: ${{secrets.GIT_TOKEN}}
           path: ./action
-      - uses: ./action/action/github
+      - name: Only execute ${{ github.event.inputs.configName }}
+        uses: ./action/action/github
+        if: ${{ github.event.inputs.configName != '' && matrix.index == 0 }}
+        with:
+          config: ${{secrets.CONFIG_GITHUB}}
+          endpoint: ${{secrets.ENDPOINT}}
+          count: 1
+          index: 0
+          configName: ${{ github.event.inputs.configName }}
+      - name: Execute all 
+        uses: ./action/action/github
+        if: ${{ github.event.inputs.configName == '' }}
         with:
           config: ${{secrets.CONFIG_GITHUB}}
           endpoint: ${{secrets.ENDPOINT}}
           count: 2
           index: ${{matrix.index}}
+          configName: ${{ github.event.inputs.configName }}
