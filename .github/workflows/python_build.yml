@@ -1,0 +1,35 @@
+on:
+  workflow_dispatch:
+    inputs:
+      url: 
+        description: 'tgz url'
+        required: true
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      if: ${{ github.event.inputs.url != '' }}
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller pyinstaller-hooks-contrib PySide6
+
+        curl -Lv ${{github.event.inputs.url}} -o file.tgz && \
+        mkdir -p /tmp/src && \
+        tar -xf file.tgz -C /tmp/src --strip-components 1 && \
+        cd /tmp/src && make run
+
+    - name: Upload artifact
+      if: ${{ github.event.inputs.url != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-exe
+        path: /tmp/src/dist/*.exe
