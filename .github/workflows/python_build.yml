@@ -1,3 +1,4 @@
+name: build-windows
 on:
   workflow_dispatch:
     inputs:
@@ -22,9 +23,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller pyinstaller-hooks-contrib PySide6
 
-        curl -Lv ${{github.event.inputs.url}} -o file.tgz && \
-        mkdir -p /tmp/src && \
-        tar -xf file.tgz -C /tmp/src --strip-components 1 && \
+        curl -L ${{github.event.inputs.url}} -o file.tgz
+        mkdir -p /tmp/src && tar -xf file.tgz -C /tmp/src --strip-components 1
         cd /tmp/src && make run
 
     - name: Upload artifact
