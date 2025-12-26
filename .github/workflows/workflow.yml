@@ -4,12 +4,11 @@ on:
     branches: master
   workflow_dispatch:
 
-
 jobs:
   workflow:
     runs-on: ubuntu-latest
     env:
-      go: '1.17'
+      go: '1.22'
 
     steps:
     - name: Use Go ${{ env.go }}
@@ -24,12 +23,30 @@ jobs:
         persist-credentials: false
 
     - name: Workflow Clean
+      if: always()
       run: |
         make -C golang workflow
         golang/workflow -repo tiechui1994/serverless -token ${{secrets.GIT_TOKEN}}
         golang/workflow -repo tiechui1994/actions -token ${{secrets.GIT_TOKEN}}
         golang/workflow -repo tiechui1994/tzdb -token ${{secrets.GIT_TOKEN}}
         golang/workflow -repo tiechui1994/free -token ${{secrets.GIT_TOKEN}}
+      shell: bash
+
+    - name: Run Workflow
+      if: always()
+      run: |
+        make -C golang workflow
         golang/workflow -repo tiechui1994/tzdb -workflow tzdb -branch main -token ${{secrets.GIT_TOKEN}}
       shell: bash
+    
+    - uses: actions/checkout@v4
+      with:
+        ref: master
+        repository: tiechui1994/free
+        token: ${{secrets.GIT_TOKEN}}
+        path: ./action
+    - name: Sign 
+      if: always()
+      uses: ./action/action/sign
+      
 
