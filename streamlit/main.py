@@ -139,7 +139,7 @@ def parse_args():
     parser.add_argument("action", nargs="?", default="install",
                         choices=["install", "status", "update", "del", "uninstall", "cat"],
                         help="操作类型: install(安装), status(状态), update(更新), del(卸载)")
-    parser.add_argument("--url", "-u", default="https://api.quinn.eu.org/api/file/stream", help="donwload url")
+    parser.add_argument("--url", "-u", default="https://cn.quinn.eu.org/api/file/stream", help="donwload url")
 
     return parser.parse_args()
 
