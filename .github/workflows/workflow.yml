@@ -17,13 +17,7 @@ jobs:
     - name: Sign 
       if: always()
       uses: ./action/action/sign
-      
-    - name: Checkout Code
-      timeout-minutes: 1
-      uses: actions/checkout@v3
-      with:
-        persist-credentials: false
-      
+    
     - name: Workflow Clean
       if: always()
       run: |
