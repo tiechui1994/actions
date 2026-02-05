@@ -35,6 +35,7 @@ jobs:
           count: 1
           index: 0
           configName: ${{ github.event.inputs.configName }}
+          debug: true
       - name: Execute all 
         uses: ./action/action/github
         if: ${{ github.event.inputs.configName == '' }}
@@ -44,3 +45,4 @@ jobs:
           count: 2
           index: ${{matrix.index}}
           configName: ${{ github.event.inputs.configName }}
+          debug: true
