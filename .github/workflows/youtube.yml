@@ -50,13 +50,13 @@ jobs:
 
     steps:
     - name: Use Go ${{ env.go }}
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ env.go }}
 
     - name: Checkout
       timeout-minutes: 1
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
       with:
         persist-credentials: false
 

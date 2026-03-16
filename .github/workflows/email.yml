@@ -9,7 +9,7 @@ jobs:
       go: '1.17'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: master
           repository: tiechui1994/free

@@ -20,7 +20,7 @@ jobs:
     steps:
     - name: Checkout
       timeout-minutes: 1
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
       with:
         persist-credentials: false
     - name: Check tag
@@ -39,7 +39,7 @@ jobs:
     steps:
     - name: Checkout
       timeout-minutes: 1
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -62,7 +62,7 @@ jobs:
 
     - name: Cache files
       id: restore-build
-      uses: actions/cache@v3
+      uses: actions/cache@v5
       with:
         path: ./mqtt_${{github.event.inputs.version}}_ubuntu_${{matrix.os}}_amd64.deb
         key: ${{github.sha}}-${{matrix.os}}
@@ -76,19 +76,19 @@ jobs:
     steps:
     - name: Checkout
       timeout-minutes: 1
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
       with:
         persist-credentials: false
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v5
       with:
         path: ./mqtt_${{github.event.inputs.version}}_ubuntu_16.04_amd64.deb
         key: ${{github.sha}}-16.04
-    - uses: actions/cache@v3
+    - uses: actions/cache@v5
       with:
         path: ./mqtt_${{github.event.inputs.version}}_ubuntu_18.04_amd64.deb
         key: ${{github.sha}}-18.04
-    - uses: actions/cache@v3
+    - uses: actions/cache@v5
       with:
         path: ./mqtt_${{github.event.inputs.version}}_ubuntu_20.04_amd64.deb
         key: ${{github.sha}}-20.04
