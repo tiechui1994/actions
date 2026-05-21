@@ -12,10 +12,18 @@ on:
         - 'gitCode'
         - 'gitIssue'
       inputName:
-        description: 'name'
+        description: 'custom name'
         required: false
         default: ''
         type: string
+      debug:
+        description: 'debug mode'
+        required: false
+        default: 'url'
+        type: choice
+        options:
+        - 'url'
+        - 'cloudflare'
 
 jobs:
   free_github:
@@ -49,7 +57,7 @@ jobs:
           count: 1
           index: 0
           configName: ${{ env.CONFIG_NAME }}
-          debug: true
+          debug: ${{ github.event.inputs.debug }}
       - name: Execute all 
         uses: ./action/action/github
         if: ${{ env.CONFIG_NAME == '' }}
@@ -59,4 +67,4 @@ jobs:
           count: 2
           index: ${{matrix.index}}
           configName: ${{ env.CONFIG_NAME }}
-          debug: true
+          debug: ${{ github.event.inputs.debug }}
