@@ -24,7 +24,11 @@ on:
         options:
         - 'url'
         - 'cloudflare'
-
+      debugUrl:
+        description: 'when debug=url testing url'
+        required: false
+        default: ''
+  
 jobs:
   free_github:
     runs-on: ubuntu-latest
@@ -58,6 +62,7 @@ jobs:
           index: 0
           configName: ${{ env.CONFIG_NAME }}
           debug: ${{ github.event.inputs.debug }}
+          debugUrl: ${{ github.event.inputs.debugUrl }}
       - name: Execute all 
         uses: ./action/action/github
         if: ${{ env.CONFIG_NAME == '' }}
@@ -68,3 +73,4 @@ jobs:
           index: ${{matrix.index}}
           configName: ${{ env.CONFIG_NAME }}
           debug: ${{ github.event.inputs.debug }}
+          debugUrl: ${{ github.event.inputs.debugUrl }}
