@@ -135,7 +135,8 @@ download_boost(){
     if [[ ${version:0:3} == "8.0" ]]; then
         boost=$(grep -E 'BOOST_PACKAGE_NAME "boost_.*?"' -o "$workdir/mysql/cmake/boost.cmake"|cut -d '"' -f2)
         boot_version="$(echo "$boost" | sed -r '/.*/ s|.*([0-9]+)_([0-9]+)_([0-9]+)|\1.\2.\3|')"
-        url="https://jaist.dl.sourceforge.net/project/boost/boost/${boot_version}/${boost}.tar.gz"
+        boot_file=${boot_version//./_}
+        url="https://archives.boost.io/release/${boot_version}/source/boost_${boot_file}.tar.gz"
     fi
     download "boost.tar.gz" ${url} axel 1
     if [[ $? -eq ${success} ]]; then

@@ -25,22 +25,27 @@ jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      needbuild: ${{ steps.checktag.outputs.needbuild }}
+      needbuild: ${{ steps.check.outputs.needbuild }}
+    env:
+      VESION: ${{github.event.inputs.version}}
 
     steps:
     - name: Checkout
       timeout-minutes: 1
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         persist-credentials: false
-    - name: Check tag
-      id: checktag
-      run: bash script/checktag.sh ${{secrets.GIT_TOKEN}} nginx_${{github.event.inputs.version}}
+    - name: Check TAG
+      id: check
+      run: |
+        bash script/checktag.sh ${{secrets.GIT_TOKEN}} nginx_${VERSION}
 
   build_amd64:
     needs: [check]
     if: ${{ needs.check.outputs.needbuild == 0 }}
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{github.event.inputs.version}}
     strategy:
       matrix:
         os: [16.04, 18.04, 20.04]
@@ -48,14 +53,12 @@ jobs:
     steps:
     - name: Checkout
       timeout-minutes: 1
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         persist-credentials: false
 
     - name: Setup
-      uses: docker/setup-buildx-action@v2
-      with:
-        install: true
+      uses: docker/setup-buildx-action@v4
 
     - name: Build with ubuntu_${{matrix.os}}
       if: ${{ (github.event.inputs.temporary != 'false' && github.event.inputs.temporary == matrix.os) || (github.event.inputs.temporary == 'false' && needs.check.outputs.needbuild == 0) }}
@@ -64,24 +67,26 @@ jobs:
       run: |
         docker run -v ${PWD}:/app --workdir /app --platform "linux/amd64" ubuntu:${{matrix.os}} \
           bash /app/script/nginx.sh \
-              ${{github.event.inputs.version}} \
+              ${{ env.VERSION }} \
               ${{github.event.inputs.install}} \
               1 \
-              nginx_${{github.event.inputs.version}}_ubuntu_${{matrix.os}}_amd64.deb
+              nginx_${{ env.VERSION }}_ubuntu_${{matrix.os}}_amd64.deb
       shell: bash
 
     - name: Cache files
       if: ${{ (github.event.inputs.temporary != 'false' && github.event.inputs.temporary == matrix.os) || (github.event.inputs.temporary == 'false' && needs.check.outputs.needbuild == 0) }}
       id: restore-build
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
-        path: ./nginx_${{github.event.inputs.version}}_ubuntu_${{matrix.os}}_amd64.deb
+        path: ./nginx_${{ env.VERSION }}_ubuntu_${{matrix.os}}_amd64.deb
         key: ${{github.sha}}-${{matrix.os}}-amd64
 
   build_arm64:
     needs: [check]
     if: ${{ needs.check.outputs.needbuild == 0 }}
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{github.event.inputs.version}}
     strategy:
       matrix:
         os: [16.04, 18.04, 20.04]
@@ -89,7 +94,7 @@ jobs:
     steps:
     - name: Checkout
       timeout-minutes: 1
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         persist-credentials: false
 
@@ -103,80 +108,80 @@ jobs:
         run: |
           uname -a
           bash ./script/nginx.sh \
-              ${{github.event.inputs.version}} \
+              ${{ env.VERSION }} \
               ${{github.event.inputs.install}} \
               1 \
-              nginx_${{github.event.inputs.version}}_ubuntu_${{matrix.os}}_arm64.deb
+              nginx_${{ env.VERSION }}_ubuntu_${{matrix.os}}_arm64.deb
 
     - name: Cache files
       if: ${{ github.event.inputs.temporary == 'false' && needs.check.outputs.needbuild == 0 }}
       id: restore-build
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
-        path: ./nginx_${{github.event.inputs.version}}_ubuntu_${{matrix.os}}_arm64.deb
+        path: ./nginx_${{ env.VERSION }}_ubuntu_${{matrix.os}}_arm64.deb
         key: ${{github.sha}}-${{matrix.os}}-arm64
 
   release:
     needs: [build_amd64, build_arm64]
     runs-on: ubuntu-latest
-    outputs:
-      count: ${{ steps.files.outputs.count }}
-
+    env:
+      VERSION: ${{github.event.inputs.version}}
     steps:
     - name: Checkout
       timeout-minutes: 1
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         persist-credentials: false
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
-        path: ./nginx_${{github.event.inputs.version}}_ubuntu_16.04_amd64.deb
+        path: ./nginx_${{ env.VERSION }}_ubuntu_16.04_amd64.deb
         key: ${{github.sha}}-16.04-amd64
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
-        path: ./nginx_${{github.event.inputs.version}}_ubuntu_18.04_amd64.deb
+        path: ./nginx_${{ env.VERSION }}_ubuntu_18.04_amd64.deb
         key: ${{github.sha}}-18.04-amd64
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
-        path: ./nginx_${{github.event.inputs.version}}_ubuntu_20.04_amd64.deb
+        path: ./nginx_${{ env.VERSION }}_ubuntu_20.04_amd64.deb
         key: ${{github.sha}}-20.04-amd64
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
-        path: ./nginx_${{github.event.inputs.version}}_ubuntu_16.04_arm64.deb
+        path: ./nginx_${{ env.VERSION }}_ubuntu_16.04_arm64.deb
         key: ${{github.sha}}-16.04-arm64
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
-        path: ./nginx_${{github.event.inputs.version}}_ubuntu_18.04_arm64.deb
+        path: ./nginx_${{ env.VERSION }}_ubuntu_18.04_arm64.deb
         key: ${{github.sha}}-18.04-arm64
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
-        path: ./nginx_${{github.event.inputs.version}}_ubuntu_20.04_arm64.deb
+        path: ./nginx_${{ env.VERSION }}_ubuntu_20.04_arm64.deb
         key: ${{github.sha}}-20.04-arm64
 
     - name: Files
       id: files
       run: |
         echo ${PWD}
-        echo "count=$(ls|grep nginx_${{github.event.inputs.version}}|wc -l)" >>  $GITHUB_OUTPUT
         ls -Al .
+        echo "COUNT=$(ls|grep nginx_${{ env.VERSION }}|wc -l)" >> $GITHUB_ENV
 
     - name: Release
-      if: ${{ success() && steps.files.outputs.count == 6 && github.event.inputs.temporary == 'false' }}
+      if: ${{ success() && env.COUNT == 6 && github.event.inputs.temporary == 'false' }}
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GIT_TOKEN }}
-        file: ${{github.workspace}}/nginx_${{github.event.inputs.version}}_*
-        asset_name: nginx_${{github.event.inputs.version}}
-        tag: nginx_${{github.event.inputs.version}}
+        file: ${{github.workspace}}/nginx_${{ env.VERSION }}_*
+        asset_name: nginx_${{ env.VERSION }}
+        tag: nginx_${{ env.VERSION }}
         overwrite: true
-        body: "release nginx_${{github.event.inputs.version}} install in ${{github.event.inputs.install}}"
+        body: "release nginx_${{ env.VERSION }} install in ${{github.event.inputs.install}}"
         file_glob: true
 
     - name: Upload amd64 temporary
       if: ${{ github.event.inputs.temporary != 'false' }}
-      uses: actions/upload-pages-artifact@v3
+      uses: actions/upload-artifact@v7
       with:
-        name: nginx_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64
-        path: ${{github.workspace}}/nginx_${{github.event.inputs.version}}_ubuntu_${{github.event.inputs.temporary}}_amd64.deb
+        name: nginx_${{ env.VERSION }}_ubuntu_${{github.event.inputs.temporary}}_amd64
+        path: ${{github.workspace}}/nginx_${{ env.VERSION }}_ubuntu_${{github.event.inputs.temporary}}_amd64.deb
         retention-days: 1
+        archive: false

@@ -15,7 +15,7 @@ jobs:
         index: [0, 1, 2]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: master
           repository: tiechui1994/free
