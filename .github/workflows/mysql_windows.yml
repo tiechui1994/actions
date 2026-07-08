@@ -1,0 +1,147 @@
+name: mysql-windows
+
+on:
+  workflow_dispatch: 
+    inputs:
+      version:
+        description: 'mysql version'
+        required: true
+        default: '8.0.16'
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout MySQL Source Code
+      uses: actions/checkout@v7
+      with:
+        # 默认拉取当前仓库代码。如果是编译官方代码，可以换成：
+        # ref: '8.0' # 或者是 '8.4', '9.0' 等分支/标签
+        repository: mysql/mysql-server
+        ref: 'mysql-${{github.event.inputs.version}}'
+        submodules: recursive
+
+    - name: Set up MSVC
+      uses: microsoft/setup-msbuild@v3
+
+    - name: Download and Setup Bison Manually
+      shell: powershell
+      run: |
+        # 创建一个存放 Bison 的目录
+        New-Item -ItemType Directory -Force -Path "C:\bison"
+        
+        # 下载官方推荐的 win_flex_bison 工具包（包含 flex 和 bison）
+        $url = "https://github.com/lexxmark/winflexbison/releases/download/v2.5.25/win_flex_bison-2.5.25.zip"
+        Invoke-WebRequest -Uri $url -OutFile "C:\bison\bison.zip"
+        
+        # 解压
+        Expand-Archive -Path "C:\bison\bison.zip" -DestinationPath "C:\bison"
+        
+        # 重命名可执行文件，因为 MySQL 编译脚本寻找的是 "bison.exe" 而不是 "win_bison.exe"
+        Copy-Item "C:\bison\win_bison.exe" "C:\bison\bison.exe"
+        Copy-Item "C:\bison\win_flex.exe" "C:\bison\flex.exe"
+        
+        # 将路径写入 GitHub Actions 的环境变量中
+        echo "C:\bison" >> $GITHUB_PATH
+        
+        # 打印版本验证是否成功
+        & C:\bison\bison.exe --version
+
+    - name: Cache Boost
+      id: cache-boost
+      uses: actions/cache@v6
+      with:
+        path: D:\boost
+        key: ${{ runner.os }}-boost-1_77_0
+        restore-keys: |
+          ${{ runner.os }}-boost-1_77_0
+
+    - name: Install Compatible OpenSSL
+      shell: bash
+      run: |
+        cd /c/vcpkg
+        git checkout 2022.01.31
+        ./bootstrap-vcpkg.bat
+        VCPKG_BUILD_TYPE=release ./vcpkg install openssl:x64-windows || true
+        echo "执行结果 ..."
+        
+    - name: Download and Extract Boost Manually
+      shell: powershell
+      run: |
+        if (Test-Path "D:\boost\boost.tar.gz") {
+          echo "Boost directory already exists locally. Skipping download."
+          exit 0
+        }
+
+        # 创建 Boost 存放目录
+        New-Item -ItemType Directory -Force -Path "D:\boost"
+        
+        # 1. 解析当前 MySQL 源码需要的 Boost 版本（从 cmake/boost.cmake 中提取）
+        # 如果你明确知道版本（比如 1_69_0），也可以直接写死：$boost_ver = "1_69_0"
+        $boost_ver = "1_69_0"
+        
+        $boost_underscore = $boost_ver -replace '_', '.'
+        $url = "https://archives.boost.io/release/${boost_underscore}/source/boost_${boost_ver}.tar.gz"
+        
+        echo "Required Boost Version: $boost_underscore"
+        echo "Downloading from: $url"
+        
+        # 2. 手动下载压缩包
+        Invoke-WebRequest -Uri $url -OutFile "D:\boost\boost.tar.gz"
+        
+        # 验证解压路径
+        Get-ChildItem D:\boost
+  
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        # 常见编译参数：
+        # -DDOWNLOAD_BOOST=1 -DWITH_BOOST=./boost : 自动下载并配置 Boost 库（MySQL 8.0 必需）
+        # -DINSTALL_LAYOUT=STANDALONE : 独立的 Windows 安装布局
+        cmake .. `
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `
+          -A x64 `
+          -DDOWNLOAD_BOOST=1 `
+          -DWITH_BOOST=D:/boost/boost.tar.gz `
+          -DBISON_EXECUTABLE=C:\bison\bison.exe `
+          -DWITH_SSL=system `
+          -DOPENSSL_ROOT_DIR="C:/vcpkg/packages/openssl_x64-windows" `
+          -DINSTALL_LAYOUT=STANDALONE `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DCOMPILATION_COMMENT='MySQL Server' `
+          -DCOMPILATION_COMMENT_SERVER='MySQL Server' `
+          -DDEFAULT_CHARSET=utf8 `
+          -DDEFAULT_COLLATION=utf8_general_ci `
+          -DWITH_INNOBASE_STORAGE_ENGINE=1 `
+          -DWITH_PARTITION_STORAGE_ENGINE=1 `
+          -DWITH_FEDERATED_STORAGE_ENGINE=1 `
+          -DWITH_BLACKHOLE_STORAGE_ENGINE=1 `
+          -DWITH_MYISAM_STORAGE_ENGINE=1 `
+          -DENABLED_LOCAL_INFILE=1 `
+          -DWITH_EMBEDDED_SHARED_LIBRARY=0 `
+          -DWITH_EMBEDDED_SERVER=0 `
+          -DWITH_DEBUG=0 `
+          -DENABLE_DTRACE=0 `
+          -DWITH_UNIT_TESTS=0 `
+          -DFORCE_INSOURCE_BUILD=1 `
+          -DEXTRA_CHARSETS=all
+  
+    - name: Build MySQL Server
+      run: |
+        cd build
+        # 编译所有组件（如果只想编译 mysqld 驱动，可以指定 --target mysqld）
+        # -j 4 表示使用 4 个线程并行编译（GitHub 托管运行器通常为 2-4 核）
+        cmake --build . --config Release --parallel 4
+    
+    - name: tmate
+      if: ${{ failure() }}
+      uses: mxschmitt/action-tmate@v3
+
+    - name: Archive Build Artifacts (Optional)
+      uses: actions/upload-artifact@v7
+      with:
+        name: mysql-windows-x64
+        path: |
+          build/runtime_output_directory/Release/*.exe
+          build/runtime_output_directory/Release/*.dll
