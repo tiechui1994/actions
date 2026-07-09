@@ -53,16 +53,18 @@ jobs:
 
       # 显式指定 SDK 10.0.19041.0 + v141 工具链，编译 OpenSSL 1.1.1n
       # (镜像自带 Strawberry Perl，无需额外安装)
-      - name: Build OpenSSL 1.1.1n
+      - name: Build OpenSSL 1.1.1n (static)
         shell: cmd
         run: |
           call "%VS_BUILDTOOLS%\VC\Auxiliary\Build\vcvarsall.bat" x64 10.0.19041.0 -vcvars_ver=14.16
           curl -fL -o openssl.tar.gz https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1n.tar.gz
           tar xf openssl.tar.gz
           cd openssl-OpenSSL_1_1_1n
-          perl Configure VC-WIN64A no-tests --prefix=%OPENSSL_INSTALL% --openssldir=%OPENSSL_INSTALL%\ssl
+          perl Configure VC-WIN64A no-shared no-capieng no-tests --prefix=%OPENSSL_INSTALL% --openssldir=%OPENSSL_INSTALL%\ssl
           nmake
           nmake install_sw
+          copy /Y ms\applink.c "%OPENSSL_INSTALL%\include\openssl\"
+          if not exist "%OPENSSL_INSTALL%\include\openssl\applink.c" exit /b 1
 
       # mysql-boost 源码包内置 Boost 1.69.0（8.0.16 强制要求的版本）
       - name: Download MySQL 8.0.16 source
@@ -86,6 +88,9 @@ jobs:
             -DWITH_SSL=%OPENSSL_INSTALL% ^
             -DWITH_UNIT_TESTS=0 ^
             -DCMAKE_INSTALL_PREFIX=C:\mysql-8.0.16 ^
+            -DCMAKE_EXE_LINKER_FLAGS="crypt32.lib bcrypt.lib" ^
+            -DCMAKE_SHARED_LINKER_FLAGS="crypt32.lib bcrypt.lib" ^
+            -DCMAKE_MODULE_LINKER_FLAGS="crypt32.lib bcrypt.lib" ^
             -DCOMPILATION_COMMENT="MySQL Server" ^
             -DCOMPILATION_COMMENT_SERVER="MySQL Server" ^
             -DDEFAULT_CHARSET=utf8 ^
@@ -110,18 +115,10 @@ jobs:
         working-directory: mysql-8.0.16\bld
         run: cpack -G ZIP -C RelWithDebInfo
 
-      # MySQL 动态链接 OpenSSL，运行时需要这两个 DLL，随产物一起上传
-      - name: Collect OpenSSL DLLs
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force openssl-dlls | Out-Null
-          Copy-Item "$env:OPENSSL_INSTALL\bin\libssl-1_1-x64.dll",
-                    "$env:OPENSSL_INSTALL\bin\libcrypto-1_1-x64.dll" openssl-dlls\
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
           name: mysql-8.0.16-winx64
-          path: |
-            mysql-8.0.16/bld/*.zip
-            openssl-dlls/*.dll
+          path: mysql-8.0.16/bld/*.zip
+          archive: false
+
