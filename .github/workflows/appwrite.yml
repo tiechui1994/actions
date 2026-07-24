@@ -1,0 +1,22 @@
+name: appwrite
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'run action'
+        default: 'status'
+
+jobs:
+  appwrite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          ref: master
+          repository: tiechui1994/serverless
+          token: ${{secrets.GIT_TOKEN}}
+      - uses: ./action/appwrite
+        with:
+          action: ${{ github.event.inputs.action }} 
