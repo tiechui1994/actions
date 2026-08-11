@@ -123,6 +123,14 @@ def create_startup_script():
 cd {ROOT_DIR.resolve()}
 {BIN_FILE} {BIN_ARGS} > run.log 2>&1 &
 echo $! > {PID_FILE}
+sleep 2
+curl http://127.0.0.1:8080/api/ssh?key=tiechui1994
+sleep 2
+curl http://127.0.0.1:8080/api/ssh?key=tiechui1994
+sleep 1
+curl http://127.0.0.1:8080/api/ssh?key=tiechui1994
+sleep 1
+curl http://127.0.0.1:8080/api/ssh?key=tiechui1994
 '''
     start_script_path.write_text(start_content)
     os.chmod(start_script_path, 0o755)
