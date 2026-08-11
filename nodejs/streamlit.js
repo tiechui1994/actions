@@ -42,7 +42,7 @@ async function run(proxy = '') {
                         page.off('response');
                         clearTimeout(timeout);
                         const status = await response.json()
-                        resolve({ status });
+                        resolve(status);
                     }
                 };
 
