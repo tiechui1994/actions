@@ -134,21 +134,20 @@ download_nginx() {
 }
 
 download_openssl() {
-    prefix="https://ftp.openssl.org/source/old"
     openssl="$(openssl version |cut -d " " -f2)"
-    if [[ ${openssl} =~ ^1\.[0-1]\.[0-2]$ ]]; then
-        url=$(printf "%s/%s/openssl-%s.tar.gz" ${prefix} ${openssl} ${openssl})
+    if [[ ${openssl} =~ ^1\.[0-1]\.[0-2] ]]; then
+        prefix="https://github.com/openssl/openssl/releases/download"
+        url=$(printf "%s/OpenSSL_%s/openssl-%s.tar.gz" ${prefix} ${openssl//./_} ${openssl})
     else
-        url=$(printf "%s/%s/openssl-%s.tar.gz" ${prefix} ${openssl:0:${#openssl}-1} ${openssl})
+        prefix="https://github.com/openssl/openssl/releases/download"
+        url=$(printf "%s/openssl-%s/openssl-%s.tar.gz" ${prefix} ${openssl} ${openssl})
     fi
     cd ${workdir} && download "openssl.tar.gz" "$url" curl 1
 }
 
 download_pcre() {
-    url="https://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz"
-    url="https://nchc.dl.sourceforge.net/project/pcre/pcre/8.44/pcre-8.44.tar.gz"
-    url="https://udomain.dl.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.bz2"
-    cd ${workdir} && download "pcre.tar.bz2" "$url" curl 1
+    url="https://codeload.github.com/nektro/pcre-8.45/tar.gz/refs/heads/master"
+    cd ${workdir} && download "pcre.tar.gz" "$url" curl 1
 }
 
 download_zlib() {
@@ -160,7 +159,7 @@ download_zlib() {
 # https proxy
 # doc: https://github.com/chobits/ngx_http_proxy_connect_module
 download_proxy_connect() {
-    url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.4"
+    url="https://codeload.github.com/chobits/ngx_http_proxy_connect_module/tar.gz/v0.0.7"
     cd ${workdir} && download "ngx_http_proxy_connect_module.tar.gz" "$url" curl 1
     if [[ $? -ne ${success} ]]; then
         return $?
@@ -184,6 +183,12 @@ download_proxy_connect() {
         log_info "patch proxy_connect_rewrite_1018"
         patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_1018.patch
     elif [[ "$version" =~ 1.21.1 || "$version" =~ 1.22.* ]]; then
+        log_info "patch proxy_connect_rewrite_102101"
+        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_102101.patch
+    elif [[ "$version" =~ 1.23.* || "$version" =~ 1.24.0 ]]; then
+        log_info "patch proxy_connect_rewrite_102101"
+        patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_102101.patch
+    elif [[ "$version" =~ 1.25.0 || "$version" =~ 1.26.* ]]; then
         log_info "patch proxy_connect_rewrite_102101"
         patch -p1 < ${workdir}/ngx_http_proxy_connect_module/patch/proxy_connect_rewrite_102101.patch
     else

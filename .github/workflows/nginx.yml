@@ -84,7 +84,7 @@ jobs:
   build_arm64:
     needs: [check]
     if: ${{ needs.check.outputs.needbuild == 0 }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     env:
       VERSION: ${{github.event.inputs.version}}
     strategy:
@@ -97,21 +97,36 @@ jobs:
       uses: actions/checkout@v7
       with:
         persist-credentials: false
-
-    - uses: uraimo/run-on-arch-action@v2.5.0
+    
+    - name: Setup
+      uses: docker/setup-buildx-action@v4
+    
+    - name: Build with ubuntu_${{matrix.os}}
       if: ${{ github.event.inputs.temporary == 'false' && needs.check.outputs.needbuild == 0 }}
-      name: Run commands
-      id: runcmd
-      with:
-        arch: aarch64
-        distro: ubuntu${{matrix.os}}
-        run: |
-          uname -a
-          bash ./script/nginx.sh \
+      id: build
+      run: |
+        docker run -v ${PWD}:/app --workdir /app --platform "linux/arm64" ubuntu:${{matrix.os}} \
+          bash /app/script/nginx.sh \
               ${{ env.VERSION }} \
               ${{github.event.inputs.install}} \
               1 \
               nginx_${{ env.VERSION }}_ubuntu_${{matrix.os}}_arm64.deb
+      shell: bash
+
+    # - uses: uraimo/run-on-arch-action@v3
+    #   if: ${{ github.event.inputs.temporary == 'false' && needs.check.outputs.needbuild == 0 }}
+    #   name: Run commands
+    #   id: runcmd
+    #   with:
+    #     arch: aarch64
+    #     distro: ubuntu${{matrix.os}}
+    #     run: |
+    #       uname -a
+    #       bash ./script/nginx.sh \
+    #           ${{ env.VERSION }} \
+    #           ${{github.event.inputs.install}} \
+    #           1 \
+    #           nginx_${{ env.VERSION }}_ubuntu_${{matrix.os}}_arm64.deb
 
     - name: Cache files
       if: ${{ github.event.inputs.temporary == 'false' && needs.check.outputs.needbuild == 0 }}
