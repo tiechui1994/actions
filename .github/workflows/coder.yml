@@ -1,0 +1,157 @@
+name: coder
+
+on:
+  workflow_dispatch: 
+    inputs:
+      repo:
+        description: 'github repo'
+        required: false
+        default: 'actions'
+
+jobs:
+  coder:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      # 1. 配置 Node.js 环境 (JS/TS 开发 & 补全支持)
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      # 2. 配置 Golang 环境 & 安装 gopls (Go 补全核心)
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.22'
+
+      - name: Setup Shell & Autocompletion
+        run: |
+          # 将 bash-completion 写入当前用户 (~/.bashrc)
+          echo "if [ -f /etc/bash_completion ]; then" >> ~/.bashrc
+          echo "    . /etc/bash_completion" >> ~/.bashrc
+          echo "fi" >> ~/.bashrc
+
+          # 开启 Git 命令补全
+          echo "source /usr/share/bash-completion/completions/git" >> ~/.bashrc
+
+          # npm 命令补全
+          npm completion >> ~/.bashrc
+
+          # git 配置
+          git config --global user.name "tiechui1994"
+          git config --global user.email "2904951429@qq.com"
+          git config --global core.editor "vim"
+      
+      # 3. 安装 code-server 及所需插件
+      - name: Install Go Tools, Code-server and Extensions
+        run: |
+          go install golang.org/x/tools/gopls@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+          curl -fsSL https://code-server.dev/install.sh | sh
+          code-server --install-extension golang.Go
+          code-server --install-extension dbaeumer.vscode-eslint
+          code-server --install-extension esbenp.prettier-vscode
+
+          mkdir -p ~/.local/share/code-server/User
+          cat << 'EOF' > ~/.local/share/code-server/User/settings.json
+          {
+            "workbench.colorTheme": "Dark Modern",
+            "editor.fontSize": 14,
+            "editor.fontFamily": "monospace, 'Courier New'",
+            "workbench.preferredDarkColorTheme": "Dark Modern",
+            "terminal.integrated.defaultProfile.linux": "bash",
+            "terminal.integrated.fontFamily": "monospace"
+          }
+          EOF
+
+      # 4. 安装 Cloudflare Tunnel 工具
+      - name: Install Cloudflare Tunnel
+        run: |
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -O /tmp/cloudflared-linux-amd64.deb && \
+          sudo dpkg -i /tmp/cloudflared-linux-amd64.deb
+      
+      - name: Clone Code
+        if: ${{ github.event.inputs.repo != 'actions' }}
+        uses: actions/checkout@v7
+        with:
+          repository: tiechui1994/${{ github.event.inputs.repo }}
+          token: ${{secrets.GIT_TOKEN}}
+          path: /home/runner/work/${{ github.event.inputs.repo }}
+
+      # 5. 启动服务并挂起容器保持运行
+      - name: Start code-server & Cloudflare Tunnel
+        env:
+          PASSWORD: "${{ secrets.CODE_PASSWORD }}" 
+        run: |
+          # 创建全局 stop-dev 便捷关机命令
+          sudo bash -c 'cat << "EOF" > /usr/local/bin/stop-dev
+          #!/bin/bash
+          echo "正在优雅停止远程开发环境..."
+          touch /tmp/manual_shutdown
+          pkill -f code-server
+          pkill -f cloudflared
+          EOF'
+          sudo chmod +x /usr/local/bin/stop-dev
+
+          # 后台无密码启动 code-server, 监听 18080 端口
+          
+          PASSWORD=$PASSWORD code-server --bind-addr 127.0.0.1:18080 --auth password /home/runner/work/${{ github.event.inputs.repo }} &
+          
+          # 启动 Cloudflare Tunnel, 打印公网访问链接
+          echo "=========================================================="
+          echo " Starting Cloudflare Tunnel..."
+          echo "=========================================================="
+          
+          cloudflared tunnel --url http://127.0.0.1:18080 > /tmp/tunnel.log 2>&1 &
+          
+          # 等待 Tunnel 域名生成并输出
+          sleep 5
+          cat /tmp/tunnel.log | grep -o 'https://.*\.trycloudflare\.com' || true
+          echo "=========================================================="
+          echo " 使用上面生成的 https://xxxx.trycloudflare.com 链接在浏览器中打开"
+          echo "=========================================================="
+
+          # 智能保活与空闲检测机制
+          IDLE_TIMEOUT=1800  # 空闲超时时(秒),这里设置 1800秒 = 30分钟
+          IDLE_COUNTER=0
+          CONNECTED_ONCE=false
+
+          while true; do
+            # 检查是否有手动触发退出
+            if [ -f /tmp/manual_shutdown ]; then
+              echo "收到手动关机指令，正在退出..."
+              break
+            fi
+
+            # 检查 18080 端口是否有活跃连接, 使用 ss / netstat 检查 Establish 状态连接
+            ACTIVE_CONNS=$(ss -tn src 127.0.0.1:18080 | grep -c ESTAB || true)
+
+            if [ "$ACTIVE_CONNS" -gt 0 ]; then
+              CONNECTED_ONCE=true
+              IDLE_COUNTER=0 # 恢复计时
+            else
+              # 如果曾经连接过, 但现在没有活跃连接, 开始累计空闲时间
+              if [ "$CONNECTED_ONCE" = true ]; then
+                IDLE_COUNTER=$((IDLE_COUNTER + 600))
+                echo "未检测到活跃连接，已空闲 ${IDLE_COUNTER}/${IDLE_TIMEOUT} 秒..."
+                
+                if [ "$IDLE_COUNTER" -ge "$IDLE_TIMEOUT" ]; then
+                  echo "超过 ${IDLE_TIMEOUT} 秒无连接，自动触发超时关机!"
+                  break
+                fi
+              fi
+            fi
+
+            sleep 600
+          done
+
+          # 清理进程，优雅结束
+          pkill -f code-server || true
+          pkill -f cloudflared || true
+          echo "Workflow 运行结束，资源已释放。"
+

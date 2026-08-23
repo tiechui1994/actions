@@ -1,0 +1,22 @@
+name: streamlit
+on:
+  workflow_dispatch:
+    inputs:
+
+jobs:
+  streamlit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          repository: tiechui1994/deno
+          token: ${{secrets.GIT_TOKEN}}
+          path: .
+          
+      - uses: ./actions/streamlit
+        timeout-minutes: 5
+        with:
+          endpoint: 'https://streams.streamlit.app'
+          proxy: ''

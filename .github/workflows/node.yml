@@ -1,0 +1,67 @@
+name: node
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'node version'
+        required: true
+        default: ''
+      install:
+        description: 'node install dir'
+        required: false
+        default: '/opt/local/node'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      needbuild: ${{ steps.check.outputs.needbuild }}
+    steps:
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+    - name: Check TAG 
+      id: check
+      run: bash script/checktag.sh ${{secrets.GIT_TOKEN}} node_${{github.event.inputs.version}}
+
+
+  build:
+    needs: [check]
+    if: ${{ needs.check.outputs.needbuild == 0 }}
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+
+    - name: Pythons
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.10'
+
+    - name: Build static node
+      id: build
+      run: |
+          ./script/node.sh \
+              ${{github.event.inputs.version}} \
+              ${{github.event.inputs.install}} \
+              1 \
+              node-v${{github.event.inputs.version}}-linux-x64.tar.gz
+      shell: bash
+
+    - name: Release
+      if: ${{ success() }}
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GIT_TOKEN }}
+        file: ${{github.workspace}}/node-v${{github.event.inputs.version}}-linux-x64.tar.gz
+        asset_name: node_${{github.event.inputs.version}}
+        tag: node_${{github.event.inputs.version}}
+        overwrite: true
+        body: "release node_${{github.event.inputs.version}}"
+        file_glob: true

@@ -1,0 +1,44 @@
+name: appwrite
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'run action'
+        default: 'status'
+        type: choice
+        options:
+        - 'status'
+        - 'deploy'
+        - 'login'
+      username:
+        description: 'username'
+      password:
+        description: 'password'
+
+jobs:
+  appwrite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        if: ${{ github.event.inputs.action == 'status' || github.event.inputs.action == 'deploy' }}
+        with:
+          ref: master
+          repository: tiechui1994/serverless
+          token: ${{secrets.GIT_TOKEN}}
+      - uses: ./action/appwrite
+        if: ${{ github.event.inputs.action == 'status' || github.event.inputs.action == 'deploy' }}
+        with:
+          action: ${{ github.event.inputs.action }} 
+      
+      - uses: actions/checkout@v7
+        if: ${{ github.event.inputs.action == 'login' }}
+        with:
+          ref: main
+          repository: tiechui1994/deno
+          token: ${{secrets.GIT_TOKEN}}
+      - uses: ./actions/appwrite
+        if: ${{ github.event.inputs.action == 'login' }}
+        with:
+          username: ${{ github.event.inputs.username }}
+          password: ${{ github.event.inputs.password }}

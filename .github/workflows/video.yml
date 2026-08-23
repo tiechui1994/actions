@@ -1,0 +1,56 @@
+name: video
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'ts download url'
+        required: true
+        default: ''
+      parallel:
+        description: 'parallel count'
+        required: false
+        default: 10
+      name:
+        description: 'name'
+        required: false
+        default: 'video.mpg'
+      target:
+        description: 'name'
+        required: false
+        default: 'videos'
+      delay:
+        description: 'delay second'
+        required: false
+        default: 0
+
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    env:
+      go: '1.17'
+
+    steps:
+    - name: Use Go ${{ env.go }}
+      uses: actions/setup-go@v6
+      with:
+        go-version: ${{ env.go }}
+
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+
+    - name: Downalod and Upload
+      run: |
+        make -C golang video
+        sleep ${{github.event.inputs.delay}}
+        golang/video -name $NAME -url ${{github.event.inputs.url}} -batch ${{github.event.inputs.parallel}}
+        arr=($(du -mh $NAME))
+        echo "${arr[1]} size: ${arr[0]}B"
+        make -C golang upload
+        golang/upload -upload -file $NAME -dir ${{github.event.inputs.target}}
+      env:
+        NAME: ${{github.workspace}}/${{github.event.inputs.name}}
+        ALIDRIVE_TOKEN: ${{secrets.ALIDRIVE_TOKEN}}
+

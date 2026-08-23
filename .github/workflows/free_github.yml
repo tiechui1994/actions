@@ -1,0 +1,76 @@
+name: free_github
+on:
+  workflow_dispatch:
+    inputs:
+      configName:
+        description: 'name'
+        required: false
+        default: ''
+        type: choice
+        options:
+        - ''
+        - 'gitCode'
+        - 'gitIssue'
+      inputName:
+        description: 'custom name'
+        required: false
+        default: ''
+        type: string
+      debug:
+        description: 'debug mode'
+        required: false
+        default: 'url'
+        type: choice
+        options:
+        - 'url'
+        - 'cloudflare'
+      debugUrl:
+        description: 'when debug=url testing url'
+        required: false
+        default: ''
+  
+jobs:
+  free_github:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        index: [0, 1]
+
+    steps:
+      - name: SetEnv
+        run: |
+          if [ ${{ github.event.inputs.configName }} != '' ]; then
+            echo "CONFIG_NAME=${{github.event.inputs.configName}}" >> $GITHUB_ENV
+          elif [ ${{ github.event.inputs.inputName }} != '' ]; then
+            echo "CONFIG_NAME=${{github.event.inputs.inputName}}" >> $GITHUB_ENV
+          else
+            echo "CONFIG_NAME=" >> $GITHUB_ENV
+          fi
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          repository: tiechui1994/free
+          token: ${{secrets.GIT_TOKEN}}
+          path: ./action
+      - name: Only execute ${{ env.CONFIG_NAME }}
+        uses: ./action/action/github
+        if: ${{ env.CONFIG_NAME != '' && matrix.index == 0 }}
+        with:
+          config: ${{secrets.CONFIG_GITHUB}}
+          endpoint: ${{secrets.ENDPOINT}}
+          count: 1
+          index: 0
+          configName: ${{ env.CONFIG_NAME }}
+          debug: ${{ github.event.inputs.debug }}
+          debugUrl: ${{ github.event.inputs.debugUrl }}
+      - name: Execute all 
+        uses: ./action/action/github
+        if: ${{ env.CONFIG_NAME == '' }}
+        with:
+          config: ${{secrets.CONFIG_GITHUB}}
+          endpoint: ${{secrets.ENDPOINT}}
+          count: 2
+          index: ${{matrix.index}}
+          configName: ${{ env.CONFIG_NAME }}
+          debug: ${{ github.event.inputs.debug }}
+          debugUrl: ${{ github.event.inputs.debugUrl }}
