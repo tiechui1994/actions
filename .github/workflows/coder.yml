@@ -63,11 +63,12 @@ jobs:
           cat << 'EOF' > ~/.local/share/code-server/User/settings.json
           {
             "workbench.colorTheme": "Dark Modern",
-            "editor.fontSize": 14,
-            "editor.fontFamily": "monospace, 'Courier New'",
+            "editor.fontSize": 15,
+            "editor.fontFamily": "'Courier New'",
             "workbench.preferredDarkColorTheme": "Dark Modern",
             "terminal.integrated.defaultProfile.linux": "bash",
-            "terminal.integrated.fontFamily":"monospace, 'Courier New'"
+            "terminal.integrated.fontFamily":"'Courier New'",
+            "terminal.integrated.cursorStyle": "underline"
           }
           EOF
 
@@ -143,7 +144,7 @@ jobs:
             else
               # 如果曾经连接过, 但现在没有活跃连接, 开始累计空闲时间
               if [ "$CONNECTED_ONCE" = true ]; then
-                IDLE_COUNTER=$((IDLE_COUNTER + 180))
+                IDLE_COUNTER=$((IDLE_COUNTER + 120))
                 echo "未检测到活跃连接，已空闲 ${IDLE_COUNTER}/${IDLE_TIMEOUT} 秒..."
                 
                 if [ "$IDLE_COUNTER" -ge "$IDLE_TIMEOUT" ]; then
@@ -153,7 +154,7 @@ jobs:
               fi
             fi
 
-            sleep 180
+            sleep 120
           done
 
           # 清理进程，优雅结束
