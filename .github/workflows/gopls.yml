@@ -1,0 +1,64 @@
+name: gopls
+
+on:
+  workflow_dispatch: 
+    inputs:
+      version:
+        description: 'tools gopls version'
+        required: false
+        default: 'v0.21.0'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      needbuild: ${{ steps.check.outputs.needbuild }}
+    steps:
+    - name: Checkout
+      timeout-minutes: 1
+      uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+    - name: Check tag
+      id: check
+      run: |
+        bash script/checktag.sh ${{secrets.GIT_TOKEN}} gopls_${{github.event.inputs.version}}
+      
+  gopls:
+    needs: [check]
+    if: ${{ needs.check.outputs.needbuild == 0 }}
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.26'
+      
+      - name: Clone Source 
+        uses: actions/checkout@v7
+        with:
+          repository: 'golang/tools'
+          ref: 'gopls/${{github.event.inputs.version}}'
+          fetch-depth: 0
+
+      - name: Build version
+        run: |
+          cd gopls && \
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -gcflags=all=-l -ldflags='-w -s' -o gopls_amd64 . && \
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -gcflags=all=-l -ldflags='-w -s' -o gopls_arm64 . && \
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -gcflags=all=-l -ldflags='-w -s' -o gopls_amd64.exe . && \
+          GOOS=windows GOARCH=arm64 CGO_ENABLED=0 go build -gcflags=all=-l -ldflags='-w -s' -o gopls_arm64.exe . 
+      
+      - name: Release
+        if: ${{ success() }}
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GIT_TOKEN }}
+          file: ${{github.workspace}}/gopls/gopls_*
+          asset_name: mqtt_${{github.event.inputs.version}}
+          tag: gopls_${{github.event.inputs.version}}
+          overwrite: true
+          body: "release gopls_${{github.event.inputs.version}}"
+          file_glob: true
+      
