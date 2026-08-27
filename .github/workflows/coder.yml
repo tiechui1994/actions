@@ -29,6 +29,7 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version: '1.25'
+          cache: false
 
       - name: Setup Shell & Autocompletion
         run: |
@@ -51,7 +52,9 @@ jobs:
       # 3. 安装 code-server 及所需插件
       - name: Install Go Tools, Code-server and Extensions
         run: |
-          go install golang.org/x/tools/gopls@v0.21.0
+          mkdir -p $(go env GOPATH)/bin
+          wget -q https://github.com/tiechui1994/actions/releases/download/gopls_v0.23.0/gopls_amd64 -O $(go env GOPATH)/bin/gopls
+          chmod a+x $(go env GOPATH)/bin/gopls
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
           curl -fsSL https://code-server.dev/install.sh | sh
