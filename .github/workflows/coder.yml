@@ -152,7 +152,7 @@ jobs:
             else
               # 如果曾经连接过, 但现在没有活跃连接, 开始累计空闲时间
               if [ "$CONNECTED_ONCE" = true ]; then
-                IDLE_COUNTER=$((IDLE_COUNTER + 120))
+                IDLE_COUNTER=$((IDLE_COUNTER + 60))
                 echo "未检测到活跃连接，已空闲 ${IDLE_COUNTER}/${IDLE_TIMEOUT} 秒..."
                 
                 if [ "$IDLE_COUNTER" -ge "$IDLE_TIMEOUT" ]; then
@@ -162,7 +162,7 @@ jobs:
               fi
             fi
 
-            sleep 120
+            sleep 60
           done
 
           # 清理进程，优雅结束
