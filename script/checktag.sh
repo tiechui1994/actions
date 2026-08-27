@@ -27,20 +27,16 @@ log_info() {
 }
 
 check() {
-    sudo apt-get update && \
-    sudo apt-get install jq -y
-    url=https://api.github.com/repos/tiechui1994/jobs/releases/tags/${TAG}
-    result=$(curl -H "Accept: application/vnd.github.v3+json" \
-                  -H "Authorization: token ${TOKEN}" ${url})
-    log_info "result: $(echo ${result} | jq .)"
-    message=$(echo ${result} | jq .message)
-    log_info "message: ${message}"
-    if [[ ${message} = '"Not Found"' ]]; then
-        echo "needbuild=${success}" >> $GITHUB_OUTPUT
+    url=https://api.github.com/repos/tiechui1994/actions/releases/tags/${TAG}
+    result=$(curl -H "Accept: application/vnd.github.v3+json" ${url})
+    log_info "result: ${result}"
+    # 使用 Bash 通配符检查响应体中是否包含 "message": "Not Found"
+    if [[ "${result}" == *'"message":"Not Found"'* ]] || [[ "${result}" == *'"message": "Not Found"'* ]]; then
+        echo "needbuild=${success}" >> "$GITHUB_OUTPUT"
         return
     fi
 
-    echo "needbuild=${failure}" >> $GITHUB_OUTPUT
+    echo "needbuild=${failure}" >> "$GITHUB_OUTPUT"
 }
 
 check
