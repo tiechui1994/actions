@@ -15,7 +15,7 @@ jobs:
           token: ${{secrets.GIT_TOKEN}}
           path: .
           
-      - uses: ./actions/streamlit
+      - uses: ./action/streamlit
         timeout-minutes: 5
         with:
           endpoint: 'https://streams.streamlit.app'

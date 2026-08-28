@@ -13,11 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
       # 1. 配置 Node.js 环境 (JS/TS 开发 & 补全支持)
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -62,6 +57,8 @@ jobs:
           code-server --install-extension golang.Go
           code-server --install-extension dbaeumer.vscode-eslint
           code-server --install-extension esbenp.prettier-vscode
+          code-server --install-extension ionutvmi.path-autocomplete
+          code-server --install-extension xabikos.javascriptsnippets
 
           mkdir -p ~/.local/share/code-server/User
           cat << 'EOF' > ~/.local/share/code-server/User/settings.json
@@ -87,7 +84,6 @@ jobs:
           sudo dpkg -i /tmp/cloudflared-linux-amd64.deb
       
       - name: Clone Code
-        if: ${{ github.event.inputs.repo != 'actions' }}
         uses: actions/checkout@v7
         with:
           repository: tiechui1994/${{ github.event.inputs.repo }}
@@ -126,7 +122,8 @@ jobs:
           
           # 等待 Tunnel 域名生成并输出
           sleep 5
-          cat /tmp/tunnel.log | grep -o 'https://.*\.trycloudflare\.com' || true
+          ENDPOINT=$(cat /tmp/tunnel.log | grep -o 'https://.*\.trycloudflare\.com' || true)
+          echo $ENDPOINT
           echo "=========================================================="
           echo " 使用上面生成的 https://xxxx.trycloudflare.com 链接在浏览器中打开"
           echo "=========================================================="
@@ -137,6 +134,12 @@ jobs:
           CONNECTED_ONCE=false
 
           while true; do
+            # 多次检查地址
+            if [ -z $ENDPOINT ]; then
+              ENDPOINT=$(cat /tmp/tunnel.log | grep -o 'https://.*\.trycloudflare\.com' || true)
+              echo $ENDPOINT
+            fi
+
             # 检查是否有手动触发退出
             if [ -f /tmp/manual_shutdown ]; then
               echo "收到手动关机指令，正在退出..."
@@ -152,7 +155,7 @@ jobs:
             else
               # 如果曾经连接过, 但现在没有活跃连接, 开始累计空闲时间
               if [ "$CONNECTED_ONCE" = true ]; then
-                IDLE_COUNTER=$((IDLE_COUNTER + 60))
+                IDLE_COUNTER=$((IDLE_COUNTER + 30))
                 echo "未检测到活跃连接，已空闲 ${IDLE_COUNTER}/${IDLE_TIMEOUT} 秒..."
                 
                 if [ "$IDLE_COUNTER" -ge "$IDLE_TIMEOUT" ]; then
@@ -162,11 +165,11 @@ jobs:
               fi
             fi
 
-            sleep 60
+            sleep 30
           done
 
           # 清理进程，优雅结束
           pkill -f code-server || true
           pkill -f cloudflared || true
-          echo "Workflow 运行结束，资源已释放。"
+          echo "Workflow 运行结束, 资源已释放."
 
