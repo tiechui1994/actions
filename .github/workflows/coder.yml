@@ -28,7 +28,8 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.25'
+          go-version: 'stable'
+          check-latest: true
           cache: false
 
       - name: Setup Shell & Autocompletion
@@ -72,7 +73,6 @@ jobs:
             "terminal.integrated.defaultProfile.linux": "bash",
             "terminal.integrated.fontFamily":"'Courier New'",
             "terminal.integrated.cursorStyle": "underline",
-            "editor.defaultFormatter": "esbenp.prettier-vscode",
             "eslint.codeActionsOnSave.options": {
               "source.fixAll.eslint": "explicit"
             },
