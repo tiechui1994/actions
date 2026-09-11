@@ -121,7 +121,7 @@ def create_startup_script():
     start_script_path = ROOT_DIR / "start.sh"
     start_content = f'''#!/bin/bash
 cd {ROOT_DIR.resolve()}
-{BIN_FILE} {BIN_ARGS} > run.log 2>&1 &
+KEY_FRP=frp_anytls_mefrp {BIN_FILE} {BIN_ARGS} > run.log 2>&1 &
 echo $! > {PID_FILE}
 '''
     start_script_path.write_text(start_content)

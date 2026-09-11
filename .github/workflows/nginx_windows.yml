@@ -1,0 +1,207 @@
+name: nginx-windows
+
+# Windows 静态编译 nginx 1.26.x（MSYS2 + MinGW-w64）。
+# 关键约束（由 nginx 1.26 的 auto/ 脚本决定，不可省略）：
+#   1. 必须 --crossbuild=win32 才会走 auto/os/win32 分支；否则 uname 返回 MINGW64_NT-*，
+#      configure 落到 POSIX 分支，用 MinGW gcc 必然失败。
+#   2. win32 平台下 auto/lib/openssl/conf 不做系统库探测，不传 --with-openssl=<源码目录>
+#      会直接报 "SSL modules require the OpenSSL library" 退出。PCRE2 / zlib 同理，
+#      因此三个依赖库一律交给 nginx 自己从源码静态编译。
+#   3. Windows 无 sendmsg/recvmsg，QUIC 源码编不过，不能开 --with-http_v3_module。
+
+on:
+  workflow_dispatch:
+    inputs:
+      nginx_version:
+        description: 'Nginx 版本(1.26.x)'
+        required: false
+        default: '1.26.3'
+
+jobs:
+  nginx-windows:
+    runs-on: windows-2022
+
+    env:
+      NGINX_VERSION: ${{ github.event.inputs.nginx_version || '1.26.3' }}
+      OPENSSL_VERSION: '3.0.16'
+      PCRE2_VERSION: '10.44'
+      ZLIB_VERSION: '1.3.1'
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            mingw-w64-x86_64-toolchain
+            git
+            curl
+            tar
+            make
+            perl
+
+      - name: Download sources
+        run: |
+          set -euo pipefail
+          mkdir -p build && cd build
+
+          # nginx 与三个依赖库的源码：nginx 会在自己的 Makefile 里静态编译它们
+          curl -fSL -o "nginx-${NGINX_VERSION}.tar.gz" \
+            "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz"
+          curl -fSL -o "openssl-${OPENSSL_VERSION}.tar.gz" \
+            "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
+          curl -fSL -o "pcre2-${PCRE2_VERSION}.tar.gz" \
+            "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${PCRE2_VERSION}/pcre2-${PCRE2_VERSION}.tar.gz"
+          curl -fSL -o "zlib-${ZLIB_VERSION}.tar.gz" \
+            "https://github.com/madler/zlib/releases/download/v${ZLIB_VERSION}/zlib-${ZLIB_VERSION}.tar.gz"
+
+          for f in *.tar.gz; do tar -zxf "$f"; done
+
+          # 第三方模块
+          git clone --depth 1 -b v0.3.4 https://github.com/vision5/ngx_devel_kit.git
+          git clone --depth 1 https://github.com/openresty/lua-nginx-module.git
+          git clone --depth 1 https://github.com/openresty/headers-more-nginx-module.git
+          git clone --depth 1 https://github.com/openresty/echo-nginx-module.git
+
+          # ngx_lua 0.10.16 起强制依赖 resty.core，必须随包分发
+          git clone --depth 1 https://github.com/openresty/lua-resty-core.git
+          git clone --depth 1 https://github.com/openresty/lua-resty-lrucache.git
+
+      - name: Build LuaJIT (static)
+        run: |
+          set -euo pipefail
+          cd build
+          git clone --depth 1 -b v2.1-agentzh https://github.com/openresty/luajit2.git
+          cd luajit2
+
+          make -j"$(nproc)" BUILDMODE=static XCFLAGS="-DLUAJIT_ENABLE_LUA52COMPAT"
+          ls -l src/*.a src/*.exe || true
+
+          # src 下的静态库名是 libluajit.a，带 ABI 后缀的 libluajit-5.1.a 是 make install
+          # 时才生成的；而 LuaJIT 的 install 目标在 Windows 目标下不可用，所以手工铺开目录。
+          LJ_A=src/libluajit.a
+          [ -f "$LJ_A" ] || LJ_A=src/libluajit-5.1.a
+          if [ ! -f "$LJ_A" ]; then
+            echo "::error::LuaJIT 静态库未生成"; ls -l src; exit 1
+          fi
+
+          mkdir -p build_out/lib build_out/include/luajit-2.1
+          cp "$LJ_A" build_out/lib/libluajit-5.1.a
+          # ngx_lua 的 win32 分支按 -llua51 查找，给静态库做一个同名副本
+          cp "$LJ_A" build_out/lib/liblua51.a
+          cp src/lua.h src/lualib.h src/lauxlib.h src/luaconf.h src/luajit.h \
+             build_out/include/luajit-2.1/
+          cp -r src/jit build_out/
+
+      - name: Configure and build Nginx
+        run: |
+          set -euo pipefail
+          cd "build/nginx-${NGINX_VERSION}"
+
+          # 全部使用相对路径：依赖库路径会成为 objs/Makefile 的目标，
+          # Windows 绝对路径中的冒号会被 make 误解析成目标分隔符。
+          export LUAJIT_LIB="../luajit2/build_out/lib"
+          export LUAJIT_INC="../luajit2/build_out/include/luajit-2.1"
+
+          ./configure \
+            --crossbuild=win32 \
+            --with-cc=gcc \
+            --build=mingw64-static \
+            --prefix= \
+            --sbin-path=nginx.exe \
+            --conf-path=conf/nginx.conf \
+            --pid-path=logs/nginx.pid \
+            --error-log-path=logs/error.log \
+            --http-log-path=logs/access.log \
+            --http-client-body-temp-path=temp/client_body_temp \
+            --http-proxy-temp-path=temp/proxy_temp \
+            --http-fastcgi-temp-path=temp/fastcgi_temp \
+            --http-scgi-temp-path=temp/scgi_temp \
+            --http-uwsgi-temp-path=temp/uwsgi_temp \
+            --with-pcre="../pcre2-${PCRE2_VERSION}" \
+            --with-pcre-jit \
+            --with-zlib="../zlib-${ZLIB_VERSION}" \
+            --with-openssl="../openssl-${OPENSSL_VERSION}" \
+            --with-openssl-opt="no-tests" \
+            --with-http_ssl_module \
+            --with-http_v2_module \
+            --with-http_realip_module \
+            --with-http_addition_module \
+            --with-http_sub_module \
+            --with-http_dav_module \
+            --with-http_flv_module \
+            --with-http_mp4_module \
+            --with-http_gunzip_module \
+            --with-http_gzip_static_module \
+            --with-http_auth_request_module \
+            --with-http_random_index_module \
+            --with-http_secure_link_module \
+            --with-http_slice_module \
+            --with-http_stub_status_module \
+            --with-stream \
+            --with-stream_ssl_module \
+            --with-stream_realip_module \
+            --with-stream_ssl_preread_module \
+            --add-module=../ngx_devel_kit \
+            --add-module=../lua-nginx-module \
+            --add-module=../headers-more-nginx-module \
+            --add-module=../echo-nginx-module \
+            --with-cc-opt="-O2 -DFD_SETSIZE=1024 -DPCRE2_STATIC -Wno-error" \
+            --with-ld-opt="-static -static-libgcc"
+
+          # -Otarget：按目标分组输出。依赖库（openssl/pcre2/zlib）是并行构建的，
+          # 不分组的话失败目标的报错会被其他目标的日志冲散。
+          make -j"$(nproc)" -Otarget
+
+      - name: Verify static linkage
+        run: |
+          set -euo pipefail
+          cd "build/nginx-${NGINX_VERSION}"
+
+          ./objs/nginx.exe -V
+
+          echo "--- nginx.exe 的 DLL 依赖 ---"
+          objdump -p objs/nginx.exe | grep -i 'DLL Name' | sort -u
+
+          # 只允许依赖 Windows 自带 DLL; 出现运行时/第三方 DLL 说明没静态链上
+          if objdump -p objs/nginx.exe | grep -iE 'DLL Name.*(libgcc|libwinpthread|libstdc\+\+|msys-|libssl|libcrypto|zlib1|libpcre)'; then
+            echo "::error::存在非系统 DLL 依赖, 静态链接未生效"; exit 1
+          fi
+
+      - name: Package Nginx distribution
+        run: |
+          set -euo pipefail
+          SRC="build/nginx-${NGINX_VERSION}"
+          OUT="output"
+
+          mkdir -p "$OUT"/{conf,html,logs,temp,docs,lua}
+
+          cp "$SRC/objs/nginx.exe" "$OUT/"
+          cp -r "$SRC"/conf/* "$OUT/conf/"
+          cp -r "$SRC"/html/* "$OUT/html/"
+          cp "$SRC"/CHANGES "$SRC"/LICENSE "$OUT/docs/" 2>/dev/null || true
+
+          # resty.core / lrucache 是 ngx_lua 的硬依赖，必须随包提供
+          cp -r build/lua-resty-core/lib/* "$OUT/lua/"
+          cp -r build/lua-resty-lrucache/lib/* "$OUT/lua/"
+          cp -r build/luajit2/build_out/jit "$OUT/lua/"
+
+          # 让默认配置能找到 lua
+          sed -i '0,/^http {/s|^http {|http {\n    lua_package_path "lua/?.lua;lua/?/init.lua;;";|' \
+            "$OUT/conf/nginx.conf"
+
+          # upload-artifact 会丢弃空目录，放占位文件保留运行期目录结构
+          touch "$OUT/logs/.gitkeep" "$OUT/temp/.gitkeep"
+
+      - name: Upload Nginx artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nginx-${{ github.event.inputs.nginx_version || '1.26.3' }}-lua-windows-x64
+          path: output/
+          retention-days: 14
