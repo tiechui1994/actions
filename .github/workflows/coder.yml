@@ -41,11 +41,11 @@ jobs:
           npm completion >> ~/.bashrc
 
           # git 配置
-          AUTH="x-access-token:${{secrets.GIT_TOKEN}}"
+          AUTH="${{secrets.GIT_TOKEN}}"
           git config --global user.name "tiechui1994"
           git config --global user.email "2904951429@qq.com"
           git config --global core.editor "vim"
-          git config --global http."https://github.com/".extraheader "AUTHORIZATION: basic $(echo -n $AUTH | base64)"
+          git config --global url."https://${AUTH}@github.com".insteadof "https://github.com"
       
       # 3. 安装 code-server 及所需插件
       - name: Install Go Tools, Code-server and Extensions
