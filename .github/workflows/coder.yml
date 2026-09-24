@@ -41,9 +41,11 @@ jobs:
           npm completion >> ~/.bashrc
 
           # git 配置
+          AUTH="x-access-token:${{secrets.GIT_TOKEN}}"
           git config --global user.name "tiechui1994"
           git config --global user.email "2904951429@qq.com"
           git config --global core.editor "vim"
+          git config --global http."https://github.com/".extraheader "AUTHORIZATION: basic $(echo -n $AUTH | base64)"
       
       # 3. 安装 code-server 及所需插件
       - name: Install Go Tools, Code-server and Extensions
@@ -87,7 +89,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: tiechui1994/${{ github.event.inputs.repo }}
-          token: ${{secrets.GIT_TOKEN}}
           path: ${{ github.event.inputs.repo }}
           fetch-depth: 0
 
