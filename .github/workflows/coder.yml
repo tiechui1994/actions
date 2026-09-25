@@ -90,6 +90,7 @@ jobs:
         with:
           repository: tiechui1994/${{ github.event.inputs.repo }}
           path: ${{ github.event.inputs.repo }}
+          token: ${{secrets.GIT_TOKEN}}
           fetch-depth: 0
 
       # 5. 启动服务并挂起容器保持运行
