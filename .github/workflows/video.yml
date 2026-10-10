@@ -3,23 +3,31 @@ on:
   workflow_dispatch:
     inputs:
       url:
-        description: 'ts download url'
+        description: 'video url (YouTube or m3u8 streaming url)'
         required: true
         default: ''
       parallel:
-        description: 'parallel count'
+        description: 'parallel count (for m3u8 streams)'
         required: false
         default: 10
-      name:
-        description: 'name'
+      quality:
+        description: 'preferred quality for YouTube (e.g. 1080p,720p,best)'
         required: false
-        default: 'video.mpg'
+        default: '1080p,720p,best'
+      proxy:
+        description: 'HTTP/HTTPS proxy URL'
+        required: false
+        default: 'http://127.0.0.1:7890'
+      name:
+        description: 'output filename'
+        required: false
+        default: 'video.mp4'
       target:
-        description: 'name'
+        description: 'upload target directory'
         required: false
         default: 'videos'
       delay:
-        description: 'delay second'
+        description: 'delay second before upload'
         required: false
         default: 0
 
@@ -41,16 +49,50 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Downalod and Upload
+    - name: Install FFmpeg
+      run: |
+        curl -fsSL https://github.com/tiechui1994/actions/releases/download/ffmpeg_5.1/ffmpeg.tar.xz -o "$RUNNER_TEMP/ffmpeg.tar.xz"
+        tar -xJf "$RUNNER_TEMP/ffmpeg.tar.xz" -C "$RUNNER_TEMP"
+        chmod +x "$RUNNER_TEMP/ffmpeg/ffmpeg" "$RUNNER_TEMP/ffmpeg/ffprobe"
+        echo "$RUNNER_TEMP/ffmpeg" >> "$GITHUB_PATH"
+
+    - name: Checkout Code
+      uses: actions/checkout@v6
+      with:
+        repository: 'tiechui1994/deno'
+        token: ${{ secrets.GIT_TOKEN }}
+        path: './deno'
+
+    - name: Set proxy
+      run: |
+        echo 'mixed-port: 7890' >> config.yaml 
+        echo 'mode: rule' >> config.yaml 
+        echo 'proxies:' >> config.yaml
+        echo ' - {"name":"proxy","type":"vless","server":"tcpover.quinn.eu.org","port":443,"network":"ws","uuid":"ca8692b7-8f6f-4346-a916-c1e9798ab91b","tls":true,"ws-opts":{"headers":{"Host":"tcpover.quinn.eu.org","Proto":"Vless","X-Real-Key":"random"},"path":"/api/ssh?mode=direct&rule=Connector&source=github"}}' >> config.yaml
+        echo 'rules:' >> config.yaml
+        echo '- MATCH,proxy' >> config.yaml
+      shell: bash
+
+    - uses: ./deno/action/mihomo
+      with: 
+        config-url: config.yaml
+
+    - name: Download and Upload
       run: |
         make -C golang video
-        sleep ${{github.event.inputs.delay}}
-        golang/video -name $NAME -url ${{github.event.inputs.url}} -batch ${{github.event.inputs.parallel}}
+        sleep "$DELAY"
+        golang/video -name "$NAME" -url "$VIDEO_URL" -batch "$PARALLEL" -quality "$QUALITY" -proxy "$PROXY"
+
         arr=($(du -mh $NAME))
         echo "${arr[1]} size: ${arr[0]}B"
         make -C golang upload
-        golang/upload -upload -file $NAME -dir ${{github.event.inputs.target}}
+        golang/upload -upload -file "$NAME" -dir "$TARGET"
       env:
         NAME: ${{github.workspace}}/${{github.event.inputs.name}}
+        VIDEO_URL: ${{github.event.inputs.url}}
+        PARALLEL: ${{github.event.inputs.parallel}}
+        QUALITY: ${{github.event.inputs.quality}}
+        PROXY: ${{github.event.inputs.proxy}}
+        DELAY: ${{github.event.inputs.delay}}
+        TARGET: ${{github.event.inputs.target}}
         ALIDRIVE_TOKEN: ${{secrets.ALIDRIVE_TOKEN}}
-
