@@ -14,10 +14,6 @@ on:
         description: 'preferred quality for YouTube (e.g. 1080p,720p,best)'
         required: false
         default: '1080p,720p,best'
-      proxy:
-        description: 'HTTP/HTTPS proxy URL'
-        required: false
-        default: 'http://127.0.0.1:7890'
       name:
         description: 'output filename'
         required: false
@@ -78,6 +74,7 @@ jobs:
               .live = false
             )
           ' -i config.yaml
+        yq eval '.rules = .rules[0:1] + ["DOMAIN-SUFFIX,aliyundrive.com,🎬负载视频"] + .rules[1:]' -i config.yaml
       shell: bash
       
     - uses: ./deno/action/mihomo
@@ -88,18 +85,17 @@ jobs:
       run: |
         make -C golang video
         sleep "$DELAY"
-        golang/video -name "$NAME" -url "$VIDEO_URL" -batch "$PARALLEL" -quality "$QUALITY" -proxy "$PROXY"
+        golang/video -name "$NAME" -url "$VIDEO_URL" -batch "$PARALLEL" -quality "$QUALITY" -proxy "http://127.0.0.1:7890"
 
         arr=($(du -mh $NAME))
         echo "${arr[1]} size: ${arr[0]}B"
         make -C golang upload
-        golang/upload -upload -file "$NAME" -dir "$TARGET"
+        golang/upload -upload -file "$NAME" -dir "$TARGET" -proxy "http://127.0.0.1:7890"
       env:
         NAME: ${{github.workspace}}/${{github.event.inputs.name}}
         VIDEO_URL: ${{github.event.inputs.url}}
         PARALLEL: ${{github.event.inputs.parallel}}
         QUALITY: ${{github.event.inputs.quality}}
-        PROXY: ${{github.event.inputs.proxy}}
         DELAY: ${{github.event.inputs.delay}}
         TARGET: ${{github.event.inputs.target}}
         ALIDRIVE_TOKEN: ${{secrets.ALIDRIVE_TOKEN}}

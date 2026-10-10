@@ -1,8 +1,6 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dustinxie/ecc v0.0.0-20210511000915-959544187564 h1:I6KUy4CI6hHjqnyJLNCEi7YHVMkwwtfSr2k9splgdSM=
-github.com/dustinxie/ecc v0.0.0-20210511000915-959544187564/go.mod h1:yekO+3ZShy19S+bsmnERmznGy9Rfg6dWWWpiGJjNAz8=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/sirupsen/logrus v1.9.0/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
@@ -19,8 +17,8 @@ github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o
 github.com/tidwall/gjson v1.14.4/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
 github.com/tidwall/match v1.1.1/go.mod h1:eRSPERbgtNPcGhD8UCthc6PmLEQXEWd3PRB5JTxsfmM=
 github.com/tidwall/pretty v1.2.0/go.mod h1:ITEVvHYasfjBbM0u2Pg8T2nJnzm8xPwvNhhsoaGGjNU=
-github.com/tiechui1994/tool v1.6.1 h1:vUrQ3gXUXC6XI2T2gH+Rlxd1xV55m7J1BUIOKJyoRjQ=
-github.com/tiechui1994/tool v1.6.1/go.mod h1:b45chUdgLK0NN/lXscgnuW/nXOSLntLeknnUcz3j8jc=
+github.com/tiechui1994/tool v1.6.2 h1:dYeXTtRlcGd8a3vA+1bqtds5C8TddnaGHeOOOH0OL70=
+github.com/tiechui1994/tool v1.6.2/go.mod h1:4YSeX/ECzGy4DhMdoqmqL8f9DZj+TC0WAAUPrcOZmu8=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20210921155107-089bfa567519/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=

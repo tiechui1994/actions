@@ -7,6 +7,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,12 +36,16 @@ curl -X POST \
   }'
 */
 
+var (
+	upload = flag.Bool("upload", false, "upload file")
+	remove = flag.Bool("delete", false, "delete file")
+	dir    = flag.String("dir", "github", "want to save dir")
+	file   = flag.String("file", "", "file name")
+	fileid = flag.String("fileid", "", "yunpan fileid")
+	proxy  = flag.String("proxy", "", "HTTP/HTTPS proxy URL (e.g. http://127.0.0.1:7890)")
+)
+
 func main() {
-	upload := flag.Bool("upload", false, "upload file")
-	remove := flag.Bool("delete", false, "delete file")
-	dir := flag.String("dir", "github", "want to save dir")
-	file := flag.String("file", "", "file name")
-	fileid := flag.String("fileid", "", "yunpan fileid")
 	flag.Parse()
 
 	token, err := Get()
@@ -128,6 +134,12 @@ func handleUpload(token aliyundrive.Token, dir, filename string) {
 				}
 			}
 		}
+	}
+
+	if *proxy != "" {
+		util.RegisterProxy(func(r *http.Request) (*url.URL, error) {
+			return url.Parse(*proxy)
+		})
 	}
 
 	_, err = aliyundrive.UploadFile(filename, dirFile.FileID, token)
