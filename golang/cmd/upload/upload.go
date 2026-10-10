@@ -42,7 +42,6 @@ var (
 	dir    = flag.String("dir", "github", "want to save dir")
 	file   = flag.String("file", "", "file name")
 	fileid = flag.String("fileid", "", "yunpan fileid")
-	proxy  = flag.String("proxy", "", "HTTP/HTTPS proxy URL (e.g. http://127.0.0.1:7890)")
 )
 
 func main() {
@@ -93,6 +92,16 @@ func handleDelete(token aliyundrive.Token, fileid string) {
 }
 
 func handleUpload(token aliyundrive.Token, dir, filename string) {
+	util.RegisterBeforeRequest(func(r *http.Request) {
+		if !strings.Contains(r.URL.Host, "static.broadlink.eu.org") {
+			u := r.URL.String()
+			r.URL, _ = url.Parse("https://static.broadlink.eu.org/api/proxy")
+			r.Host = "static.broadlink.eu.org"
+			r.RequestURI = "/api/proxy"
+			r.Header.Set("x-url", u)
+		}
+	})
+
 	files, err := aliyundrive.Files("root", token)
 	if err != nil {
 		fmt.Println("Files:", err)
@@ -134,12 +143,6 @@ func handleUpload(token aliyundrive.Token, dir, filename string) {
 				}
 			}
 		}
-	}
-
-	if *proxy != "" {
-		util.RegisterProxy(func(r *http.Request) (*url.URL, error) {
-			return url.Parse(*proxy)
-		})
 	}
 
 	_, err = aliyundrive.UploadFile(filename, dirFile.FileID, token)

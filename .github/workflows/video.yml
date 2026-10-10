@@ -74,7 +74,6 @@ jobs:
               .live = false
             )
           ' -i config.yaml
-        yq eval '.rules = .rules[0:1] + ["DOMAIN-SUFFIX,aliyundrive.com,🎬负载视频"] + .rules[1:]' -i config.yaml
       shell: bash
       
     - uses: ./deno/action/mihomo
@@ -90,7 +89,7 @@ jobs:
         arr=($(du -mh $NAME))
         echo "${arr[1]} size: ${arr[0]}B"
         make -C golang upload
-        golang/upload -upload -file "$NAME" -dir "$TARGET" -proxy "http://127.0.0.1:7890"
+        golang/upload -upload -file "$NAME" -dir "$TARGET"
       env:
         NAME: ${{github.workspace}}/${{github.event.inputs.name}}
         VIDEO_URL: ${{github.event.inputs.url}}
