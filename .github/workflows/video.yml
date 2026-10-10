@@ -62,17 +62,24 @@ jobs:
         repository: 'tiechui1994/deno'
         token: ${{ secrets.GIT_TOKEN }}
         path: './deno'
+    - name: 安装 yq
+      uses: mikefarah/yq@master
 
-    - name: Set proxy
+    - name: 修改 proxyGroup
       run: |
-        echo 'mixed-port: 7890' >> config.yaml 
-        echo 'mode: rule' >> config.yaml 
-        echo 'proxies:' >> config.yaml
-        echo ' - {"name":"proxy","type":"vless","server":"tcpover.quinn.eu.org","port":443,"network":"ws","uuid":"ca8692b7-8f6f-4346-a916-c1e9798ab91b","tls":true,"ws-opts":{"headers":{"Host":"tcpover.quinn.eu.org","Proto":"Vless","X-Real-Key":"random"},"path":"/api/ssh?mode=direct&rule=Connector&source=github"}}' >> config.yaml
-        echo 'rules:' >> config.yaml
-        echo '- MATCH,proxy' >> config.yaml
+        curl ${{secrets.PROXY_URL}} -L -o config.yaml
+        yq eval '(.proxy-groups[] | select(.name == "Streaming").proxies) = ["🎬负载视频"]' -i config.yaml
+        yq eval '
+            (.proxy-groups[] | select(.name == "🎬负载视频")) |= (
+              .url = "http://www.gstatic.com/generate_204",
+              .interval = 60,
+              .max-failed-times = 1,
+              .strategy = "round-robin",
+              .live = false
+            )
+          ' -i config.yaml
       shell: bash
-
+      
     - uses: ./deno/action/mihomo
       with: 
         config-url: config.yaml
