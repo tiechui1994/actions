@@ -112,7 +112,7 @@ func TestExtractVideoFormatsFromAPI(t *testing.T) {
 	}))
 	defer server.Close()
 
-	qualities, err := extractVideoFormatsFromAPIWithClient(videoURL, server.URL, server.Client())
+	qualities, err := extractVideoFormatsFromAPIWithClient(videoURL, server.URL)
 	if err != nil {
 		t.Fatalf("extractVideoFormatsFromAPIWithClient() error = %v", err)
 	}
@@ -129,6 +129,68 @@ func TestExtractVideoFormatsFromAPI(t *testing.T) {
 	}
 	if qualities[0] != want {
 		t.Errorf("format = %#v, want %#v", qualities[0], want)
+	}
+}
+
+func TestConfigureDownloadProgress(t *testing.T) {
+	old := showDownloadProgress
+	t.Cleanup(func() { showDownloadProgress = old })
+
+	configureDownloadProgress(false)
+	if showDownloadProgress {
+		t.Fatal("showDownloadProgress = true, want false")
+	}
+	progress := newDownloadProgress(10)
+	if progress.enabled {
+		t.Fatal("newDownloadProgress().enabled = true, want false")
+	}
+}
+
+func TestDownloadFileRefreshesURLAfterForbidden(t *testing.T) {
+	data := []byte("refreshed")
+	oldURLRequests := 0
+	oldServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		oldURLRequests++
+		http.Error(w, "expired URL", http.StatusForbidden)
+	}))
+	defer oldServer.Close()
+
+	refreshedURLRequests := 0
+	refreshedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		refreshedURLRequests++
+		if got, want := r.Header.Get("Range"), "bytes=0-8"; got != want {
+			t.Errorf("Range = %q, want %q", got, want)
+		}
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes 0-%d/%d", len(data)-1, len(data)))
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write(data)
+	}))
+	defer refreshedServer.Close()
+
+	refreshCalls := 0
+	outputPath := filepath.Join(t.TempDir(), "video.mp4")
+	err := downloadFileInChunksWithRefresh(oldServer.Client(), oldServer.URL, oldServer.URL, outputPath, int64(len(data)), func() (string, error) {
+		refreshCalls++
+		return refreshedServer.URL, nil
+	})
+	if err != nil {
+		t.Fatalf("downloadFileInChunksWithRefresh() error = %v", err)
+	}
+	if oldURLRequests != 1 {
+		t.Errorf("expired URL requested %d times, want once", oldURLRequests)
+	}
+	if refreshCalls != 1 {
+		t.Errorf("URL refreshed %d times, want once", refreshCalls)
+	}
+	if refreshedURLRequests != 1 {
+		t.Errorf("refreshed URL requested %d times, want once", refreshedURLRequests)
+	}
+	got, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("failed to read output: %v", err)
+	}
+	if !bytes.Equal(got, data) {
+		t.Errorf("downloaded output = %q, want %q", got, data)
 	}
 }
 

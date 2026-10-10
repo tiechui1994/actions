@@ -2,7 +2,7 @@ module goland
 
 go 1.17
 
-require github.com/tiechui1994/tool v1.6.2
+require github.com/tiechui1994/tool v1.6.3-0.20261010164938-fb26634fe640
 
 require (
 	github.com/sirupsen/logrus v1.9.3 // indirect

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -25,13 +26,21 @@ func logRequest(request *http.Request) {
 	log.Infoln("%v - %v", request.Method, request.RequestURI)
 }
 
+var showDownloadProgress = true
+
+func configureDownloadProgress(enabled bool) {
+	showDownloadProgress = enabled
+}
+
 func main() {
 	name := flag.String("name", "", "output file path")
 	url := flag.String("url", "", "video url (YouTube or m3u8 streaming url)")
 	batch := flag.Int("batch", 10, "parallel count for m3u8 streams")
 	quality := flag.String("quality", "1080p,720p,best", "preferred quality for YouTube (1080p/720p/360p/240p/best)")
 	proxy := flag.String("proxy", "", "HTTP/HTTPS proxy URL (e.g. http://127.0.0.1:7890)")
+	progress := flag.Bool("progress", true, "show download progress during file transfers")
 	flag.Parse()
+	configureDownloadProgress(*progress)
 	if err := configureVideoProxy(*proxy); err != nil {
 		fmt.Println("Invalid proxy:", err)
 		os.Exit(1)
@@ -157,11 +166,10 @@ func isYouTubeURL(u string) bool {
 
 // extractVideoFormatsFromAPI calls iiilab API to get video formats
 func extractVideoFormatsFromAPI(videoURL string) ([]VideoQuality, error) {
-	client := newVideoHTTPClient(30 * time.Second)
-	return extractVideoFormatsFromAPIWithClient(videoURL, iiiLabAPIURL, client)
+	return extractVideoFormatsFromAPIWithClient(videoURL, iiiLabAPIURL)
 }
 
-func extractVideoFormatsFromAPIWithClient(videoURL string, apiURL string, client *http.Client) ([]VideoQuality, error) {
+func extractVideoFormatsFromAPIWithClient(videoURL string, apiURL string) ([]VideoQuality, error) {
 	payload := map[string]string{
 		"url":  videoURL,
 		"site": "youtube",
@@ -301,6 +309,75 @@ const (
 	downloadChunkMaxAttempts = 5
 )
 
+type downloadProgress struct {
+	mu             sync.Mutex
+	total          int64
+	completed      int64
+	lastReportTime time.Time
+	enabled        bool
+}
+
+func newDownloadProgress(total int64) *downloadProgress {
+	progress := &downloadProgress{total: total, lastReportTime: time.Now(), enabled: showDownloadProgress}
+	progress.report()
+	return progress
+}
+
+func (p *downloadProgress) add(size int64) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.completed += size
+	if time.Since(p.lastReportTime) >= 300*time.Millisecond || (p.total > 0 && p.completed >= p.total) {
+		p.reportLocked()
+	}
+}
+
+func (p *downloadProgress) finish() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !p.enabled {
+		return
+	}
+	p.reportLocked()
+	fmt.Println()
+}
+
+func (p *downloadProgress) report() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.reportLocked()
+}
+
+func (p *downloadProgress) reportLocked() {
+	if !p.enabled {
+		p.lastReportTime = time.Now()
+		return
+	}
+	if p.total > 0 {
+		percentage := float64(p.completed) / float64(p.total) * 100
+		fmt.Printf("\rDownload progress: %.1f%% (%.2f/%.2f MB)", percentage, float64(p.completed)/(1024*1024), float64(p.total)/(1024*1024))
+	} else {
+		fmt.Printf("\rDownloaded: %.2f MB", float64(p.completed)/(1024*1024))
+	}
+	p.lastReportTime = time.Now()
+	if p.total > 0 && p.completed >= p.total {
+		fmt.Println()
+	}
+}
+
+type progressReader struct {
+	reader   io.Reader
+	progress *downloadProgress
+}
+
+func (r progressReader) Read(buffer []byte) (int, error) {
+	count, err := r.reader.Read(buffer)
+	if count > 0 {
+		r.progress.add(int64(count))
+	}
+	return count, err
+}
+
 type downloadState struct {
 	URL       string `json:"url"`
 	Size      int64  `json:"size"`
@@ -318,6 +395,10 @@ func newDownloadRequest(fileURL string) (*http.Request, error) {
 }
 
 func downloadFile(fileURL string, outputPath string) error {
+	return downloadFileWithRefresh(fileURL, outputPath, nil)
+}
+
+func downloadFileWithRefresh(fileURL string, outputPath string, refreshURL func() (string, error)) error {
 	client := newVideoHTTPClient(5 * time.Minute)
 	fmt.Printf("Downloading from: %s\n", fileURL)
 
@@ -332,7 +413,7 @@ func downloadFile(fileURL string, outputPath string) error {
 	}
 	if probeResp.StatusCode == http.StatusOK {
 		defer probeResp.Body.Close()
-		return saveDownloadResponse(probeResp.Body, outputPath)
+		return saveDownloadResponse(probeResp.Body, outputPath, probeResp.ContentLength)
 	}
 	if probeResp.StatusCode != http.StatusPartialContent {
 		defer probeResp.Body.Close()
@@ -354,10 +435,10 @@ func downloadFile(fileURL string, outputPath string) error {
 		return fmt.Errorf("invalid download size: %d", totalSize)
 	}
 
-	return downloadFileInChunks(client, fileURL, resolvedURL, outputPath, totalSize)
+	return downloadFileInChunksWithRefresh(client, fileURL, resolvedURL, outputPath, totalSize, refreshURL)
 }
 
-func saveDownloadResponse(body io.Reader, outputPath string) error {
+func saveDownloadResponse(body io.Reader, outputPath string, totalSize int64) error {
 	outputDir := filepath.Dir(outputPath)
 	temp, err := os.CreateTemp(outputDir, ".download-*")
 	if err != nil {
@@ -365,10 +446,12 @@ func saveDownloadResponse(body io.Reader, outputPath string) error {
 	}
 	tempPath := temp.Name()
 	defer os.Remove(tempPath)
-	if _, err := io.Copy(temp, body); err != nil {
+	progress := newDownloadProgress(totalSize)
+	if _, err := io.Copy(temp, progressReader{reader: body, progress: progress}); err != nil {
 		temp.Close()
 		return fmt.Errorf("failed to write file: %w", err)
 	}
+	progress.finish()
 	if err := temp.Close(); err != nil {
 		return fmt.Errorf("failed to close output file: %w", err)
 	}
@@ -390,6 +473,10 @@ func parseContentRange(value string) (int64, int64, int64, error) {
 }
 
 func downloadFileInChunks(client *http.Client, sourceURL string, downloadURL string, outputPath string, totalSize int64) error {
+	return downloadFileInChunksWithRefresh(client, sourceURL, downloadURL, outputPath, totalSize, nil)
+}
+
+func downloadFileInChunksWithRefresh(client *http.Client, sourceURL string, downloadURL string, outputPath string, totalSize int64, refreshURL func() (string, error)) error {
 	partsDir := outputPath + ".parts"
 	statePath := filepath.Join(partsDir, "state.json")
 	state := downloadState{URL: sourceURL, Size: totalSize, ChunkSize: downloadChunkSize}
@@ -424,6 +511,9 @@ func downloadFileInChunks(client *http.Client, sourceURL string, downloadURL str
 	var workers sync.WaitGroup
 	var firstErr error
 	var errOnce sync.Once
+	progress := newDownloadProgress(totalSize)
+	var urlMu sync.Mutex
+	currentDownloadURL := downloadURL
 	workerCount := downloadWorkers
 	if chunkCount < workerCount {
 		workerCount = chunkCount
@@ -434,7 +524,24 @@ func downloadFileInChunks(client *http.Client, sourceURL string, downloadURL str
 		go func() {
 			defer workers.Done()
 			for chunkIndex := range jobs {
-				if err := downloadChunk(client, downloadURL, partsDir, chunkIndex, totalSize); err != nil {
+				if err := downloadChunkWithRefresh(client, downloadURL, partsDir, chunkIndex, totalSize, func(failedURL string) (string, error) {
+					urlMu.Lock()
+					defer urlMu.Unlock()
+					if currentDownloadURL != failedURL {
+						return currentDownloadURL, nil
+					}
+					if refreshURL == nil {
+						return "", fmt.Errorf("no URL refresh function configured")
+					}
+					refreshedURL, err := refreshURL()
+					if err != nil {
+						return "", err
+					}
+					currentDownloadURL = refreshedURL
+					return currentDownloadURL, nil
+				}, func(size int64) {
+					progress.add(size)
+				}); err != nil {
 					errOnce.Do(func() { firstErr = err })
 				}
 			}
@@ -487,12 +594,40 @@ func downloadFileInChunks(client *http.Client, sourceURL string, downloadURL str
 }
 
 func downloadChunk(client *http.Client, fileURL string, partsDir string, chunkIndex int, totalSize int64) error {
+	return downloadChunkWithRefresh(client, fileURL, partsDir, chunkIndex, totalSize, nil, nil)
+}
+
+type downloadHTTPStatusError struct {
+	statusCode int
+}
+
+func (e downloadHTTPStatusError) Error() string {
+	return fmt.Sprintf("server returned status %d", e.statusCode)
+}
+
+func downloadChunkWithRefresh(client *http.Client, fileURL string, partsDir string, chunkIndex int, totalSize int64, refresh func(string) (string, error), progress func(int64)) error {
 	var lastErr error
+	currentFileURL := fileURL
 	for attempt := 1; attempt <= downloadChunkMaxAttempts; attempt++ {
-		if err := downloadChunkAttempt(client, fileURL, partsDir, chunkIndex, totalSize); err == nil {
+		if err := downloadChunkAttempt(client, currentFileURL, partsDir, chunkIndex, totalSize); err == nil {
+			chunkSize := downloadChunkSize
+			if remaining := totalSize - int64(chunkIndex)*downloadChunkSize; remaining < chunkSize {
+				chunkSize = remaining
+			}
+			if progress != nil {
+				progress(chunkSize)
+			}
 			return nil
 		} else {
 			lastErr = err
+			var statusErr downloadHTTPStatusError
+			if errors.As(err, &statusErr) && statusErr.statusCode == http.StatusForbidden && refresh != nil {
+				refreshedURL, refreshErr := refresh(currentFileURL)
+				if refreshErr != nil {
+					return fmt.Errorf("failed to refresh URL for chunk %d after HTTP 403: %w", chunkIndex, refreshErr)
+				}
+				currentFileURL = refreshedURL
+			}
 		}
 		if attempt < downloadChunkMaxAttempts {
 			time.Sleep(time.Duration(attempt) * 200 * time.Millisecond)
@@ -523,7 +658,7 @@ func downloadChunkAttempt(client *http.Client, fileURL string, partsDir string, 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusPartialContent {
-		return fmt.Errorf("failed to download chunk %d: server returned status %d", chunkIndex, resp.StatusCode)
+		return fmt.Errorf("failed to download chunk %d: %w", chunkIndex, downloadHTTPStatusError{statusCode: resp.StatusCode})
 	}
 	actualStart, actualEnd, actualTotal, err := parseContentRange(resp.Header.Get("Content-Range"))
 	if err != nil || actualStart != start || actualEnd != end || actualTotal != totalSize {
@@ -554,6 +689,10 @@ func downloadChunkAttempt(client *http.Client, fileURL string, partsDir string, 
 }
 
 func downloadAndMergeVideo(videoURL string, audioURL string, outputPath string) error {
+	return downloadAndMergeVideoWithRefresh(videoURL, audioURL, outputPath, nil, nil)
+}
+
+func downloadAndMergeVideoWithRefresh(videoURL string, audioURL string, outputPath string, refreshVideoURL func() (string, error), refreshAudioURL func() (string, error)) error {
 	ffmpegPath, err := exec.LookPath("ffmpeg")
 	if err != nil {
 		return fmt.Errorf("ffmpeg is required to combine separate video and audio streams: %w", err)
@@ -574,11 +713,11 @@ func downloadAndMergeVideo(videoURL string, audioURL string, outputPath string) 
 	var videoErr, audioErr error
 	go func() {
 		defer wg.Done()
-		videoErr = downloadFile(videoURL, videoPath)
+		videoErr = downloadFileWithRefresh(videoURL, videoPath, refreshVideoURL)
 	}()
 	go func() {
 		defer wg.Done()
-		audioErr = downloadFile(audioURL, audioPath)
+		audioErr = downloadFileWithRefresh(audioURL, audioPath, refreshAudioURL)
 	}()
 	wg.Wait()
 
@@ -638,13 +777,32 @@ func downloadYouTubeViaAPI(videoURL string, outputPath string, qualityStr string
 	}
 
 	fmt.Printf("MIME type: %s\n", selected.MimeType)
+	refreshSelectedURL := func(audio bool) func() (string, error) {
+		return func() (string, error) {
+			refreshedQualities, err := extractVideoFormatsFromAPI(videoURL)
+			if err != nil {
+				return "", err
+			}
+			refreshed, err := selectQualityURL(refreshedQualities, preferredQualities)
+			if err != nil {
+				return "", err
+			}
+			if audio {
+				if refreshed.AudioURL == "" {
+					return "", fmt.Errorf("refreshed format has no audio URL")
+				}
+				return refreshed.AudioURL, nil
+			}
+			return refreshed.URL, nil
+		}
+	}
 
 	if selected.AudioURL != "" {
-		if err := downloadAndMergeVideo(selected.URL, selected.AudioURL, outputPath); err != nil {
+		if err := downloadAndMergeVideoWithRefresh(selected.URL, selected.AudioURL, outputPath, refreshSelectedURL(false), refreshSelectedURL(true)); err != nil {
 			return err
 		}
 	} else {
-		if err := downloadFile(selected.URL, outputPath); err != nil {
+		if err := downloadFileWithRefresh(selected.URL, outputPath, refreshSelectedURL(false)); err != nil {
 			return err
 		}
 	}

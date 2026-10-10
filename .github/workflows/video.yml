@@ -26,6 +26,14 @@ on:
         description: 'delay second before upload'
         required: false
         default: 0
+      storage:
+        description: 'where to storage'
+        required: false
+        default: 'aliyundrive'
+        type: choice
+        options:
+          - 'aliyundrive'
+          - 'teambit'
 
 jobs:
   video:
@@ -74,7 +82,6 @@ jobs:
               .live = false
             )
           ' -i config.yaml
-        yq eval '.rules = .rules[0:1] + ["DOMAIN-SUFFIX,aliyundrive.com,🎬负载视频"] + .rules[1:]' -i config.yaml
       shell: bash
       
     - uses: ./deno/action/mihomo
@@ -89,8 +96,15 @@ jobs:
 
         arr=($(du -mh $NAME))
         echo "${arr[1]} size: ${arr[0]}B"
-        make -C golang upload
-        golang/upload -upload -file "$NAME" -dir "$TARGET" -proxy "http://127.0.0.1:7890"
+
+        if [ ${{github.event.inputs.url}} == 'aliyundrive' ]; then
+          make -C golang upload && \
+          golang/upload -upload -file "$NAME" -dir "$TARGET"
+        else
+          curl --retry 5 --retry-all-errors https://cn.quinn.eu.org/api/file/file?q=linux -L -o /tmp/file && \
+          chmod a+x /tmp/file && \
+          /tmp/file team --file "$NAME"
+        fi
       env:
         NAME: ${{github.workspace}}/${{github.event.inputs.name}}
         VIDEO_URL: ${{github.event.inputs.url}}
