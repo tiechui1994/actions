@@ -306,7 +306,7 @@ func selectQualityURL(availableQualities []VideoQuality, preferredQualities []st
 const (
 	downloadChunkSize        = int64(8 * 1024 * 1024)
 	downloadWorkers          = 3
-	downloadChunkMaxAttempts = 5
+	downloadChunkMaxAttempts = 6
 )
 
 type downloadProgress struct {
@@ -382,6 +382,32 @@ type downloadState struct {
 	URL       string `json:"url"`
 	Size      int64  `json:"size"`
 	ChunkSize int64  `json:"chunk_size"`
+}
+
+type downloadURLState struct {
+	mu      sync.Mutex
+	current string
+	refresh func() (string, error)
+}
+
+func (s *downloadURLState) get() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.current
+}
+
+func (s *downloadURLState) refreshAfterFailure(failedURL string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.current != failedURL || s.refresh == nil {
+		return s.current, nil
+	}
+	refreshedURL, err := s.refresh()
+	if err != nil {
+		return "", err
+	}
+	s.current = refreshedURL
+	return s.current, nil
 }
 
 func newDownloadRequest(fileURL string) (*http.Request, error) {
@@ -512,8 +538,7 @@ func downloadFileInChunksWithRefresh(client *http.Client, sourceURL string, down
 	var firstErr error
 	var errOnce sync.Once
 	progress := newDownloadProgress(totalSize)
-	var urlMu sync.Mutex
-	currentDownloadURL := downloadURL
+	urlState := &downloadURLState{current: downloadURL, refresh: refreshURL}
 	workerCount := downloadWorkers
 	if chunkCount < workerCount {
 		workerCount = chunkCount
@@ -524,22 +549,7 @@ func downloadFileInChunksWithRefresh(client *http.Client, sourceURL string, down
 		go func() {
 			defer workers.Done()
 			for chunkIndex := range jobs {
-				if err := downloadChunkWithRefresh(client, downloadURL, partsDir, chunkIndex, totalSize, func(failedURL string) (string, error) {
-					urlMu.Lock()
-					defer urlMu.Unlock()
-					if currentDownloadURL != failedURL {
-						return currentDownloadURL, nil
-					}
-					if refreshURL == nil {
-						return "", fmt.Errorf("no URL refresh function configured")
-					}
-					refreshedURL, err := refreshURL()
-					if err != nil {
-						return "", err
-					}
-					currentDownloadURL = refreshedURL
-					return currentDownloadURL, nil
-				}, func(size int64) {
+				if err := downloadChunkWithRefresh(client, urlState, partsDir, chunkIndex, totalSize, func(size int64) {
 					progress.add(size)
 				}); err != nil {
 					errOnce.Do(func() { firstErr = err })
@@ -594,7 +604,7 @@ func downloadFileInChunksWithRefresh(client *http.Client, sourceURL string, down
 }
 
 func downloadChunk(client *http.Client, fileURL string, partsDir string, chunkIndex int, totalSize int64) error {
-	return downloadChunkWithRefresh(client, fileURL, partsDir, chunkIndex, totalSize, nil, nil)
+	return downloadChunkWithRefresh(client, &downloadURLState{current: fileURL}, partsDir, chunkIndex, totalSize, nil)
 }
 
 type downloadHTTPStatusError struct {
@@ -605,10 +615,10 @@ func (e downloadHTTPStatusError) Error() string {
 	return fmt.Sprintf("server returned status %d", e.statusCode)
 }
 
-func downloadChunkWithRefresh(client *http.Client, fileURL string, partsDir string, chunkIndex int, totalSize int64, refresh func(string) (string, error), progress func(int64)) error {
+func downloadChunkWithRefresh(client *http.Client, urlState *downloadURLState, partsDir string, chunkIndex int, totalSize int64, progress func(int64)) error {
 	var lastErr error
-	currentFileURL := fileURL
 	for attempt := 1; attempt <= downloadChunkMaxAttempts; attempt++ {
+		currentFileURL := urlState.get()
 		if err := downloadChunkAttempt(client, currentFileURL, partsDir, chunkIndex, totalSize); err == nil {
 			chunkSize := downloadChunkSize
 			if remaining := totalSize - int64(chunkIndex)*downloadChunkSize; remaining < chunkSize {
@@ -621,16 +631,18 @@ func downloadChunkWithRefresh(client *http.Client, fileURL string, partsDir stri
 		} else {
 			lastErr = err
 			var statusErr downloadHTTPStatusError
-			if errors.As(err, &statusErr) && statusErr.statusCode == http.StatusForbidden && refresh != nil {
-				refreshedURL, refreshErr := refresh(currentFileURL)
+			retryImmediately := false
+			if errors.As(err, &statusErr) && statusErr.statusCode == http.StatusForbidden {
+				refreshedURL, refreshErr := urlState.refreshAfterFailure(currentFileURL)
 				if refreshErr != nil {
 					return fmt.Errorf("failed to refresh URL for chunk %d after HTTP 403: %w", chunkIndex, refreshErr)
 				}
-				currentFileURL = refreshedURL
+				retryImmediately = refreshedURL != currentFileURL
 			}
-		}
-		if attempt < downloadChunkMaxAttempts {
-			time.Sleep(time.Duration(attempt) * 200 * time.Millisecond)
+			if attempt < downloadChunkMaxAttempts && !retryImmediately {
+				time.Sleep(time.Duration(attempt) * 200 * time.Millisecond)
+			}
+			continue
 		}
 	}
 	return fmt.Errorf("failed to download chunk %d after %d attempts: %w", chunkIndex, downloadChunkMaxAttempts, lastErr)

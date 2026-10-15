@@ -194,6 +194,74 @@ func TestDownloadFileRefreshesURLAfterForbidden(t *testing.T) {
 	}
 }
 
+func TestDownloadFileSharesRefreshedURLAcrossChunks(t *testing.T) {
+	old := showDownloadProgress
+	configureDownloadProgress(false)
+	t.Cleanup(func() { configureDownloadProgress(old) })
+
+	totalSize := downloadChunkSize * (downloadWorkers + 1)
+	var mu sync.Mutex
+	oldURLRequests := 0
+	newURLRequests := 0
+	oldServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		oldURLRequests++
+		mu.Unlock()
+		http.Error(w, "expired URL", http.StatusForbidden)
+	}))
+	defer oldServer.Close()
+
+	newServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var start, end int64
+		if _, err := fmt.Sscanf(r.Header.Get("Range"), "bytes=%d-%d", &start, &end); err != nil {
+			http.Error(w, "invalid range", http.StatusBadRequest)
+			return
+		}
+		if end >= totalSize {
+			end = totalSize - 1
+		}
+		mu.Lock()
+		newURLRequests++
+		mu.Unlock()
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, totalSize))
+		w.WriteHeader(http.StatusPartialContent)
+		buffer := make([]byte, 64*1024)
+		for remaining := end - start + 1; remaining > 0; {
+			writeSize := int64(len(buffer))
+			if writeSize > remaining {
+				writeSize = remaining
+			}
+			written, err := w.Write(buffer[:int(writeSize)])
+			if err != nil {
+				return
+			}
+			remaining -= int64(written)
+		}
+	}))
+	defer newServer.Close()
+
+	refreshCalls := 0
+	outputPath := filepath.Join(t.TempDir(), "video.mp4")
+	err := downloadFileInChunksWithRefresh(oldServer.Client(), oldServer.URL, oldServer.URL, outputPath, totalSize, func() (string, error) {
+		refreshCalls++
+		return newServer.URL, nil
+	})
+	if err != nil {
+		t.Fatalf("downloadFileInChunksWithRefresh() error = %v", err)
+	}
+	if refreshCalls != 1 {
+		t.Errorf("URL refreshed %d times, want once", refreshCalls)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if oldURLRequests >= downloadWorkers+1 {
+		t.Errorf("expired URL was requested %d times; queued chunks should use the refreshed URL", oldURLRequests)
+	}
+	if newURLRequests != downloadWorkers+1 {
+		t.Errorf("refreshed URL was requested %d times, want %d", newURLRequests, downloadWorkers+1)
+	}
+}
+
 func TestDownloadChunkRetriesTransientFailure(t *testing.T) {
 	data := []byte("chunk-data")
 	requests := 0
