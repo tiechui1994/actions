@@ -809,8 +809,17 @@ func downloadYouTubeViaAPI(videoURL string, outputPath string, qualityStr string
 		}
 	}
 
-	if selected.AudioURL != "" {
+	_, name := filepath.Split(outputPath)
+	if ext := filepath.Ext(name); ext == "mp3" || ext == "wav" || ext == "m4a" || ext == "aac" || ext == "ogg" {
+		selected.URL = ""
+	}
+
+	if selected.AudioURL != "" && selected.URL != "" {
 		if err := downloadAndMergeVideoWithRefresh(selected.URL, selected.AudioURL, outputPath, refreshSelectedURL(false), refreshSelectedURL(true)); err != nil {
+			return err
+		}
+	} else if selected.AudioURL != "" {
+		if err := downloadFileWithRefresh(selected.AudioURL, outputPath, refreshSelectedURL(true)); err != nil {
 			return err
 		}
 	} else {
